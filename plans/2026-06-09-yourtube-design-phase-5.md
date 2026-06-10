@@ -18,5 +18,6 @@ Superseded on June 9, 2026 by the 4-phase SQLAlchemy + Alembic replan.
 - Active phases:
   - `plans/2026-06-09-yourtube-design-phase-1.md`
   - `plans/2026-06-09-yourtube-design-phase-2.md`
-  - `plans/2026-06-09-yourtube-design-phase-3.md`
+  - `plans/2026-06-09-yourtube-design-phase-3a.md`
+  - `plans/2026-06-09-yourtube-design-phase-3b.md`
   - `plans/2026-06-09-yourtube-design-phase-4.md`
