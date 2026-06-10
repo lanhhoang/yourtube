@@ -1,0 +1,49 @@
+[project]
+name = "yourtube"
+version = "0.1.0"
+description = "Self-hosted YouTube video downloader"
+readme = "README.md"
+requires-python = ">=3.12,<4.0"
+dependencies = [
+    "alembic>=1.18.4",
+    "curl-cffi>=0.15.0",
+    "fastapi[standard]>=0.136.3",
+    "jinja2>=3.1.6",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.14.1",
+    "python-multipart>=0.0.32",
+    "sqlalchemy>=2.0.50",
+    "uvicorn[standard]>=0.49.0",
+    "yt-dlp>=2026.6.9",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.15.16",
+    "ty>=0.0.46",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
+
+[tool.ruff.lint.per-file-ignores]
+"alembic/*" = ["E", "F", "I", "N", "W"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.ty.environment]
+python-version = "3.12"
+
+[tool.ty.rules]
+invalid-assignment = "ignore"
+deprecated = "ignore"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
