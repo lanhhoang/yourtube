@@ -28,17 +28,25 @@ ProgressHook = Callable[[dict[str, Any]], None]
 class YtdlpProgress:
     """Callback matching yt-dlp's progress hook interface.
 
-    The ``d`` dict follows yt-dlp's progress hook format:
-    ``status`` ("downloading" | "finished" | "error"),
-    ``_percent_str``, ``_speed_str``, ``_eta_str``,
-    ``downloaded_bytes``, ``total_bytes``, ``filename``.
-
-    Subclasses or instances may raise :class:`DownloadCancelled` to abort
-    the active download.
+    The hook stores the latest normalized percent in ``percent`` and the
+    final output path in ``filename``. When ``cancel_requested`` is
+    supplied and returns ``True``, calling the hook raises
+    :class:`DownloadCancelled`.
     """
 
-    def __call__(self, d: dict[str, Any]) -> None:  # pragma: no cover - hook body is the contract
-        ...
+    def __init__(self, cancel_requested: Callable[[], bool] | None = None) -> None:
+        self.cancel_requested = cancel_requested
+        self.percent: float | None = None
+        self.filename: str | None = None
+
+    def __call__(self, d: dict[str, Any]) -> None:
+        if self.cancel_requested is not None and self.cancel_requested():
+            raise DownloadCancelled("cancelled by user")
+        percent = parse_percent(d.get("_percent_str"))
+        if percent is not None:
+            self.percent = percent
+        if d.get("status") == "finished" and d.get("filename"):
+            self.filename = str(d["filename"])
 
 
 def _safe_int(value: Any) -> int | None:
@@ -224,25 +232,15 @@ def run_download(
         ydl_opts["cookiefile"] = cookies_file
     if subtitles:
         ydl_opts["writesubtitles"] = True
-    if progress_hook is not None:
-        ydl_opts["progress_hooks"] = [progress_hook]
-
     captured_path: dict[str, str | None] = {"path": None}
 
-    # Wrap the progress hook to capture the final filename alongside its
-    # normal work. We only wrap if a hook was supplied.
-    if progress_hook is not None:
-        original_hook = progress_hook.__call__
+    def _wrapped(d: dict[str, Any]) -> None:
+        if d.get("status") == "finished" and d.get("filename"):
+            captured_path["path"] = str(d["filename"])
+        if progress_hook is not None:
+            progress_hook(d)
 
-        def _wrapped(d: dict) -> None:
-            try:
-                original_hook(d)
-            except DownloadCancelled:
-                raise
-            if d.get("status") == "finished" and d.get("filename"):
-                captured_path["path"] = d["filename"]
-
-        ydl_opts["progress_hooks"] = [_wrapped]
+    ydl_opts["progress_hooks"] = [_wrapped]
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
 

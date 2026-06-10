@@ -44,6 +44,8 @@ def delete_from_library(session: Session, job_id: int) -> tuple[bool, str]:
     Returns ``(False, "not_found")`` if the id does not exist.
     Returns ``(False, "not_done")`` if the job is not in ``done`` state.
     Missing files on disk are tolerated: returns ``(True, "file_missing")``.
+    Other file deletion failures return ``(False, "delete_failed")`` and
+    leave the database row intact.
     """
     row = session.get(Download, job_id)
     if row is None:
@@ -58,8 +60,7 @@ def delete_from_library(session: Session, job_id: int) -> tuple[bool, str]:
         except FileNotFoundError:
             file_missing = True
         except OSError:
-            # Permission denied, etc. — best effort, don't fail the DB delete.
-            file_missing = True
+            return False, "delete_failed"
 
     session.delete(row)
     session.commit()

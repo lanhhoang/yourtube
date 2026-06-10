@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
+from unittest.mock import patch
 
 from sqlalchemy.orm import Session
 
@@ -121,3 +122,24 @@ def test_delete_from_library_returns_not_done_for_active_row(db_session: Session
     success, message = delete_from_library(db_session, row.id)
     assert success is False
     assert message == "not_done"
+
+
+def test_delete_from_library_returns_delete_failed_on_permission_error(
+    db_session: Session, tmp_path: Path
+) -> None:
+    """Real file deletion failures do not masquerade as file-missing success."""
+    file_path = tmp_path / "protected.mp4"
+    file_path.write_text("data")
+    row = enqueue_download(db_session, _make("https://example.com/protected", title="P"))
+    _mark_done(row, db_session)
+    db_session.execute(
+        Download.__table__.update().where(Download.id == row.id).values(file_path=str(file_path))
+    )
+    db_session.expire(row)
+
+    with patch("app.services.library.os.remove", side_effect=PermissionError("denied")):
+        success, message = delete_from_library(db_session, row.id)
+
+    assert success is False
+    assert message == "delete_failed"
+    assert db_session.get(Download, row.id) is not None

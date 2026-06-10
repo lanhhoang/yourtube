@@ -47,7 +47,7 @@ def claim_next(session: Session) -> Download | None:
     subq: Select = (
         select(Download.id)
         .where(Download.status == "queued")
-        .order_by(Download.created_at)
+        .order_by(Download.created_at, Download.id)
         .limit(1)
     )
     stmt = (
@@ -98,7 +98,9 @@ def release_job(
     if resolution_height is not None:
         values["resolution_height"] = resolution_height
 
-    stmt = update(Download).where(Download.id == job_id).values(**values)
+    stmt = (
+        update(Download).where(Download.id == job_id, Download.status == "active").values(**values)
+    )
     result = session.execute(stmt)
     session.commit()
     return bool(result.rowcount)  # ty: ignore[unresolved-attribute]
@@ -139,7 +141,7 @@ def get_active_jobs(session: Session) -> list[Download]:
     stmt = (
         select(Download)
         .where(Download.status.in_(("queued", "active")))
-        .order_by(Download.created_at)
+        .order_by(Download.created_at, Download.id)
     )
     return list(session.execute(stmt).scalars())
 
