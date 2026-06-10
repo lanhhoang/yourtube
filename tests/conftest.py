@@ -25,13 +25,12 @@ os.environ.setdefault("YT_DATA_DIR", str(_TEST_DIR))
 os.environ.setdefault("YT_DOWNLOADS_DIR", str(_TEST_DIR / "downloads"))
 
 import pytest  # noqa: E402
+from alembic.config import Config as AlembicConfig  # noqa: E402
 from sqlalchemy import Connection, inspect  # noqa: E402
 from sqlalchemy.engine import Engine  # noqa: E402
 from sqlalchemy.orm import Session, sessionmaker  # noqa: E402
 
 from alembic import command  # noqa: E402
-from alembic.config import Config as AlembicConfig  # noqa: E402
-
 from app.config import settings  # noqa: E402
 from app.db import engine  # noqa: E402
 
@@ -41,6 +40,7 @@ ALEMBIC_INI_PATH = PROJECT_ROOT / "alembic.ini"
 
 # --- Migration bootstrap ---------------------------------------------------
 
+
 def pytest_configure(config: pytest.Config) -> None:
     """Apply Alembic migrations to the test database once per test session."""
     alembic_cfg = AlembicConfig(str(ALEMBIC_INI_PATH))
@@ -49,6 +49,7 @@ def pytest_configure(config: pytest.Config) -> None:
 
 
 # --- Fixtures ---------------------------------------------------------------
+
 
 @pytest.fixture()
 def db_engine() -> Engine:

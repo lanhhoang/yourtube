@@ -41,15 +41,9 @@ class Download(Base):
     subtitles: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     # Queue and progress
-    status: Mapped[str] = mapped_column(
-        String, nullable=False, default="queued", index=True
-    )
-    progress: Mapped[float] = mapped_column(
-        Float, nullable=False, default=0.0
-    )
-    cancel_requested: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False
-    )
+    status: Mapped[str] = mapped_column(String, nullable=False, default="queued", index=True)
+    progress: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    cancel_requested: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     # Error reporting
     error_code: Mapped[str | None] = mapped_column(String, nullable=True)

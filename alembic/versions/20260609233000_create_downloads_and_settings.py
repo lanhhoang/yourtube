@@ -1,7 +1,7 @@
 """create downloads and settings tables
 
 Revision ID: 20260609233000
-Revises: 
+Revises:
 Create Date: 2026-06-09 23:30:00
 
 """
@@ -44,8 +44,12 @@ def upgrade() -> None:
         sa.Column("resolution_height", sa.Integer(), nullable=True),
         sa.Column("claimed_at", sa.DateTime(), nullable=True),
         sa.Column("finished_at", sa.DateTime(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")),
-        sa.Column("updated_at", sa.DateTime(), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")),
+        sa.Column(
+            "created_at", sa.DateTime(), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")
+        ),
+        sa.Column(
+            "updated_at", sa.DateTime(), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index("ix_downloads_status", "downloads", ["status"], unique=False)
@@ -54,7 +58,9 @@ def upgrade() -> None:
         "settings",
         sa.Column("key", sa.String(), nullable=False),
         sa.Column("value", sa.String(), nullable=True),
-        sa.Column("updated_at", sa.DateTime(), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")),
+        sa.Column(
+            "updated_at", sa.DateTime(), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")
+        ),
         sa.PrimaryKeyConstraint("key"),
     )
 

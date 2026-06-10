@@ -13,12 +13,11 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+from alembic.config import Config as AlembicConfig
 from fastapi import FastAPI, HTTPException
 from sqlalchemy import text
 
 from alembic import command
-from alembic.config import Config as AlembicConfig
-
 from app.config import settings
 from app.db import engine
 
@@ -44,9 +43,7 @@ def _run_migrations() -> None:
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """FastAPI lifespan: prepare the filesystem and migrate before serving."""
-    logging.basicConfig(
-        level=getattr(logging, settings.log_level.upper(), logging.INFO)
-    )
+    logging.basicConfig(level=getattr(logging, settings.log_level.upper(), logging.INFO))
     _ensure_data_dir()
     _run_migrations()
     logger.info("startup complete: migrations applied to %s", settings.database_url)

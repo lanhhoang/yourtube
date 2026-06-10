@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -31,13 +32,21 @@ class Settings(BaseSettings):
     proxy_url: str | None = None
     log_level: str = "INFO"
     workers: int = 1
-    database_url: str | None = None
+    database_url: str = ""
 
-    @model_validator(mode="after")
-    def default_database_url(self) -> "Settings":
-        if self.database_url is None:
-            self.database_url = f"sqlite:///{self.data_dir / 'yourtube.db'}"
-        return self
+    @model_validator(mode="before")
+    @classmethod
+    def default_database_url(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+
+        if data.get("database_url"):
+            return data
+
+        raw_data_dir = data.get("data_dir", "./tmp/data")
+        data_dir = raw_data_dir if isinstance(raw_data_dir, Path) else Path(raw_data_dir)
+        data["database_url"] = f"sqlite:///{data_dir / 'yourtube.db'}"
+        return data
 
 
 settings = Settings()
