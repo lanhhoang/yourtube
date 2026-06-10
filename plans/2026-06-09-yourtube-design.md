@@ -91,9 +91,17 @@ See: `plans/2026-06-09-yourtube-design-phase-2.md`
 
 ### Phase 3A
 
-- Build the FastAPI backend bootstrap, worker pool, runtime settings resolution, and JSON APIs.
-- Apply migrations on startup before worker recovery.
-- Persist download progress and make cancellation semantics explicit.
+- Build the complete backend contract Phase 3B depends on: FastAPI bootstrap, worker pool, runtime settings resolution, progress persistence, and JSON APIs.
+- Apply migrations on startup before worker recovery, then start workers from persisted runtime settings.
+- Phase 3A owns these JSON endpoints:
+  - `POST /api/info`
+  - `POST /api/downloads`
+  - `POST /api/downloads/{id}/cancel`
+  - `GET /api/downloads/{id}/file`
+  - `GET /api/settings`
+  - `PUT /api/settings`
+  - `POST /api/settings/reset`
+  - `DELETE /api/library/{id}`
 
 See: `plans/2026-06-09-yourtube-design-phase-3a.md`
 
@@ -168,7 +176,8 @@ Startup behavior:
 
 - run Alembic migrations
 - requeue stranded `active` rows
-- load concurrency settings
+- load persisted runtime settings
+- ensure the resolved downloads directory exists
 - start worker threads
 
 ## Acceptance Criteria
@@ -176,8 +185,10 @@ Startup behavior:
 - `/health` works against a migrated SQLite database.
 - The queue supports enqueue, claim, progress, cancel, stale recovery, and startup recovery.
 - `/api/info` returns the format data needed by the format picker.
-- `/api/downloads` creates queue entries and `/api/downloads/{id}/file` serves completed files.
-- The settings page persists to the database.
+- `/api/downloads` creates queue entries, `/api/downloads/{id}/cancel` updates cancellable rows, and `/api/downloads/{id}/file` serves completed files.
+- `/api/settings` supports read, update, and reset against the `settings` table.
+- `/api/library/{id}` deletes completed library entries through the existing library service contract.
+- Phase 3B renders queue and library state through HTML partial routes rather than new JSON list endpoints.
 - `docker compose up` boots a fresh database and self-migrates.
 - CI fails if migrations are broken or omitted.
 
@@ -192,6 +203,8 @@ The first migration is `20260609233000_create_downloads_and_settings.py`.
 **Alembic config path:** Always resolved by `Path(__file__).resolve().parents[1] / "alembic.ini"` so the app works from any working directory.
 
 **CI quality workflow:** Added in Phase 1. Runs ruff, ty, pytest with coverage on every push/PR to `master`. Threshold is 50% (Phase 1 baseline ~62%). Raise to 80% after Phase 4.
+
+**Phase 3A restart behavior:** Changes to persisted `max_concurrent` take effect on the next app restart; Phase 3A does not hot-resize the worker pool.
 
 ## Self-Review Checklist
 
