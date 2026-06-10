@@ -79,11 +79,13 @@ yourtube/
 
 See: `plans/2026-06-09-yourtube-design-phase-1.md`
 
-### Phase 2
+### Phase 2 ✅ Complete
 
 - Build backend services (error mapping, settings, downloader, queue, library).
 - Stay web-facing, not CLI-facing.
 - Lock down queue state transitions and atomic claim semantics.
+- **85 tests, 91.77% coverage** across all service modules.
+- Review findings addressed: real `YtdlpProgress`, active-only `release_job` guard, atomic two-session claim test, deterministic ordering by `(created_at, id)`, safe file-delete failure handling.
 
 See: `plans/2026-06-09-yourtube-design-phase-2.md`
 

@@ -1,6 +1,8 @@
-# Phase 2: Backend Services Implementation Plan
+# Phase 2: Backend Services Implementation Plan ✅
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Status:** Complete. All tasks implemented, tested, and code-reviewed.
+> **Commits:** `2d66873`, `896af77`, `cd54d83`, `cd4af59`
+> **Tests:** 85 passing, 91.77% coverage, lint/type-check clean.
 
 **Goal:** Build the downloader, error mapper, settings, queue, and library services on top of the migrated SQLAlchemy database.
 
@@ -57,7 +59,7 @@ The settings service validates `max_concurrent` on write (rejects non-integer an
 - Create: `tests/unit/test_friendly_errors.py`
 - Create: `tests/unit/test_settings.py`
 
-- [ ] **Step 1: Write failing error mapping tests**
+- [x] **Step 1: Write failing error mapping tests**
 
 Cover:
 
@@ -69,11 +71,11 @@ Cover:
 - permission denied
 - generic fallback
 
-- [ ] **Step 2: Implement `friendly_ytdlp_error(raw: str) -> tuple[str, str]`**
+- [x] **Step 2: Implement `friendly_ytdlp_error(raw: str) -> tuple[str, str]`**
 
 Return a user-facing message plus stable error code.
 
-- [ ] **Step 3: Write failing settings tests**
+- [x] **Step 3: Write failing settings tests**
 
 Cover:
 
@@ -85,7 +87,7 @@ Cover:
 - `set_settings_batch(updates=...)` updates multiple keys atomically
 - `reset_settings()` restores all catalog keys to their defaults
 
-- [ ] **Step 4: Implement `app/services/settings.py`**
+- [x] **Step 4: Implement `app/services/settings.py`**
 
 Expose:
 
@@ -97,12 +99,12 @@ def set_settings_batch(session: Session, updates: dict[str, str]) -> None: ...
 def reset_settings(session: Session) -> None: ...
 ```
 
-- [ ] **Step 5: Run tests**
+- [x] **Step 5: Run tests**
 
 Run: `uv run pytest tests/unit/test_friendly_errors.py tests/unit/test_settings.py -v`
 Expected: PASS
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add app/services/error_mapper.py app/services/settings.py tests/unit/test_friendly_errors.py tests/unit/test_settings.py
@@ -117,7 +119,7 @@ git commit -m "feat: add error mapping and settings services"
 - Create: `tests/unit/test_downloader_format.py`
 - Create: `tests/unit/test_downloader_progress.py`
 
-- [ ] **Step 1: Write failing format classification tests**
+- [x] **Step 1: Write failing format classification tests**
 
 Cover:
 
@@ -126,7 +128,7 @@ Cover:
 - audio-only format
 - missing codec metadata
 
-- [ ] **Step 2: Implement format parsing helpers**
+- [x] **Step 2: Implement format parsing helpers**
 
 Expose:
 
@@ -136,7 +138,7 @@ def normalize_formats(info: dict) -> list[FormatInfo]: ...
 def build_format_selector(video_id: str | None, audio_id: str | None) -> str: ...
 ```
 
-- [ ] **Step 3: Define `YtdlpProgress` callback class**
+- [x] **Step 3: Define `YtdlpProgress` callback class**
 
 Add to `app/services/downloader.py`:
 
@@ -158,7 +160,7 @@ class DownloadCancelled(Exception):
     """Raised inside the progress hook when cancellation is requested."""
 ```
 
-- [ ] **Step 4: Write failing progress tests**
+- [x] **Step 4: Write failing progress tests**
 
 Cover:
 
@@ -168,7 +170,7 @@ Cover:
 - `run_download()` raises `DownloadCancelled` when the hook raises it
 - `run_download()` returns the output file path on success
 
-- [ ] **Step 5: Implement `run_download(...)`**
+- [x] **Step 5: Implement `run_download(...)`**
 
 ```python
 def run_download(
@@ -192,12 +194,12 @@ def run_download(
 
 Implementation: build `ydl_opts` dict from parameters, call `yt_dlp.YoutubeDL(ydl_opts).download([url])`, and return the file path extracted from the progress hook on `"finished"` status.
 
-- [ ] **Step 6: Run tests**
+- [x] **Step 6: Run tests**
 
 Run: `uv run pytest tests/unit/test_downloader_format.py tests/unit/test_downloader_progress.py -v`
 Expected: PASS
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add app/services/downloader.py tests/unit/test_downloader_format.py tests/unit/test_downloader_progress.py
@@ -216,7 +218,7 @@ git commit -m "feat: add yt-dlp downloader service"
 - Create: `tests/unit/test_library.py`
 - Create: `tests/integration/test_worker_lifecycle.py`
 
-- [ ] **Step 1: Write failing queue tests**
+- [x] **Step 1: Write failing queue tests**
 
 Cover:
 
@@ -230,7 +232,7 @@ Cover:
 - `detect_stale_jobs(timeout_minutes=10)` marks rows with `status='active'` and `claimed_at < now - 10min` as `error` with code `stale_worker`
 - `requeue_active_on_startup()` moves all `active` rows back to `queued` and clears `claimed_at`
 
-- [ ] **Step 2: Implement transaction-safe queue functions**
+- [x] **Step 2: Implement transaction-safe queue functions**
 
 Expose:
 
@@ -286,7 +288,7 @@ def requeue_active_on_startup(session: Session) -> int:
 
 Implementation rule: `claim_next()` must claim inside a write transaction and succeed only when a conditional update affects one row.
 
-- [ ] **Step 3: Write failing library tests**
+- [x] **Step 3: Write failing library tests**
 
 Cover:
 
@@ -295,7 +297,7 @@ Cover:
 - title/uploader search
 - delete removes DB row and file if present
 
-- [ ] **Step 4: Implement library functions**
+- [x] **Step 4: Implement library functions**
 
 Expose:
 
@@ -317,7 +319,7 @@ def delete_from_library(session: Session, job_id: int) -> tuple[bool, str]:
     ...
 ```
 
-- [ ] **Step 5: Add worker lifecycle integration test**
+- [x] **Step 5: Add worker lifecycle integration test**
 
 Simulate:
 
@@ -328,12 +330,12 @@ Simulate:
 - enqueue a third download, claim it, manually set `claimed_at` far in the past, run `detect_stale_jobs()`, verify it becomes `error` with code `stale_worker`
 - create an `active` row directly, run `requeue_active_on_startup()`, verify it returns to `queued` and `claimed_at` is cleared
 
-- [ ] **Step 6: Run tests**
+- [x] **Step 6: Run tests**
 
 Run: `uv run pytest tests/unit/test_queue_claim.py tests/unit/test_queue_cancel.py tests/unit/test_queue_stale.py tests/unit/test_library.py tests/integration/test_worker_lifecycle.py -v`
 Expected: PASS
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add app/services/queue.py app/services/library.py tests/unit/test_queue_claim.py tests/unit/test_queue_cancel.py tests/unit/test_queue_stale.py tests/unit/test_library.py tests/integration/test_worker_lifecycle.py
@@ -346,6 +348,37 @@ git commit -m "feat: add queue and library services"
 - Queue claim semantics are explicit and concurrency-safe.
 - Service contracts align with the Phase 3 web routes.
 
-## End of Phase 2
+## Execution Results
 
-Deliverable: backend services are complete and verified without introducing the web layer yet.
+### Test count: 85 (up from 6 Phase 1 baselines)
+
+| Test file                     | Count |
+| ----------------------------- | ----- |
+| `test_friendly_errors.py`     | 17    |
+| `test_settings.py`            | 17    |
+| `test_downloader_format.py`   | 10    |
+| `test_downloader_progress.py` | 10    |
+| `test_queue_claim.py`         | 6     |
+| `test_queue_cancel.py`        | 3     |
+| `test_queue_stale.py`         | 4     |
+| `test_library.py`             | 8     |
+| `test_worker_lifecycle.py`    | 4     |
+| Phase 1 baseline              | 6     |
+
+### Deviations from plan
+
+1. `YtdlpProgress` implemented as a real stateful class (with `percent`, `filename` fields and optional `cancel_requested` callback), not an abstract stub. Tests exercise the real class, not a test-only subclass.
+2. `cancel_job` uses conditional UPDATE statements (not `session.get`) so the result is independent of the session's identity map.
+3. `run_download` always installs an internal progress hook to capture the output path, even when no external `progress_hook` is supplied. The caller hook is called after the internal path capture.
+4. `release_job` guards against `status != 'active'` rows — only active rows can be transitioned to a terminal state.
+5. `claim_next` ordering made deterministic with `(created_at, id)` tiebreaker.
+6. `delete_from_library` distinguishes `FileNotFoundError` (tolerated, returns `file_missing`) from other `OSError` (returns `delete_failed`, row preserved).
+
+### Commits
+
+| Commit    | Message                                       |
+| --------- | --------------------------------------------- |
+| `2d66873` | feat: add error mapping and settings services |
+| `896af77` | feat: add yt-dlp downloader service           |
+| `cd54d83` | feat: add queue and library services          |
+| `cd4af59` | fix: address code review findings             |
