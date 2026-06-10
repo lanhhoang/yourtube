@@ -21,7 +21,7 @@ This plan removes those flaws:
 - `SQLModel` is fully replaced by `SQLAlchemy`.
 - `Alembic` is the only schema authority.
 - Queue claiming is transaction-safe by design.
-- Delivery is web-first and reduced to 4 phases.
+- Delivery is web-first and split into Phase 1, Phase 2, Phase 3A, Phase 3B, and Phase 4.
 
 ## File Structure
 
@@ -89,13 +89,21 @@ See: `plans/2026-06-09-yourtube-design-phase-1.md`
 
 See: `plans/2026-06-09-yourtube-design-phase-2.md`
 
-### Phase 3
+### Phase 3A
 
-- Build the full FastAPI app, templates, routes, and worker pool.
+- Build the FastAPI backend bootstrap, worker pool, runtime settings resolution, and JSON APIs.
 - Apply migrations on startup before worker recovery.
-- Verify queue, library, settings, and file-serving behavior end-to-end.
+- Persist download progress and make cancellation semantics explicit.
 
-See: `plans/2026-06-09-yourtube-design-phase-3.md`
+See: `plans/2026-06-09-yourtube-design-phase-3a.md`
+
+### Phase 3B
+
+- Build the server-rendered pages, HTML partials, CSS, and small browser-side interactions.
+- Keep mutations on the Phase 3A JSON APIs and use partial routes only for HTML refreshes.
+- Verify queue, library, settings, and browser-driven behavior end-to-end.
+
+See: `plans/2026-06-09-yourtube-design-phase-3b.md`
 
 ### Phase 4
 
@@ -190,7 +198,8 @@ The first migration is `20260609233000_create_downloads_and_settings.py`.
 - Spec coverage:
   - persistence and migrations -> Phase 1
   - backend services -> Phase 2
-  - web routes, templates, workers -> Phase 3
+  - backend app bootstrap, routes, workers -> Phase 3A
+  - templates, partials, and browser interactions -> Phase 3B
   - Docker -> Phase 4
   - CI -> Phase 1 (pre-added)
 - Placeholder scan: no `SQLModel`, no CLI-first milestones, no custom schema version flow remain.
