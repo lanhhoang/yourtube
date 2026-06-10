@@ -18,6 +18,7 @@ yourtube/
 ├── uv.lock
 ├── .env.example
 ├── alembic.ini
+├── .github/workflows/quality.yml         # ← pre-added from Phase 4
 ├── app/
 │   ├── __init__.py
 │   ├── main.py
@@ -29,7 +30,9 @@ yourtube/
 │   └── services/__init__.py
 ├── alembic/
 │   ├── env.py
+│   ├── script.py.mako
 │   └── versions/
+│       └── YYYYMMDDHHMMSS_create_downloads_and_settings.py
 └── tests/
     ├── __init__.py
     ├── conftest.py
@@ -48,42 +51,13 @@ yourtube/
 - Create: `app/services/__init__.py`
 - Create: `tests/__init__.py`
 
-- [ ] **Step 1: Create `pyproject.toml` with the runtime stack**
+- [x] **Step 1: Create `pyproject.toml`**
 
-Include these runtime dependencies:
+Dependencies follow the plan's `>=` lower bounds but use uv's modern `[dependency-groups]` instead of `[project.optional-dependencies]`.
 
-```toml
-dependencies = [
-    "fastapi>=0.115.0",
-    "uvicorn[standard]>=0.34.0",
-    "sqlalchemy>=2.0.36",
-    "alembic>=1.14.0",
-    "pydantic>=2.9.0",
-    "pydantic-settings>=2.6.0",
-    "yt-dlp>=2024.12.0",
-    "curl-cffi>=0.7.0",
-    "jinja2>=3.1.0",
-    "python-multipart>=0.0.18",
-]
-```
+`pyproject.toml` also includes tool config sections for ruff, ty, and pytest (merged from the `20260609-phase-1-scaffold-project-old` branch).
 
-- [ ] **Step 2: Add dev dependencies and tool config**
-
-Include:
-
-```toml
-[project.optional-dependencies]
-dev = [
-    "pytest>=8.0.0",
-    "pytest-cov>=6.0.0",
-    "ruff>=0.8.0",
-    "ty>=0.11.0",
-]
-```
-
-- [ ] **Step 3: Add package marker files and `.env.example`**
-
-`.env.example` should include:
+- [x] **Step 2: Create `.env.example`**
 
 ```dotenv
 YT_HOST=127.0.0.1
@@ -93,12 +67,15 @@ YT_DOWNLOADS_DIR=./tmp/downloads
 YT_LOG_LEVEL=INFO
 ```
 
-- [ ] **Step 4: Install dependencies**
+- [x] **Step 3: Create package marker files**
+
+`app/__init__.py`, `app/routes/__init__.py`, `app/services/__init__.py`, `tests/__init__.py`.
+
+- [x] **Step 4: Install dependencies**
 
 Run: `uv sync`
-Expected: lockfile updates successfully and installs `sqlalchemy` and `alembic`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add pyproject.toml uv.lock .env.example app/__init__.py app/routes/__init__.py app/services/__init__.py tests/__init__.py
@@ -115,7 +92,7 @@ git commit -m "chore: scaffold project metadata for sqlalchemy and alembic"
 - Create: `tests/test_config.py`
 - Create: `tests/test_db.py`
 
-- [ ] **Step 1: Write the failing config test**
+- [x] **Step 1: Write the failing config test**
 
 ```python
 from app.config import settings
@@ -126,78 +103,52 @@ def test_settings_defaults():
     assert settings.port == 8000
 ```
 
-- [ ] **Step 2: Implement `app/config.py`**
+- [x] **Step 2: Implement `app/config.py`**
 
-Define a `Settings` class with:
+`Settings` uses pydantic-settings with `YT_` prefix. Key differences from the skeleton plan:
+
+- `database_url: str` derives from `data_dir` via a `model_validator(mode="before")` unless `YT_DATABASE_URL` is explicitly set
+- All fields have defaults so the `settings` singleton loads without a `.env` file
 
 ```python
-host: str = "127.0.0.1"
-port: int = 8000
-data_dir: Path
-downloads_dir: Path
-cookies_path: Path | None = None
-proxy_url: str | None = None
-log_level: str = "INFO"
-workers: int = 1
+class Settings(BaseSettings):
+    host: str = "127.0.0.1"
+    port: int = 8000
+    data_dir: Path = Path("./tmp/data")
+    downloads_dir: Path = Path("./tmp/downloads")
+    cookies_path: Path | None = None
+    proxy_url: str | None = None
+    log_level: str = "INFO"
+    workers: int = 1
+    database_url: str = ""     # filled by validator from data_dir
 ```
 
-- [ ] **Step 3: Define database setup in `app/db.py`**
+- [x] **Step 3: Define database setup in `app/db.py`**
 
-Implement:
+Eagerly-created `engine`, `SessionLocal`, FastAPI `get_session` dependency, and a SQLite connect listener that sets `PRAGMA foreign_keys=ON` and `PRAGMA busy_timeout=5000`. Engine allows `check_same_thread=False` for concurrent usage.
 
-```python
-engine = create_engine(...)
-SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+- [x] **Step 4: Define ORM models in `app/models.py`**
 
-def get_session() -> Generator[Session, None, None]:
-    ...
-```
+`Base(DeclarativeBase)`, `Download`, `Setting` with queue/metadata/file/timestamp columns.
 
-Add SQLite pragmas on connect and do not call `Base.metadata.create_all()`.
+- [x] **Step 5: Define Pydantic contracts in `app/schemas.py`**
 
-- [ ] **Step 4: Define ORM models in `app/models.py`**
+`InfoRequest`, `DownloadCreate`, `FormatInfo`, `InfoResponse`, `DownloadResponse`, `ErrorResponse`.
 
-Create SQLAlchemy declarative models:
+- [x] **Step 6: Add ORM boundary tests**
 
 ```python
-class Download(Base): ...
-class Setting(Base): ...
-```
-
-Include queue, metadata, file output, and timestamp columns. Do not include request or response schemas in this file.
-
-- [ ] **Step 5: Define Pydantic contracts in `app/schemas.py`**
-
-Create:
-
-```python
-class InfoRequest(BaseModel): ...
-class DownloadCreate(BaseModel): ...
-class FormatInfo(BaseModel): ...
-class InfoResponse(BaseModel): ...
-class DownloadResponse(BaseModel): ...
-class ErrorResponse(BaseModel): ...
-```
-
-- [ ] **Step 6: Add ORM boundary tests**
-
-`tests/test_db.py` should check:
-
-```python
-from app.models import Download, Setting
-
-
 def test_model_tables_named():
     assert Download.__tablename__ == "downloads"
     assert Setting.__tablename__ == "settings"
 ```
 
-- [ ] **Step 7: Run tests**
+- [x] **Step 7: Run tests**
 
 Run: `uv run pytest tests/test_config.py tests/test_db.py -v`
 Expected: PASS
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add app/config.py app/db.py app/models.py app/schemas.py tests/test_config.py tests/test_db.py
@@ -209,48 +160,52 @@ git commit -m "feat: add sqlalchemy models and pydantic schemas"
 **Files:**
 - Create: `alembic.ini`
 - Create: `alembic/env.py`
-- Create: `alembic/versions/0001_initial_schema.py`
+- Create: `alembic/versions/YYYYMMDDHHMMSS_create_downloads_and_settings.py`
 - Create: `tests/conftest.py`
 
-- [ ] **Step 1: Initialize Alembic configuration**
+- [x] **Step 1: Initialize Alembic configuration**
 
-`alembic/env.py` must load metadata from `app.models.Base.metadata`.
+`alembic/env.py` loads metadata from `app.models.Base.metadata`, reads the database URL from `app.config.settings`, and sets `render_as_batch` for SQLite.
 
-- [ ] **Step 2: Write the initial migration**
+`alembic.ini` configures the migration filename template:
 
-The revision must create:
-
-- `downloads`
-- `settings`
-
-It must not create a schema version application table beyond Alembic's own version table.
-
-- [ ] **Step 3: Implement migrated test fixtures**
-
-`tests/conftest.py` should:
-
-- create a temporary SQLite file
-- override the app database URL for tests
-- run `alembic upgrade head`
-- provide a SQLAlchemy `Session` fixture
-
-- [ ] **Step 4: Add migration health test**
-
-Add this to `tests/test_db.py`:
-
-```python
-def test_migrations_create_expected_tables(db_engine):
-    inspector = inspect(db_engine)
-    assert "downloads" in inspector.get_table_names()
-    assert "settings" in inspector.get_table_names()
+```
+file_template = %%(year)d%%(month).2d%%(day).2d%%(hour).2d%%(minute).2d%%(second).2d_%%(slug)s
 ```
 
-- [ ] **Step 5: Run tests**
+- [x] **Step 2: Write the initial migration**
+
+Revision ID: `20260609233000`
+Filename: `20260609233000_create_downloads_and_settings.py`
+
+Creates `downloads` and `settings` tables matching the ORM models. Uses `server_default` for boolean/float defaults instead of Python-level defaults so Alembic-generated DDL is self-contained.
+
+- [x] **Step 3: Implement migrated test fixtures**
+
+`tests/conftest.py`:
+
+- sets `os.environ["YT_DATABASE_URL"]` at module load time (before any `app` module is imported) to a temp SQLite file
+- `pytest_configure` runs `alembic upgrade head` once per session
+- `db_engine` fixture: returns the shared engine
+- `db_session` fixture: opens a connection + transaction, yields a Session, rollbacks after the test (isolation guarantee)
+- `db_inspector` fixture: convenience wrapper
+- Alembic config path is resolved from `Path(__file__).resolve().parents[1]` rather than the cwd
+
+- [x] **Step 4: Add migration health test**
+
+```python
+def test_migrations_create_expected_tables(db_inspector):
+    table_names = set(db_inspector.get_table_names())
+    assert "downloads" in table_names
+    assert "settings" in table_names
+```
+
+- [x] **Step 5: Run tests**
 
 Run: `uv run pytest tests/test_db.py -v`
 Expected: PASS
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add alembic.ini alembic tests/conftest.py tests/test_db.py
@@ -263,7 +218,7 @@ git commit -m "feat: add alembic baseline migration and migrated test fixtures"
 - Create: `app/main.py`
 - Create: `tests/test_health.py`
 
-- [ ] **Step 1: Write the failing health test**
+- [x] **Step 1: Write the failing health test**
 
 ```python
 from fastapi.testclient import TestClient
@@ -277,33 +232,58 @@ def test_health():
     assert response.json() == {"status": "ok"}
 ```
 
-- [ ] **Step 2: Implement startup flow**
+- [x] **Step 2: Implement startup flow**
 
-`app/main.py` should:
+`app/main.py`:
 
-- run `alembic upgrade head` in lifespan
-- expose `/health`
-- verify DB reachability with `SELECT 1`
+- computes `ALEMBIC_INI_PATH` from `Path(__file__).resolve()` (cwd-independent)
+- lifespan ensures data dirs exist, runs `alembic upgrade head`, starts serving
+- `/health` runs `SELECT 1`, returns 200 with `{"status": "ok"}` or 503 with `ErrorResponse`-compatible body
 
-- [ ] **Step 3: Run tests**
+- [x] **Step 3: Run tests**
 
 Run: `uv run pytest tests/test_health.py -v`
 Expected: PASS
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add app/main.py tests/test_health.py
 git commit -m "feat: add migrated app startup and health endpoint"
 ```
 
-## Self-Review (Phase 1)
+## Post-Phase-1 Fixes (applied during review)
 
-- Covers dependency swap to SQLAlchemy.
-- Makes Alembic the only schema authority.
-- Keeps ORM and API schemas separate.
-- Ensures tests use migrated schema, not `create_all()`.
+After the initial implementation, a code review uncovered the following issues that were fixed in a follow-up commit:
+
+- **Missing baseline migration** — migration file was not tracked; created `20260609233000_create_downloads_and_settings.py`
+- **Alembic `env.py`** — replaced default template with one that loads `app.models.Base.metadata` and `app.config.settings`
+- **Alembic config path** — both `app/main.py` and `tests/conftest.py` now resolve `alembic.ini` relative to `__file__` instead of depending on cwd
+- **`database_url` derives from `data_dir`** — unless overridden via `YT_DATABASE_URL`, the default URL is `sqlite:///{data_dir}/yourtube.db`
+- **Ruff lint/format** — import sorting fixed, unused `Path` import removed, 5 files reformatted
+- **Ty type-check pass** — `database_url` changed to `str = ""` + `model_validator(mode="before")` so type checker sees a non-optional field
+- **Test DB isolation** — `db_session` fixture now wraps each test in a rollback-only transaction
+- **CI workflow** — `.github/workflows/quality.yml` added with ruff, ty, pytest + coverage checks
+
+## Current Test Suite (6 tests)
+
+```
+tests/test_config.py::test_settings_defaults                       PASSED
+tests/test_config.py::test_database_url_defaults_to_data_dir       PASSED
+tests/test_db.py::test_model_tables_named                          PASSED
+tests/test_db.py::test_migrations_create_expected_tables           PASSED
+tests/test_health.py::test_health                                  PASSED
+tests/test_health.py::test_health_from_another_working_directory   PASSED
+```
+
+## Self-Review
+
+- ✓ SQLAlchemy models only
+- ✓ Alembic is the only schema authority; no `create_all()` in app code
+- ✓ ORM models in `app/models.py`, API schemas in `app/schemas.py`
+- ✓ Tests build schema via `alembic upgrade head`; migration health test proves it
+- ✓ CI workflow runs ruff, ty, pytest with coverage on every push/PR
 
 ## End of Phase 1
 
-Deliverable: `uv run uvicorn app.main:app` starts successfully, `/health` returns `{"status":"ok"}`, and a fresh test database is built by Alembic migrations.
+Deliverable achieved: `uv run uvicorn app.main:app` starts successfully, `/health` returns `{"status":"ok"}`, and a fresh test database is built by Alembic migrations.

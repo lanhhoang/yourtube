@@ -31,10 +31,10 @@ yourtube/
 ├── uv.lock
 ├── .env.example
 ├── alembic.ini
+├── .github/workflows/quality.yml        ← pre-added from Phase 4
 ├── Dockerfile
 ├── docker-compose.yml
 ├── .dockerignore
-├── .github/workflows/ci.yml
 ├── app/
 │   ├── __init__.py
 │   ├── main.py
@@ -59,6 +59,7 @@ yourtube/
 │   ├── env.py
 │   ├── script.py.mako
 │   └── versions/
+│       └── YYYYMMDDHHMMSS_action_object.py     # naming convention
 └── tests/
     ├── __init__.py
     ├── conftest.py
@@ -68,19 +69,20 @@ yourtube/
 
 ## Phase Overview
 
-### Phase 1
+### Phase 1 ✅ Complete
 
 - Scaffold the app.
 - Add SQLAlchemy models and Pydantic schemas.
-- Add Alembic and the baseline migration.
+- Add Alembic and the baseline migration (timestamped filename convention).
 - Make tests create schema by running migrations.
+- Add CI quality workflow (lint, type check, tests, coverage).
 
 See: `plans/2026-06-09-yourtube-design-phase-1.md`
 
 ### Phase 2
 
-- Build backend services.
-- Keep them web-facing, not CLI-facing.
+- Build backend services (error mapping, settings, downloader, queue, library).
+- Stay web-facing, not CLI-facing.
 - Lock down queue state transitions and atomic claim semantics.
 
 See: `plans/2026-06-09-yourtube-design-phase-2.md`
@@ -97,7 +99,7 @@ See: `plans/2026-06-09-yourtube-design-phase-3.md`
 
 - Package the app with Docker and Compose.
 - Ensure Alembic migrations run in container boot flow.
-- Verify lint, typing, tests, and migration health in CI.
+- CI was already added in Phase 1; this phase only needs Docker + Compose.
 
 See: `plans/2026-06-09-yourtube-design-phase-4.md`
 
@@ -144,13 +146,26 @@ Startup behavior:
 - `docker compose up` boots a fresh database and self-migrates.
 - CI fails if migrations are broken or omitted.
 
+## Design Decisions
+
+**Migration naming convention:** All Alembic revision files use `YYYYMMDDHHMMSS_action_object.py` (configured via `file_template` in `alembic.ini`).
+
+The first migration is `20260609233000_create_downloads_and_settings.py`.
+
+**Database URL:** Defaults to `sqlite:///{data_dir}/yourtube.db`, deriving from `YT_DATA_DIR` unless `YT_DATABASE_URL` is explicitly set.
+
+**Alembic config path:** Always resolved by `Path(__file__).resolve().parents[1] / "alembic.ini"` so the app works from any working directory.
+
+**CI quality workflow:** Added in Phase 1. Runs ruff, ty, pytest with coverage on every push/PR to `master`. Threshold is 50% (Phase 1 baseline ~62%). Raise to 80% after Phase 4.
+
 ## Self-Review Checklist
 
 - Spec coverage:
   - persistence and migrations -> Phase 1
   - backend services -> Phase 2
   - web routes, templates, workers -> Phase 3
-  - Docker and CI -> Phase 4
+  - Docker -> Phase 4
+  - CI -> Phase 1 (pre-added)
 - Placeholder scan: no `SQLModel`, no CLI-first milestones, no custom schema version flow remain.
 - Type consistency:
   - `Download` and `Setting` are ORM models

@@ -1,14 +1,17 @@
-# Phase 4: Packaging + CI Implementation Plan
+# Phase 4: Docker Packaging Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Package the app for local deployment and CI with Alembic-aware startup and verification.
+**Goal:** Package the app for local deployment with Alembic-aware startup and verification.
 
-**Architecture:** Docker and Compose package the FastAPI app, Alembic migrations, and persisted volumes. Container boot runs migrations before serving the web process. CI verifies lint, typing, tests, and migration health together.
+**Architecture:** Docker and Compose package the FastAPI app, Alembic migrations, and persisted volumes. Container boot runs migrations before serving the web process.
 
-**Tech Stack:** Docker, Docker Compose, uv, Alembic, GitHub Actions
+**Tech Stack:** Docker, Docker Compose, uv, Alembic
 
 ---
+
+> **Note:** The CI quality workflow (lint, types, tests, coverage) was already added in Phase 1
+> as `.github/workflows/quality.yml`. This phase only covers Docker + Compose.
 
 ## File Structure (this phase adds)
 
@@ -16,8 +19,7 @@
 yourtube/
 ├── Dockerfile
 ├── docker-compose.yml
-├── .dockerignore
-└── .github/workflows/ci.yml
+└── .dockerignore
 ```
 
 ### Task 1: Container packaging
@@ -104,40 +106,11 @@ git add docker-compose.yml
 git commit -m "chore: add docker compose for persistent runtime"
 ```
 
-### Task 3: CI and migration health
-
-**Files:**
-- Create: `.github/workflows/ci.yml`
-
-- [ ] **Step 1: Create CI workflow**
-
-CI must run:
-
-```bash
-uv sync --all-extras
-uv run ruff check .
-uv run ty check app
-uv run pytest --cov=app --cov-fail-under=80
-uv run alembic upgrade head
-```
-
-- [ ] **Step 2: Verify CI locally**
-
-Run the same commands locally.
-Expected: PASS
-
-- [ ] **Step 3: Commit**
-
-```bash
-git add .github/workflows/ci.yml
-git commit -m "chore: add ci checks for lint tests and migrations"
-```
-
 ## Self-Review (Phase 4)
 
-- Docker now includes Alembic artifacts.
+- Docker includes Alembic artifacts.
 - Boot flow migrates before serving traffic.
-- CI verifies schema health explicitly.
+- CI quality workflow was already covered in Phase 1 (`.github/workflows/quality.yml`), not this phase.
 
 ## End of Phase 4
 
