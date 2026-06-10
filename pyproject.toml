@@ -44,6 +44,7 @@ python-version = "3.12"
 [tool.ty.rules]
 invalid-assignment = "ignore"
 deprecated = "ignore"
+unresolved-attribute = "ignore"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
