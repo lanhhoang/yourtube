@@ -103,7 +103,7 @@ def release_job(
     )
     result = session.execute(stmt)
     session.commit()
-    return bool(result.rowcount)  # ty: ignore[unresolved-attribute]
+    return bool(result.rowcount)
 
 
 def cancel_job(session: Session, job_id: int) -> bool:
@@ -123,7 +123,7 @@ def cancel_job(session: Session, job_id: int) -> bool:
         .values(status="cancelled", finished_at=func.current_timestamp())
     )
     cancel_result = session.execute(cancel_stmt)
-    if bool(cancel_result.rowcount):  # ty: ignore[unresolved-attribute]
+    if bool(cancel_result.rowcount):
         session.commit()
         return True
     flag_stmt = (
@@ -133,7 +133,7 @@ def cancel_job(session: Session, job_id: int) -> bool:
     )
     flag_result = session.execute(flag_stmt)
     session.commit()
-    return bool(flag_result.rowcount)  # ty: ignore[unresolved-attribute]
+    return bool(flag_result.rowcount)
 
 
 def get_active_jobs(session: Session) -> list[Download]:
@@ -170,7 +170,7 @@ def detect_stale_jobs(session: Session, timeout_minutes: int = 10) -> int:
     )
     result = session.execute(stmt)
     session.commit()
-    return int(result.rowcount or 0)  # ty: ignore[unresolved-attribute]
+    return int(result.rowcount or 0)
 
 
 def requeue_active_on_startup(session: Session) -> int:
@@ -183,4 +183,4 @@ def requeue_active_on_startup(session: Session) -> int:
     )
     result = session.execute(stmt)
     session.commit()
-    return int(result.rowcount or 0)  # ty: ignore[unresolved-attribute]
+    return int(result.rowcount or 0)
