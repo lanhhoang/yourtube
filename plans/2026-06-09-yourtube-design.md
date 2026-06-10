@@ -118,16 +118,41 @@ Queue claim must be safe under concurrent workers:
 
 1. Open a write transaction.
 2. Select the oldest queued, non-cancelled job candidate.
-3. Update that row with a conditional `WHERE status = 'queued'`.
+3. Update that row: set `status = 'active'` and `claimed_at = now()` with a conditional `WHERE status = 'queued'`.
 4. Only treat the claim as successful if exactly one row was updated.
 
 Terminal states:
 
-- `queued`
-- `active`
-- `done`
-- `error`
-- `cancelled`
+| State       | Description                   |
+| ----------- | ----------------------------- |
+| `queued`    | Waiting for a worker to claim |
+| `active`    | Being downloaded              |
+| `done`      | Completed successfully        |
+| `error`     | Download failed               |
+| `cancelled` | Cancelled before completion   |
+
+**Cancel contract:**
+
+- `cancel_job()` on a `queued` job transitions immediately to `cancelled`.
+- `cancel_job()` on an `active` job sets `cancel_requested = True`; the worker thread polls this flag, stops the download, and transitions to `cancelled`.
+- `cancel_job()` on `done`, `error`, or `cancelled` returns `False` (no-op).
+
+**Stale detection:**
+
+- `detect_stale_jobs(timeout_minutes=10)` marks any `active` row whose `claimed_at` is older than the timeout as `error` with code `stale_worker`.
+
+## Settings Catalog
+
+Runtime settings persisted in the `settings` table and consumed by the worker pool and API routes:
+
+| Key              | Default | Validation             | Description                    |
+| ---------------- | ------- | ---------------------- | ------------------------------ |
+| `max_concurrent` | `"1"`   | integer 1-5            | Max simultaneous downloads     |
+| `proxy_url`      | `""`    | string (URL or empty)  | HTTP proxy for yt-dlp          |
+| `cookies_path`   | `""`    | string (path or empty) | Path to cookies.txt for yt-dlp |
+| `downloads_dir`  | `""`    | string (path or empty) | Output directory override      |
+
+Empty-string values are treated as unset and passed as `None` to yt-dlp. The settings service validates `max_concurrent` on write; other keys accept any string but empty means unset.
 
 Startup behavior:
 
