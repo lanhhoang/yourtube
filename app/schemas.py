@@ -98,3 +98,22 @@ class ErrorResponse(BaseModel):
 
     code: str
     message: str
+
+
+class SettingsResponse(BaseModel):
+    """Response body for ``GET /api/settings``.
+
+    Values are always strings because the settings table is
+    string-valued; the router reads through the service's catalog.
+    """
+
+    max_concurrent: str
+    proxy_url: str
+    cookies_path: str
+    downloads_dir: str
+
+
+class MutationOkResponse(BaseModel):
+    """Standard ``{"ok": true}`` body for write endpoints."""
+
+    ok: bool = True
