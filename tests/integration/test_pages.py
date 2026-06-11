@@ -104,3 +104,35 @@ def test_settings_page_exposes_form_and_restart_notice() -> None:
     assert 'id="settings-form"' in response.text
     assert 'hx-put="/settings/form"' in response.text
     assert "takes effect after restart" in response.text
+
+
+def test_info_lookup_fragment_renders_enqueue_form(monkeypatch) -> None:
+    def fake_extract_info(url: str, **_kwargs):
+        return {
+            "url": url,
+            "title": "Example title",
+            "uploader": "Uploader",
+            "duration": 123,
+            "thumbnail": "https://example.com/thumb.jpg",
+            "formats": [{"format_id": "18", "ext": "mp4", "resolution": "360p"}],
+            "captions": {},
+        }
+
+    monkeypatch.setattr("app.routes.pages.extract_info", fake_extract_info)
+
+    with TestClient(app) as client:
+        response = client.post("/info/form", data={"url": "https://example.com/watch?v=1"})
+
+    assert response.status_code == 200
+    assert 'id="enqueue-form"' in response.text
+    assert "Example title" in response.text
+
+
+def test_settings_reset_returns_updated_form(db_session_visible) -> None:
+    set_settings_batch(db_session_visible, {"max_concurrent": "4"})
+
+    with TestClient(app) as client:
+        response = client.post("/settings/reset")
+
+    assert response.status_code == 200
+    assert 'value="1"' in response.text

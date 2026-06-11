@@ -11,20 +11,30 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Form, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.db import get_session
-from app.services.library import get_library, search_library
-from app.services.queue import get_active_jobs
-from app.services.settings import get_all_settings
+from app.schemas import DownloadCreate
+from app.services.downloader import extract_info, normalize_formats
+from app.services.library import delete_from_library, get_library, search_library
+from app.services.queue import cancel_job, enqueue_download, get_active_jobs
+from app.services.settings import (
+    get_all_settings,
+    reset_settings,
+    resolve_runtime_settings,
+    set_settings_batch,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 TEMPLATES_DIR = PROJECT_ROOT / "app" / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 router = APIRouter()
+
+
+# --- Page routes -----------------------------------------------------------
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -64,6 +74,9 @@ def settings_page(request: Request, session: Session = Depends(get_session)) -> 
     )
 
 
+# --- HTMX fragment routes --------------------------------------------------
+
+
 @router.get("/queue/rows", response_class=HTMLResponse)
 def queue_rows(request: Request, session: Session = Depends(get_session)) -> HTMLResponse:
     return templates.TemplateResponse(
@@ -84,4 +97,123 @@ def library_rows(
         request,
         "partials/library_rows.html",
         {"rows": rows, "query": q},
+    )
+
+
+# --- HTMX mutation routes --------------------------------------------------
+
+
+@router.post("/info/form", response_class=HTMLResponse)
+def info_form(
+    request: Request,
+    url: str = Form(...),
+    proxy: str | None = Form(default=None),
+    cookies: str | None = Form(default=None),
+    session: Session = Depends(get_session),
+) -> HTMLResponse:
+    runtime = resolve_runtime_settings(session)
+    raw = extract_info(
+        url,
+        proxy=runtime.proxy_url if proxy else None,
+        cookies_file=str(runtime.cookies_path) if cookies and runtime.cookies_path else None,
+    )
+    return templates.TemplateResponse(
+        request,
+        "partials/info_result.html",
+        {
+            "url": url,
+            "title": raw.get("title", ""),
+            "uploader": raw.get("uploader"),
+            "duration": raw.get("duration"),
+            "thumbnail": raw.get("thumbnail"),
+            "formats": normalize_formats(raw),
+        },
+    )
+
+
+@router.post("/downloads/form", response_class=HTMLResponse)
+async def downloads_form(
+    request: Request,
+    session: Session = Depends(get_session),
+) -> HTMLResponse:
+    form = await request.form()
+    duration_raw = form.get("duration")
+    payload = DownloadCreate(
+        url=str(form.get("url", "")),
+        title=str(form["title"]) if form.get("title") else None,
+        uploader=str(form["uploader"]) if form.get("uploader") else None,
+        duration=int(duration_raw) if duration_raw else None,
+        thumbnail=str(form["thumbnail"]) if form.get("thumbnail") else None,
+        video_format_id=str(form["video_format_id"]) if form.get("video_format_id") else None,
+        audio_format_id=str(form["audio_format_id"]) if form.get("audio_format_id") else None,
+        subtitles=form.get("subtitles") == "on",
+    )
+    enqueue_download(session, payload)
+    return templates.TemplateResponse(
+        request,
+        "partials/status_message.html",
+        {"message": "Added to queue.", "target_id": "info-status"},
+    )
+
+
+@router.post("/queue/cancel/{job_id}", response_class=HTMLResponse)
+def queue_cancel(
+    job_id: int,
+    request: Request,
+    session: Session = Depends(get_session),
+) -> HTMLResponse:
+    cancel_job(session, job_id)
+    return templates.TemplateResponse(
+        request,
+        "partials/queue_rows.html",
+        {"rows": get_active_jobs(session)},
+    )
+
+
+@router.delete("/library/delete/{job_id}", response_class=HTMLResponse)
+def library_delete(
+    job_id: int,
+    request: Request,
+    session: Session = Depends(get_session),
+) -> HTMLResponse:
+    delete_from_library(session, job_id)
+    return templates.TemplateResponse(
+        request,
+        "partials/library_rows.html",
+        {"rows": get_library(session), "query": ""},
+    )
+
+
+@router.put("/settings/form", response_class=HTMLResponse)
+async def settings_form_put(
+    request: Request,
+    session: Session = Depends(get_session),
+) -> HTMLResponse:
+    form = await request.form()
+    set_settings_batch(
+        session,
+        {
+            "max_concurrent": str(form["max_concurrent"]),
+            "proxy_url": str(form.get("proxy_url", "")),
+            "cookies_path": str(form.get("cookies_path", "")),
+            "downloads_dir": str(form.get("downloads_dir", "")),
+        },
+    )
+    return templates.TemplateResponse(
+        request,
+        "partials/status_message.html",
+        {"message": "Settings saved.", "target_id": "settings-status"},
+    )
+
+
+@router.post("/settings/reset", response_class=HTMLResponse)
+def settings_reset(
+    request: Request,
+    session: Session = Depends(get_session),
+) -> HTMLResponse:
+    reset_settings(session)
+    return templates.TemplateResponse(
+        request,
+        "pages/settings.html",
+        {"settings_values": get_all_settings(session)},
     )
