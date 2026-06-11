@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     workers: int = 1
     database_url: str = ""
+    # When False, the FastAPI lifespan skips starting the worker pool.
+    # Tests set this so the lifespan can run without spawning threads
+    # that would race with the test's own database assertions.
+    workers_enabled: bool = True
 
     @model_validator(mode="before")
     @classmethod

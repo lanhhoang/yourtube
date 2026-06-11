@@ -38,6 +38,15 @@ def test_progress_callback_extracts_percent() -> None:
     assert progress.percent == 12.5
 
 
+def test_progress_callback_calls_on_progress_with_normalized_percent() -> None:
+    seen: list[float] = []
+    progress = YtdlpProgress(on_progress=seen.append)
+
+    progress({"status": "downloading", "_percent_str": "12.5%"})
+
+    assert seen == [12.5]
+
+
 def test_progress_callback_records_finished_filename() -> None:
     progress = YtdlpProgress()
     progress({"status": "finished", "filename": "/tmp/video.mp4"})

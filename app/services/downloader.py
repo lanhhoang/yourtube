@@ -34,8 +34,13 @@ class YtdlpProgress:
     :class:`DownloadCancelled`.
     """
 
-    def __init__(self, cancel_requested: Callable[[], bool] | None = None) -> None:
+    def __init__(
+        self,
+        cancel_requested: Callable[[], bool] | None = None,
+        on_progress: Callable[[float], None] | None = None,
+    ) -> None:
         self.cancel_requested = cancel_requested
+        self.on_progress = on_progress
         self.percent: float | None = None
         self.filename: str | None = None
 
@@ -45,6 +50,8 @@ class YtdlpProgress:
         percent = parse_percent(d.get("_percent_str"))
         if percent is not None:
             self.percent = percent
+            if self.on_progress is not None:
+                self.on_progress(percent)
         if d.get("status") == "finished" and d.get("filename"):
             self.filename = str(d["filename"])
 
