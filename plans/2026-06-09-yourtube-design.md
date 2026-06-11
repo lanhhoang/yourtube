@@ -31,7 +31,7 @@ yourtube/
 ├── uv.lock
 ├── .env.example
 ├── alembic.ini
-├── .github/workflows/quality.yml        ← pre-added from Phase 4
+├── .github/workflows/quality.yml        ← pre-added from Phase 1
 ├── Dockerfile
 ├── docker-compose.yml
 ├── .dockerignore
@@ -118,7 +118,8 @@ See: `plans/2026-06-09-yourtube-design-phase-3b.md`
 ### Phase 4
 
 - Package the app with Docker and Compose.
-- Ensure Alembic migrations run in container boot flow.
+- Keep migration ownership in the FastAPI lifespan; Docker starts uvicorn directly and relies on the app to run Alembic on boot.
+- Keep the existing port `8000` unchanged in code, docs, and Compose defaults.
 - CI was already added in Phase 1; this phase only needs Docker + Compose.
 
 See: `plans/2026-06-09-yourtube-design-phase-4.md`
@@ -191,7 +192,7 @@ Startup behavior:
 - `/api/settings` supports read, update, and reset against the `settings` table.
 - `/api/library/{id}` deletes completed library entries through the existing library service contract.
 - Phase 3B renders queue and library state through HTMX-driven HTML routes and fragments rather than a custom JS module or new JSON list endpoints.
-- `docker compose up` boots a fresh database and self-migrates.
+- `docker compose up` boots a fresh database, self-migrates through the existing application startup flow, and serves on port `8000`.
 - CI fails if migrations are broken or omitted.
 
 ## Design Decisions
@@ -207,6 +208,8 @@ The first migration is `20260609233000_create_downloads_and_settings.py`.
 **CI quality workflow:** Added in Phase 1. Runs ruff, ty, pytest with coverage on every push/PR to `master`. Threshold is 50% (Phase 1 baseline ~62%). Raise to 80% after Phase 4.
 
 **Phase 3A restart behavior:** Changes to persisted `max_concurrent` take effect on the next app restart; Phase 3A does not hot-resize the worker pool.
+
+**Phase 4 container startup behavior:** Docker must not add a separate `alembic upgrade head && ...` wrapper; the container starts uvicorn directly and relies on `app.main` lifespan startup to apply migrations before serving traffic.
 
 ## Self-Review Checklist
 
