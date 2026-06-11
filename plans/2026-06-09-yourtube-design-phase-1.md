@@ -18,7 +18,7 @@ yourtube/
 ├── uv.lock
 ├── .env.example
 ├── alembic.ini
-├── .github/workflows/quality.yml         # ← pre-added from Phase 4
+├── .github/workflows/quality.yml         # ← added in Phase 1
 ├── app/
 │   ├── __init__.py
 │   ├── main.py
@@ -44,6 +44,7 @@ yourtube/
 ### Task 1: Project metadata and dependencies
 
 **Files:**
+
 - Create: `pyproject.toml`
 - Create: `.env.example`
 - Create: `app/__init__.py`
@@ -85,6 +86,7 @@ git commit -m "chore: scaffold project metadata for sqlalchemy and alembic"
 ### Task 2: Config, database setup, and ORM boundaries
 
 **Files:**
+
 - Create: `app/config.py`
 - Create: `app/db.py`
 - Create: `app/models.py`
@@ -158,6 +160,7 @@ git commit -m "feat: add sqlalchemy models and pydantic schemas"
 ### Task 3: Alembic baseline and migrated test fixtures
 
 **Files:**
+
 - Create: `alembic.ini`
 - Create: `alembic/env.py`
 - Create: `alembic/versions/YYYYMMDDHHMMSS_create_downloads_and_settings.py`
@@ -215,6 +218,7 @@ git commit -m "feat: add alembic baseline migration and migrated test fixtures"
 ### Task 4: Minimal app startup and health route
 
 **Files:**
+
 - Create: `app/main.py`
 - Create: `tests/test_health.py`
 

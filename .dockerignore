@@ -1,0 +1,29 @@
+# Version control
+.git/
+.gitignore
+.github/
+
+# Local dev / test artifacts
+.env
+.venv/
+venv/
+__pycache__/
+*.py[codz]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+tests/
+
+# Runtime data created on the host (never bake into the image)
+tmp/
+data/
+downloads/
+
+# Build / planning artifacts that are not needed in the runtime image
+plans/
+build/
+dist/
+*.egg-info/

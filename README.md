@@ -6,15 +6,13 @@ Self-hosted YouTube video downloader with a web UI, persistent queue, and librar
 
 ## Status
 
-Phase 1 (scaffold) complete:
+Current features:
 
-- FastAPI skeleton with lifespan-managed startup
-- SQLAlchemy 2.x ORM models (`Download`, `Setting`)
-- Pydantic request/response schemas (`app/schemas.py`)
-- Alembic-owned schema (baseline migration creates `downloads` and `settings` tables)
-- `GET /health` — liveness probe with database reachability check
-- Pytest fixtures backed by a migrated temporary SQLite database
-- Configuration via environment variables / `.env` file (`YT_*` prefix)
+- FastAPI app with lifespan-managed Alembic migrations and `/health`
+- HTMX server-rendered web UI for lookup, queue, library, and settings
+- Persistent SQLite-backed queue and library state
+- Worker-thread download execution with cancellation and startup recovery
+- Docker and Docker Compose packaging for local deployment
 
 ## Quick Start
 
@@ -25,6 +23,39 @@ uv run uvicorn app.main:app --reload
 ```
 
 Open [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health).
+
+## Docker
+
+Build and run with the bundled Docker setup:
+
+```bash
+docker compose up -d --build
+curl -fsS http://localhost:8000/health
+```
+
+By default, Compose uses named volumes for `/data` and `/downloads`.
+
+If you want to store data on your host, bind-mount directories explicitly:
+
+```bash
+mkdir -p "$HOME/Downloads/YouTube/data" "$HOME/Downloads/YouTube/downloads"
+
+YT_UID="$(id -u)" YT_GID="$(id -g)" YT_HOST_DATA_DIR="$HOME/Downloads/YouTube/data" YT_HOST_DOWNLOADS_DIR="$HOME/Downloads/YouTube/downloads" docker compose up -d --build
+```
+
+This maps:
+
+- `YT_DATA_DIR=/data` inside the container to `$HOME/Downloads/YouTube/data` on the host
+- `YT_DOWNLOADS_DIR=/downloads` inside the container to `$HOME/Downloads/YouTube/downloads` on the host
+
+Use absolute paths or `${HOME}` when setting these variables. Do not put a raw `~/...` path directly into `docker-compose.yml`.
+
+If you switch to host UID/GID overrides for bind mounts, rebuild and recreate
+the container so the latest image startup command is used:
+
+```bash
+YT_UID="$(id -u)" YT_GID="$(id -g)" YT_HOST_DATA_DIR="$HOME/Downloads/YouTube/data" YT_HOST_DOWNLOADS_DIR="$HOME/Downloads/YouTube/downloads" docker compose up -d --build --force-recreate
+```
 
 ## Configuration
 
@@ -51,8 +82,8 @@ yourtube/
 │   ├── db.py         — Engine, session factory, SQLite pragmas
 │   ├── models.py     — SQLAlchemy ORM models
 │   ├── schemas.py    — Pydantic request/response contracts
-│   ├── routes/       — Route handlers (forthcoming)
-│   └── services/     — Business logic (forthcoming)
+│   ├── routes/       — JSON API and page route handlers
+│   └── services/     — Queue, downloader, library, and settings logic
 ├── alembic/
 │   ├── env.py
 │   └── versions/     — Schema migrations

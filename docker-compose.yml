@@ -1,0 +1,70 @@
+# YourTube Docker Compose
+#
+# Boots the FastAPI app on http://localhost:8000. Migration ownership stays
+# in the FastAPI lifespan (see app.main): the container starts uvicorn
+# directly and runs `alembic upgrade head` during app startup. There is no
+# `alembic upgrade head && uvicorn ...` wrapper here, so schema authority
+# never lives outside the application.
+#
+# Usage:
+#   docker compose up -d
+#   curl http://localhost:8000/health
+#   docker compose logs -f
+#   docker compose down
+#
+# Persistent state defaults to named volumes:
+#   - yourtube-data:      SQLite database and runtime files (YT_DATA_DIR)
+#   - yourtube-downloads: completed download output (YT_DOWNLOADS_DIR)
+#
+# To use host bind mounts instead, pass paths via environment variables:
+#   YT_HOST_DATA_DIR="${HOME}/Downloads/YouTube/data"
+#   YT_HOST_DOWNLOADS_DIR="${HOME}/Downloads/YouTube/downloads"
+#   YT_UID="$(id -u)" YT_GID="$(id -g)" docker compose up -d
+#
+# Optional cookies file (e.g. for age-restricted downloads):
+#   1. Create a directory on the host with a cookies.txt file inside.
+#   2. Uncomment the `/cookies` bind mount and set YT_COOKIES_PATH in
+#      the environment block below (e.g. /cookies/cookies.txt).
+
+services:
+  app:
+    image: yourtube:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: yourtube
+    restart: unless-stopped
+    user: "${YT_UID:-65532}:${YT_GID:-65532}"
+    ports:
+      - "8000:8000"
+    environment:
+      # Bind address defaults to all interfaces inside the container so
+      # the published port works as expected. YT_HOST is only consumed
+      # by documentation / helpers; uvicorn binds via --host 0.0.0.0.
+      YT_HOST: "0.0.0.0"
+      YT_PORT: "8000"
+      YT_DATA_DIR: "/data"
+      YT_DOWNLOADS_DIR: "/downloads"
+      # Override on the host if you need to redirect the database.
+      # YT_DATABASE_URL: "sqlite:////data/yourtube.db"
+      # Optional: point at a mounted cookies file (see bind mount above).
+      # YT_COOKIES_PATH: /cookies/cookies.txt
+    volumes:
+      # Defaults to named volumes. Override with host paths by setting
+      # YT_HOST_DATA_DIR and YT_HOST_DOWNLOADS_DIR before `docker compose up`.
+      - ${YT_HOST_DATA_DIR:-yourtube-data}:/data
+      - ${YT_HOST_DOWNLOADS_DIR:-yourtube-downloads}:/downloads
+      # Optional cookies mount — uncomment to enable:
+      # - ./path-on-host/with/cookies.txt:/cookies/cookies.txt:ro
+    healthcheck:
+      # The FastAPI /health endpoint returns 200 only when the database
+      # is reachable, so this is a meaningful readiness signal.
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  yourtube-data:
+  yourtube-downloads:
