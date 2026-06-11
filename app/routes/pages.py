@@ -83,9 +83,7 @@ def settings_page(request: Request, session: Session = Depends(get_session)) -> 
         "pages/settings.html",
         {
             "settings_values": get_all_settings(session),
-            "runtime_status": collect_runtime_diagnostics(
-                workers_enabled=settings.workers_enabled
-            ),
+            "runtime_status": collect_runtime_diagnostics(workers_enabled=settings.workers_enabled),
         },
     )
 
