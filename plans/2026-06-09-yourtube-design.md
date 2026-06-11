@@ -115,7 +115,7 @@ See: `plans/2026-06-09-yourtube-design-phase-3a.md`
 
 See: `plans/2026-06-09-yourtube-design-phase-3b.md`
 
-### Phase 4
+### Phase 4 ✅ Complete
 
 - Package the app with Docker and Compose.
 - Keep migration ownership in the FastAPI lifespan; Docker starts uvicorn directly and relies on the app to run Alembic on boot.
@@ -123,6 +123,24 @@ See: `plans/2026-06-09-yourtube-design-phase-3b.md`
 - CI was already added in Phase 1; this phase only needs Docker + Compose.
 
 See: `plans/2026-06-09-yourtube-design-phase-4.md`
+
+### Phase 5
+
+- Stabilize the worker/runtime path after Docker packaging exposed real operational gaps.
+- Fix the detached-session worker crash by making queue claims detached-safe.
+- Bundle `Node.js` in the shipped runtime and configure yt-dlp to use it explicitly for YouTube extraction.
+- Add lightweight runtime/worker diagnostics that existing pages can render and the next UI phase can reuse.
+
+See: `plans/2026-06-09-yourtube-design-phase-5.md`
+
+### Phase 6
+
+- Refactor the HTMX UI into the approved `Media Shelf` direction.
+- Make home the primary hub with quick download, active-jobs summary, and recent library preview.
+- Keep `/queue` as the detailed management page and surface Phase 5 diagnostics in `/settings`.
+- Preserve the existing FastAPI + Jinja + HTMX stack and Phase 3A JSON APIs.
+
+See: `plans/2026-06-09-yourtube-design-phase-6.md`
 
 ## Core Design Rules
 
@@ -193,6 +211,10 @@ Startup behavior:
 - `/api/library/{id}` deletes completed library entries through the existing library service contract.
 - Phase 3B renders queue and library state through HTMX-driven HTML routes and fragments rather than a custom JS module or new JSON list endpoints.
 - `docker compose up` boots a fresh database, self-migrates through the existing application startup flow, and serves on port `8000`.
+- Worker threads can claim and run jobs without detached-instance errors after containerized startup.
+- The shipped runtime includes a supported JS runtime for yt-dlp YouTube extraction.
+- The UI exposes lightweight runtime/worker diagnostics before the larger Media Shelf redesign lands.
+- Phase 6 redesign makes `/` the home hub while keeping `/queue` as the detailed management view.
 - CI fails if migrations are broken or omitted.
 
 ## Design Decisions
@@ -219,6 +241,8 @@ The first migration is `20260609233000_create_downloads_and_settings.py`.
   - backend app bootstrap, routes, workers -> Phase 3A
   - templates, partials, and browser interactions -> Phase 3B
   - Docker -> Phase 4
+  - worker/runtime stabilization and diagnostics -> Phase 5
+  - Media Shelf UI refactor -> Phase 6
   - CI -> Phase 1 (pre-added)
 - Placeholder scan: no `SQLModel`, no CLI-first milestones, no custom schema version flow remain.
 - Type consistency:

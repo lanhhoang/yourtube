@@ -30,6 +30,7 @@ from app.routes.pages import router as pages_router
 from app.services.downloader import DownloadCancelled, YtdlpProgress, run_download
 from app.services.error_mapper import friendly_ytdlp_error
 from app.services.queue import (
+    ClaimedDownload,
     claim_next,
     is_cancel_requested,
     release_job,
@@ -110,12 +111,21 @@ class WorkerPool:
     def _worker_loop(self) -> None:
         """Worker loop: claim a job, run it, repeat until stopped."""
         while not self._stop_event.is_set():
-            with SessionLocal() as session:
-                job = claim_next(session)
-            if job is None:
+            claimed = self._claim_once_for_test()
+            if claimed is None:
                 self._stop_event.wait(1.0)
                 continue
-            self._run_job(job.id)
+            self._run_job(claimed.id)
+
+    def _claim_once_for_test(self) -> ClaimedDownload | None:
+        """Claim the next queued job from a short-lived session.
+
+        Exposed for tests and reused by :meth:`_worker_loop`. The session
+        is closed before the caller uses the returned payload, so the
+        payload must be detached-safe (``ClaimedDownload`` is).
+        """
+        with SessionLocal() as session:
+            return claim_next(session)
 
     def _run_job(self, job_id: int) -> None:
         """Run a single claimed job to completion.

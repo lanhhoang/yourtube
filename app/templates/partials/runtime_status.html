@@ -1,0 +1,10 @@
+{% if runtime_status.messages %}
+<section class="status-panel status-panel-{{ runtime_status.level }}">
+  <h2>Runtime status</h2>
+  <ul>
+    {% for message in runtime_status.messages %}
+    <li>{{ message }}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}

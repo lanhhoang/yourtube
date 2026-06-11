@@ -1,4 +1,11 @@
-"""Unit tests for ``app.services.queue`` enqueue and claim semantics."""
+"""Unit tests for ``app.services.queue`` enqueue and claim semantics.
+
+Phase 5 tightens the claim contract: ``claim_next`` must return a
+detached-safe :class:`ClaimedDownload` dataclass so the worker loop can
+hold the result across session boundaries without tripping the
+"session is closed" error path. The earlier queue semantics still
+matter, so this file keeps the pre-existing coverage as well.
+"""
 
 from __future__ import annotations
 
@@ -10,7 +17,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.models import Download
 from app.schemas import DownloadCreate
-from app.services.queue import claim_next, enqueue_download, release_job
+from app.services.queue import ClaimedDownload, claim_next, enqueue_download, release_job
 
 
 def _make_payload(url: str = "https://example.com/v1") -> DownloadCreate:
@@ -18,7 +25,7 @@ def _make_payload(url: str = "https://example.com/v1") -> DownloadCreate:
 
 
 def test_enqueue_creates_queued_row(db_session: Session) -> None:
-    """``enqueue_download`` creates a row with status ``"queued"`` and a new id."""
+    """``enqueue_download`` creates a row with status ``queued`` and a new id."""
     row = enqueue_download(db_session, _make_payload())
     assert row.id is not None
     assert row.id > 0
@@ -27,15 +34,33 @@ def test_enqueue_creates_queued_row(db_session: Session) -> None:
     assert row.title == "Sample"
 
 
+def test_claim_next_returns_detached_safe_payload(db_session: Session) -> None:
+    """``claim_next`` returns a detached-safe dataclass that survives the session."""
+    created = enqueue_download(db_session, DownloadCreate(url="https://example.com/watch?v=1"))
+
+    claimed = claim_next(db_session)
+
+    assert claimed is not None
+    assert isinstance(claimed, ClaimedDownload)
+    assert claimed.id == created.id
+    assert claimed.status == "active"
+    assert claimed.url == "https://example.com/watch?v=1"
+
+
 def test_claim_next_returns_oldest_queued_row(db_session: Session) -> None:
     """``claim_next`` returns the oldest queued row and marks it active."""
     first = enqueue_download(db_session, _make_payload("https://example.com/first"))
     enqueue_download(db_session, _make_payload("https://example.com/second"))
+
     claimed = claim_next(db_session)
+
     assert claimed is not None
     assert claimed.id == first.id
     assert claimed.status == "active"
-    assert claimed.claimed_at is not None
+    refreshed = db_session.get(Download, first.id)
+    assert refreshed is not None
+    assert refreshed.status == "active"
+    assert refreshed.claimed_at is not None
 
 
 def test_claim_next_skips_non_queued_rows(db_session: Session) -> None:
@@ -65,20 +90,20 @@ def test_claim_next_skips_non_queued_rows(db_session: Session) -> None:
         .values(status="active")
     )
 
-    # The only queued row is "https://example.com/active"... actually it's now active.
-    # Add one more queued row to claim.
     queued = enqueue_download(db_session, _make_payload("https://example.com/winner"))
-
     claimed = claim_next(db_session)
+
     assert claimed is not None
     assert claimed.id == queued.id
 
 
 def test_claim_next_is_idempotent_within_same_session(db_session: Session) -> None:
-    """Calling ``claim_next`` twice on the same session claims one row, then returns None."""
+    """Calling ``claim_next`` twice claims one row, then returns ``None``."""
     enqueued = enqueue_download(db_session, _make_payload("https://example.com/only"))
+
     first = claim_next(db_session)
     second = claim_next(db_session)
+
     assert first is not None
     assert first.id == enqueued.id
     assert first.status == "active"
@@ -121,7 +146,7 @@ def test_two_sessions_claim_next_do_not_double_claim(db_engine: Engine) -> None:
         seed_session.close()
 
     barrier = threading.Barrier(2)
-    results: list[Download | None] = []
+    results: list[ClaimedDownload | None] = []
     errors: list[BaseException] = []
     lock = threading.Lock()
 

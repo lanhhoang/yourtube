@@ -3,10 +3,17 @@
 The service owns the lifecycle transitions of the ``downloads`` table.
 Claims are transaction-safe: ``claim_next`` uses a conditional UPDATE with
 ``RETURNING`` so only one row is claimed, even under concurrency.
+
+Phase 5 introduces :class:`ClaimedDownload`: a frozen dataclass that
+carries the minimal payload needed to run a job. Returning a dataclass
+instead of an ORM ``Download`` instance keeps the worker loop
+detached-safe -- the worker can hold the payload outside the claiming
+session without triggering SQLAlchemy "detached instance" errors.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import Select, func, select, update
@@ -14,6 +21,21 @@ from sqlalchemy.orm import Session
 
 from app.models import Download
 from app.schemas import DownloadCreate
+
+
+@dataclass(frozen=True)
+class ClaimedDownload:
+    """Detached-safe payload returned by :func:`claim_next`.
+
+    Carries the three fields the worker loop needs to look the job back
+    up in the database (``id``) and to render initial state in logs
+    (``status`` and ``url``). A frozen dataclass is cheap to copy,
+    comparable, and immune to accidental mutation between threads.
+    """
+
+    id: int
+    status: str
+    url: str
 
 
 def update_progress(session: Session, job_id: int, percent: float) -> bool:
@@ -66,12 +88,16 @@ def enqueue_download(session: Session, payload: DownloadCreate) -> Download:
     return row
 
 
-def claim_next(session: Session) -> Download | None:
-    """Claim the oldest ``queued`` row.
+def claim_next(session: Session) -> ClaimedDownload | None:
+    """Claim the oldest ``queued`` row and return a detached-safe payload.
 
     Uses a conditional UPDATE with ``RETURNING`` so the operation is
-    atomic across concurrent workers. Returns the claimed ``Download`` or
-    ``None`` when no queued row is available.
+    atomic across concurrent workers. The ``RETURNING`` clause projects
+    only the three fields the worker needs (``id``, ``status``, ``url``)
+    and packages them in a :class:`ClaimedDownload` dataclass. This keeps
+    the result free of any session-bound ORM state.
+
+    Returns ``None`` when no queued row is available.
     """
     subq: Select = (
         select(Download.id)
@@ -83,13 +109,19 @@ def claim_next(session: Session) -> Download | None:
         update(Download)
         .where(Download.id == subq.scalar_subquery(), Download.status == "queued")
         .values(status="active", claimed_at=func.current_timestamp())
-        .returning(Download)
+        .returning(Download.id, Download.status, Download.url)
         .execution_options(synchronize_session=False)
     )
     result = session.execute(stmt)
-    row = result.scalar_one_or_none()
+    row = result.mappings().one_or_none()
     session.commit()
-    return row
+    if row is None:
+        return None
+    return ClaimedDownload(
+        id=int(row["id"]),
+        status=str(row["status"]),
+        url=str(row["url"]),
+    )
 
 
 def release_job(

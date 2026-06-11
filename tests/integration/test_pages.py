@@ -139,3 +139,25 @@ def test_settings_reset_returns_updated_form(db_session_visible) -> None:
     assert "<html" not in response.text
     assert 'id="settings-form"' in response.text
     assert 'value="1"' in response.text
+
+
+def test_settings_page_renders_runtime_status(monkeypatch) -> None:
+    """Phase 5: the settings page surfaces a runtime status panel when degraded."""
+
+    class _FakeStatus:
+        def __init__(self) -> None:
+            self.level = "warning"
+            self.messages = ["Node.js runtime missing."]
+            self.js_runtime_ready = False
+            self.workers_enabled = True
+
+    monkeypatch.setattr(
+        "app.routes.pages.collect_runtime_diagnostics", lambda *, workers_enabled: _FakeStatus()
+    )
+
+    with TestClient(app) as client:
+        response = client.get("/settings")
+
+    assert response.status_code == 200
+    assert "Node.js runtime missing." in response.text
+    assert "Runtime status" in response.text

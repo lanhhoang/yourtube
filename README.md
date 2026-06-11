@@ -12,6 +12,14 @@ Current features:
 - HTMX server-rendered web UI for lookup, queue, library, and settings
 - Persistent SQLite-backed queue and library state
 - Worker-thread download execution with cancellation and startup recovery
+- Detached-safe queue claiming (Phase 5): the worker pool never holds a
+  session-bound ORM `Download` instance across the claim boundary
+- yt-dlp JS runtime pinned to Node.js (Phase 5): the shipped Docker
+  image bundles `nodejs` and `npm` so YouTube extraction works out of
+  the box
+- Lightweight runtime diagnostics (Phase 5): the settings page shows a
+  warning panel when the environment is degraded (missing Node.js,
+  workers disabled)
 - Docker and Docker Compose packaging for local deployment
 
 ## Quick Start

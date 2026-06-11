@@ -17,8 +17,10 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from starlette.datastructures import FormData, UploadFile
 
+from app.config import settings
 from app.db import get_session
 from app.schemas import DownloadCreate
+from app.services.diagnostics import collect_runtime_diagnostics
 from app.services.downloader import extract_info, normalize_formats
 from app.services.library import delete_from_library, get_library, search_library
 from app.services.queue import cancel_job, enqueue_download, get_active_jobs
@@ -79,7 +81,10 @@ def settings_page(request: Request, session: Session = Depends(get_session)) -> 
     return templates.TemplateResponse(
         request,
         "pages/settings.html",
-        {"settings_values": get_all_settings(session)},
+        {
+            "settings_values": get_all_settings(session),
+            "runtime_status": collect_runtime_diagnostics(workers_enabled=settings.workers_enabled),
+        },
     )
 
 
