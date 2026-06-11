@@ -1,5 +1,14 @@
 <section class="panel">
   <h2>{{ title or url }}</h2>
+  {% if thumbnail %}
+  <img src="{{ thumbnail }}" alt="" class="video-thumbnail" />
+  {% endif %}
+  <dl class="info-grid">
+    <dt>Uploader</dt>
+    <dd>{{ uploader or "Unknown" }}</dd>
+    <dt>Duration</dt>
+    <dd>{{ duration or "Unknown" }}</dd>
+  </dl>
   <form id="enqueue-form" hx-post="/downloads/form" hx-target="#info-status" hx-swap="innerHTML">
     <input type="hidden" name="url" value="{{ url }}" />
     <input type="hidden" name="title" value="{{ title }}" />
@@ -21,6 +30,10 @@
       {% endfor %}
     </select>
     <label><input type="checkbox" name="subtitles" /> Download subtitles</label>
+    <label for="output-template">Output template</label>
+    <input id="output-template" name="output_template" placeholder="%(title)s.%(ext)s" />
+    <label for="audio-bitrate">Audio bitrate</label>
+    <input id="audio-bitrate" name="audio_bitrate" placeholder="192K" />
     <button type="submit">Add to queue</button>
   </form>
 </section>

@@ -36,6 +36,21 @@ def test_library_rows_partial_filters_by_query(db_session_visible) -> None:
     assert "Keep me" in response.text
     assert "Skip me" not in response.text
     assert 'hx-delete="/library/delete/' in response.text
+    assert "?q=Keep" in response.text
+
+
+def test_library_delete_preserves_active_filter(db_session_visible) -> None:
+    keep = Download(url="https://example.com/keep", title="Keep me", status="done", progress=100.0)
+    skip = Download(url="https://example.com/skip", title="Skip me", status="done", progress=100.0)
+    db_session_visible.add_all([keep, skip])
+    db_session_visible.commit()
+
+    with TestClient(app) as client:
+        response = client.request("DELETE", f"/library/delete/{skip.id}", params={"q": "Keep"})
+
+    assert response.status_code == 200
+    assert "Keep me" in response.text
+    assert "Skip me" not in response.text
 
 
 def test_partials_render_explicit_empty_states() -> None:

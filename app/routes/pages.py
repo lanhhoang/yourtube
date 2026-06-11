@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, Form, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
+from starlette.datastructures import FormData, UploadFile
 
 from app.db import get_session
 from app.schemas import DownloadCreate
@@ -32,6 +33,14 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 TEMPLATES_DIR = PROJECT_ROOT / "app" / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 router = APIRouter()
+
+
+def _form_str(form: FormData, key: str) -> str | None:
+    """Return a string form value or ``None`` for missing/non-string entries."""
+    value = form.get(key)
+    if value is None or isinstance(value, UploadFile):
+        return None
+    return str(value)
 
 
 # --- Page routes -----------------------------------------------------------
@@ -137,15 +146,17 @@ async def downloads_form(
     session: Session = Depends(get_session),
 ) -> HTMLResponse:
     form = await request.form()
-    duration_raw = form.get("duration")
+    duration_raw = _form_str(form, "duration")
     payload = DownloadCreate(
-        url=str(form.get("url", "")),
-        title=str(form["title"]) if form.get("title") else None,
-        uploader=str(form["uploader"]) if form.get("uploader") else None,
+        url=_form_str(form, "url") or "",
+        title=_form_str(form, "title"),
+        uploader=_form_str(form, "uploader"),
         duration=int(duration_raw) if duration_raw else None,
-        thumbnail=str(form["thumbnail"]) if form.get("thumbnail") else None,
-        video_format_id=str(form["video_format_id"]) if form.get("video_format_id") else None,
-        audio_format_id=str(form["audio_format_id"]) if form.get("audio_format_id") else None,
+        thumbnail=_form_str(form, "thumbnail"),
+        video_format_id=_form_str(form, "video_format_id"),
+        audio_format_id=_form_str(form, "audio_format_id"),
+        output_template=_form_str(form, "output_template"),
+        audio_bitrate=_form_str(form, "audio_bitrate"),
         subtitles=form.get("subtitles") == "on",
     )
     enqueue_download(session, payload)
@@ -174,13 +185,15 @@ def queue_cancel(
 def library_delete(
     job_id: int,
     request: Request,
+    q: str = Query(default=""),
     session: Session = Depends(get_session),
 ) -> HTMLResponse:
     delete_from_library(session, job_id)
+    rows = search_library(session, q) if q else get_library(session)
     return templates.TemplateResponse(
         request,
         "partials/library_rows.html",
-        {"rows": get_library(session), "query": ""},
+        {"rows": rows, "query": q},
     )
 
 
@@ -214,6 +227,6 @@ def settings_reset(
     reset_settings(session)
     return templates.TemplateResponse(
         request,
-        "pages/settings.html",
+        "partials/settings_form.html",
         {"settings_values": get_all_settings(session)},
     )

@@ -30,9 +30,7 @@ def test_queue_and_library_pages_render_initial_rows(db_session_visible) -> None
     queued = Download(
         url="https://example.com/q", title="Queued row", status="queued", progress=0.0
     )
-    done = Download(
-        url="https://example.com/d", title="Done row", status="done", progress=100.0
-    )
+    done = Download(url="https://example.com/d", title="Done row", status="done", progress=100.0)
     db_session_visible.add_all([queued, done])
     db_session_visible.commit()
 
@@ -71,8 +69,8 @@ def test_pages_extend_index_layout_and_load_local_htmx() -> None:
         htmx = client.get("/static/vendor/htmx.min.js")
 
     assert response.status_code == 200
-    assert '/static/vendor/htmx.min.js' in response.text
-    assert 'hx-' in response.text
+    assert "/static/vendor/htmx.min.js" in response.text
+    assert "hx-" in response.text
     assert htmx.status_code == 200
 
 
@@ -126,6 +124,9 @@ def test_info_lookup_fragment_renders_enqueue_form(monkeypatch) -> None:
     assert response.status_code == 200
     assert 'id="enqueue-form"' in response.text
     assert "Example title" in response.text
+    assert "Uploader" in response.text
+    assert 'name="output_template"' in response.text
+    assert 'name="audio_bitrate"' in response.text
 
 
 def test_settings_reset_returns_updated_form(db_session_visible) -> None:
@@ -135,4 +136,6 @@ def test_settings_reset_returns_updated_form(db_session_visible) -> None:
         response = client.post("/settings/reset")
 
     assert response.status_code == 200
+    assert "<html" not in response.text
+    assert 'id="settings-form"' in response.text
     assert 'value="1"' in response.text

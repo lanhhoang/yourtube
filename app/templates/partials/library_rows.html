@@ -6,7 +6,7 @@
     <a href="/api/downloads/{{ row.id }}/file">Download file</a>
     <button
       type="button"
-      hx-delete="/library/delete/{{ row.id }}"
+      hx-delete="/library/delete/{{ row.id }}?q={{ query | urlencode }}"
       hx-target="#library-rows"
       hx-swap="innerHTML"
     >Delete</button>
