@@ -34,7 +34,10 @@ def test_enqueue_claim_release_to_done(db_session: Session) -> None:
     assert claimed is not None
     assert claimed.id == enqueued.id
     assert claimed.status == "active"
-    assert claimed.claimed_at is not None
+
+    db_session.refresh(enqueued)
+    assert enqueued.status == "active"
+    assert enqueued.claimed_at is not None
 
     updated = release_job(
         db_session,
@@ -46,13 +49,13 @@ def test_enqueue_claim_release_to_done(db_session: Session) -> None:
         resolution_height=1080,
     )
     assert updated is True
-    db_session.refresh(claimed)
-    assert claimed.status == "done"
-    assert claimed.file_path == "/tmp/video.mp4"
-    assert claimed.file_size == 1024
-    assert claimed.media_format == "mp4"
-    assert claimed.resolution_height == 1080
-    assert claimed.finished_at is not None
+    db_session.refresh(enqueued)
+    assert enqueued.status == "done"
+    assert enqueued.file_path == "/tmp/video.mp4"
+    assert enqueued.file_size == 1024
+    assert enqueued.media_format == "mp4"
+    assert enqueued.resolution_height == 1080
+    assert enqueued.finished_at is not None
 
 
 def test_cancel_queued_row_immediately(db_session: Session) -> None:
@@ -65,20 +68,20 @@ def test_cancel_queued_row_immediately(db_session: Session) -> None:
 
 def test_stale_detection_marks_old_active_row_as_error(db_session: Session) -> None:
     """A row claimed long ago is marked ``error`` with code ``stale_worker``."""
-    enqueue_download(db_session, _make("https://example.com/stale"))
+    enqueued = enqueue_download(db_session, _make("https://example.com/stale"))
     claimed = claim_next(db_session)
     assert claimed is not None
+    assert claimed.id == enqueued.id
     far_past = datetime.now(timezone.utc) - timedelta(minutes=30)
     db_session.execute(
         Download.__table__.update().where(Download.id == claimed.id).values(claimed_at=far_past)
     )
-    db_session.expire(claimed)
 
     affected = detect_stale_jobs(db_session, timeout_minutes=10)
     assert affected == 1
-    db_session.refresh(claimed)
-    assert claimed.status == "error"
-    assert claimed.error_code == "stale_worker"
+    db_session.refresh(enqueued)
+    assert enqueued.status == "error"
+    assert enqueued.error_code == "stale_worker"
 
 
 def test_startup_requeue_moves_active_back_to_queued(db_session: Session) -> None:

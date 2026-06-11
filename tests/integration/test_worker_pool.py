@@ -91,3 +91,32 @@ def test_worker_failure_maps_error(monkeypatch, db_session_visible, tmp_path: Pa
     db_session_visible.refresh(row)
     assert row.status == "error"
     assert row.error_code == "http_forbidden"
+
+
+def test_worker_loop_can_run_claimed_job_without_detached_instance(
+    monkeypatch, db_session_visible, tmp_path: Path
+) -> None:
+    """Phase 5 regression: claim result must be detached-safe across the session boundary.
+
+    The worker uses the ``_claim_once_for_test`` helper to obtain a
+    claim payload, then drives ``_run_job`` with the integer id. The
+    claim must work without the worker ever touching a session-bound
+    ORM ``Download`` instance.
+    """
+    row = enqueue_download(db_session_visible, DownloadCreate(url="https://example.com/safe"))
+    db_session_visible.commit()
+
+    def fake_run_download(**kwargs):
+        return str(tmp_path / "safe.mp4")
+
+    monkeypatch.setattr("app.main.run_download", fake_run_download)
+
+    from app.main import WorkerPool
+
+    pool = WorkerPool()
+    claimed = pool._claim_once_for_test()
+    assert claimed is not None
+    pool._run_job(claimed.id)
+
+    db_session_visible.refresh(row)
+    assert row.status == "done"
