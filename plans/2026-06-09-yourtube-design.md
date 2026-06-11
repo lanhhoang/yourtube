@@ -89,11 +89,12 @@ See: `plans/2026-06-09-yourtube-design-phase-1.md`
 
 See: `plans/2026-06-09-yourtube-design-phase-2.md`
 
-### Phase 3A
+### Phase 3A ✅ Complete
 
-- Build the complete backend contract Phase 3B depends on: FastAPI bootstrap, worker pool, runtime settings resolution, progress persistence, and JSON APIs.
-- Apply migrations on startup before worker recovery, then start workers from persisted runtime settings.
-- Phase 3A owns these JSON endpoints:
+- Built the complete backend contract Phase 3B depends on: FastAPI bootstrap, worker pool (`WorkerPool` class with daemon threads), runtime settings resolution (`RuntimeSettings` dataclass), progress persistence (`update_progress`, `is_cancel_requested`, `YtdlpProgress(on_progress=...)`), and all JSON endpoints.
+- Lifespan applies migrations before worker recovery, then starts workers from persisted runtime settings.
+- **113 tests** (baseline 85), 0 regressions, lint/format clean.
+- Phase 3A JSON endpoints:
   - `POST /api/info`
   - `POST /api/downloads`
   - `POST /api/downloads/{id}/cancel`
