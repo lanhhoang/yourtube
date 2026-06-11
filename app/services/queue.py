@@ -16,6 +16,35 @@ from app.models import Download
 from app.schemas import DownloadCreate
 
 
+def update_progress(session: Session, job_id: int, percent: float) -> bool:
+    """Persist a new progress value for an active job.
+
+    Returns ``True`` when the row was updated, ``False`` when the row is
+    not in ``active`` state (or does not exist). The value is clamped to
+    ``[0.0, 100.0]`` so a misbehaving progress source cannot poison the
+    progress column.
+    """
+    clamped = max(0.0, min(100.0, float(percent)))
+    stmt = (
+        update(Download)
+        .where(Download.id == job_id, Download.status == "active")
+        .values(progress=clamped)
+    )
+    result = session.execute(stmt)
+    session.commit()
+    return bool(result.rowcount)
+
+
+def is_cancel_requested(session: Session, job_id: int) -> bool:
+    """Return the current ``cancel_requested`` flag for ``job_id``.
+
+    Reads the flag directly from the database so the worker callback can
+    poll from a fresh session on every progress tick.
+    """
+    stmt = select(Download.cancel_requested).where(Download.id == job_id)
+    return bool(session.execute(stmt).scalar_one_or_none())
+
+
 def enqueue_download(session: Session, payload: DownloadCreate) -> Download:
     """Insert a new row in ``queued`` state and return it."""
     row = Download(

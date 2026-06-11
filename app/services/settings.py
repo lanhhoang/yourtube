@@ -8,10 +8,63 @@ verbatim so the service stays flexible.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from pathlib import Path
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config import settings as app_settings
 from app.models import Setting
+
+
+@dataclass(frozen=True)
+class RuntimeSettings:
+    """Typed runtime view of the persisted settings.
+
+    The worker and the API use this struct instead of looking up raw
+    strings. Persisted empty strings map to ``None`` (for proxy/cookies)
+    or the environment-loaded default (for ``downloads_dir``).
+    """
+
+    max_concurrent: int
+    proxy_url: str | None
+    cookies_path: Path | None
+    downloads_dir: Path
+
+
+def resolve_runtime_settings(session: Session) -> RuntimeSettings:
+    """Build a :class:`RuntimeSettings` from the persisted settings table.
+
+    Precedence rules:
+    - Persisted non-empty values override the environment defaults.
+    - Persisted empty strings for ``proxy_url`` / ``cookies_path`` mean
+      "unset" and resolve to ``None``.
+    - Persisted empty string for ``downloads_dir`` falls back to
+      ``app.config.settings.downloads_dir``.
+    - ``max_concurrent`` is clamped to ``[1, 5]`` to match the catalog
+      validation rules.
+    """
+    stored = get_all_settings(session)
+    raw_concurrent = stored["max_concurrent"] or "1"
+    try:
+        max_concurrent = int(raw_concurrent)
+    except (TypeError, ValueError):
+        max_concurrent = 1
+    downloads_dir = (
+        Path(stored["downloads_dir"]) if stored["downloads_dir"] else app_settings.downloads_dir
+    )
+    proxy_url = stored["proxy_url"] or app_settings.proxy_url
+    cookies_path = (
+        Path(stored["cookies_path"]) if stored["cookies_path"] else app_settings.cookies_path
+    )
+    return RuntimeSettings(
+        max_concurrent=max(1, min(5, max_concurrent)),
+        proxy_url=proxy_url,
+        cookies_path=cookies_path,
+        downloads_dir=downloads_dir,
+    )
+
 
 # Catalog of settings the service understands. The default is returned
 # when no row exists for the key. The optional ``validator`` is a
