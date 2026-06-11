@@ -1,0 +1,35 @@
+{% extends "index.html" %}
+{% block title %}YourTube | Queue{% endblock %}
+{% block content %}
+<section>
+  <h1>Active Queue</h1>
+  <p>Queued and active downloads update automatically.</p>
+  <div id="queue-status"></div>
+  <table class="data-table">
+    <thead>
+      <tr><th>Title</th><th>Status</th><th>Progress</th><th>Action</th></tr>
+    </thead>
+    <tbody id="queue-rows" hx-get="/queue/rows" hx-trigger="load, every 2s" hx-swap="innerHTML">
+      {% for row in rows %}
+      <tr data-job-id="{{ row.id }}">
+        <td>{{ row.title or row.url }}</td>
+        <td>{{ row.status }}</td>
+        <td>{{ "%.1f"|format(row.progress) }}%</td>
+        <td>
+          {% if row.status in ("queued", "active") %}
+          <button
+            type="button"
+            hx-post="/queue/cancel/{{ row.id }}"
+            hx-target="#queue-rows"
+            hx-swap="innerHTML"
+          >Cancel</button>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4">No queued or active downloads.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

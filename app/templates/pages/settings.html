@@ -1,0 +1,17 @@
+{% extends "index.html" %}
+{% block title %}YourTube | Settings{% endblock %}
+{% block content %}
+<section class="panel">
+  <h1>Settings</h1>
+  <form class="stack">
+    <label for="max-concurrent">Max concurrent</label>
+    <input id="max-concurrent" name="max_concurrent" value="{{ settings_values.max_concurrent }}" />
+    <label for="proxy-url">Proxy URL</label>
+    <input id="proxy-url" name="proxy_url" value="{{ settings_values.proxy_url }}" />
+    <label for="cookies-path">Cookies path</label>
+    <input id="cookies-path" name="cookies_path" value="{{ settings_values.cookies_path }}" />
+    <label for="downloads-dir">Downloads directory</label>
+    <input id="downloads-dir" name="downloads_dir" value="{{ settings_values.downloads_dir }}" />
+  </form>
+</section>
+{% endblock %}

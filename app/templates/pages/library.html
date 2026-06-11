@@ -1,0 +1,31 @@
+{% extends "index.html" %}
+{% block title %}YourTube | Library{% endblock %}
+{% block content %}
+<section>
+  <h1>Library</h1>
+  <table class="data-table">
+    <thead>
+      <tr><th>Title</th><th>Uploader</th><th>Actions</th></tr>
+    </thead>
+    <tbody id="library-rows" data-partial-url="/library/rows">
+      {% for row in rows %}
+      <tr data-job-id="{{ row.id }}">
+        <td>{{ row.title or row.url }}</td>
+        <td>{{ row.uploader or "" }}</td>
+        <td>
+          <a href="/api/downloads/{{ row.id }}/file">Download file</a>
+          <button
+            type="button"
+            hx-delete="/library/delete/{{ row.id }}"
+            hx-target="#library-rows"
+            hx-swap="innerHTML"
+          >Delete</button>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="3">No completed downloads yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}
