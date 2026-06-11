@@ -1,0 +1,21 @@
+{% for row in rows %}
+<tr data-job-id="{{ row.id }}">
+  <td>{{ row.title or row.url }}</td>
+  <td>{{ row.status }}</td>
+  <td>{{ "%.1f"|format(row.progress) }}%</td>
+  <td>
+    {% if row.status in ("queued", "active") %}
+    <button
+      type="button"
+      hx-post="/queue/cancel/{{ row.id }}"
+      hx-target="#queue-rows"
+      hx-swap="innerHTML"
+    >Cancel</button>
+    {% endif %}
+  </td>
+</tr>
+{% else %}
+<tr>
+  <td colspan="4">No queued or active downloads.</td>
+</tr>
+{% endfor %}

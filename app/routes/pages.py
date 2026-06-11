@@ -62,3 +62,26 @@ def settings_page(request: Request, session: Session = Depends(get_session)) -> 
         "pages/settings.html",
         {"settings_values": get_all_settings(session)},
     )
+
+
+@router.get("/queue/rows", response_class=HTMLResponse)
+def queue_rows(request: Request, session: Session = Depends(get_session)) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "partials/queue_rows.html",
+        {"rows": get_active_jobs(session)},
+    )
+
+
+@router.get("/library/rows", response_class=HTMLResponse)
+def library_rows(
+    request: Request,
+    q: str = Query(default=""),
+    session: Session = Depends(get_session),
+) -> HTMLResponse:
+    rows = search_library(session, q) if q else get_library(session)
+    return templates.TemplateResponse(
+        request,
+        "partials/library_rows.html",
+        {"rows": rows, "query": q},
+    )

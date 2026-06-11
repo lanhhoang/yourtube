@@ -3,28 +3,23 @@
 {% block content %}
 <section>
   <h1>Library</h1>
+  <form
+    id="library-search-form"
+    hx-get="/library/rows"
+    hx-target="#library-rows"
+    hx-swap="innerHTML"
+  >
+    <label for="library-query">Search</label>
+    <input id="library-query" name="q" value="{{ query }}" placeholder="Title or uploader" />
+    <button type="submit">Search</button>
+  </form>
+  <div id="library-status" role="status"></div>
   <table class="data-table">
     <thead>
       <tr><th>Title</th><th>Uploader</th><th>Actions</th></tr>
     </thead>
     <tbody id="library-rows" data-partial-url="/library/rows">
-      {% for row in rows %}
-      <tr data-job-id="{{ row.id }}">
-        <td>{{ row.title or row.url }}</td>
-        <td>{{ row.uploader or "" }}</td>
-        <td>
-          <a href="/api/downloads/{{ row.id }}/file">Download file</a>
-          <button
-            type="button"
-            hx-delete="/library/delete/{{ row.id }}"
-            hx-target="#library-rows"
-            hx-swap="innerHTML"
-          >Delete</button>
-        </td>
-      </tr>
-      {% else %}
-      <tr><td colspan="3">No completed downloads yet.</td></tr>
-      {% endfor %}
+      {% include "partials/library_rows.html" %}
     </tbody>
   </table>
 </section>
