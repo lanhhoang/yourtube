@@ -7,6 +7,8 @@ to avoid hitting the network.
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -106,4 +108,5 @@ def test_info_lookup_uses_configured_js_runtime(monkeypatch) -> None:
         )
 
     assert response.status_code == 200
-    assert captured["options"]["js_runtimes"] == {"node": "node"}
+    options = cast(dict[str, Any], captured["options"])
+    assert options["js_runtimes"] == {"node": {"path": "node"}}

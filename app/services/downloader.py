@@ -157,7 +157,7 @@ def build_ytdlp_options(
         "noprogress": True,
         "skip_download": skip_download,
         "extractor_args": {"youtube": {"player_client": ["default"]}},
-        "js_runtimes": {js_runtime: js_runtime},
+        "js_runtimes": {js_runtime: {"path": js_runtime}},
     }
     if not skip_download:
         options["outtmpl"] = _output_template(output_template, output_dir)
