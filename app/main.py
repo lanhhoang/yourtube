@@ -10,6 +10,7 @@ liveness/readiness probes can detect outages.
 from __future__ import annotations
 
 import logging
+import os
 import threading
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -51,6 +52,8 @@ def _ensure_data_dir() -> None:
 
 def _run_migrations() -> None:
     """Run ``alembic upgrade head`` against the configured database."""
+    if os.environ.get("YT_SKIP_MIGRATIONS") == "1":
+        return
     alembic_cfg = AlembicConfig(str(ALEMBIC_INI_PATH))
     alembic_cfg.set_main_option("sqlalchemy.url", settings.database_url)
     command.upgrade(alembic_cfg, "head")
