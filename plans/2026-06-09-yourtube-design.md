@@ -6,7 +6,7 @@
 
 **Architecture:** FastAPI serves HTML pages and JSON endpoints. SQLAlchemy 2.x owns persistence, Alembic owns schema creation and upgrades, and Pydantic schemas define request/response contracts. A single-process worker pool claims queued jobs from SQLite and runs yt-dlp plus ffmpeg.
 
-**Tech Stack:** Python 3.12, FastAPI, SQLAlchemy 2.x, Alembic, Pydantic, Pydantic Settings, Jinja2, htmx, yt-dlp, curl-cffi, uv, ruff, ty, pytest
+**Tech Stack:** Python 3.12, FastAPI, SQLAlchemy 2.x, Alembic, Pydantic, Pydantic Settings, Jinja2, HTMX, yt-dlp, curl-cffi, uv, ruff, ty, pytest
 
 ---
 
@@ -108,9 +108,10 @@ See: `plans/2026-06-09-yourtube-design-phase-3a.md`
 
 ### Phase 3B
 
-- Build the server-rendered pages, HTML partials, CSS, and small browser-side interactions.
-- Keep mutations on the Phase 3A JSON APIs and use partial routes only for HTML refreshes.
-- Verify queue, library, settings, and browser-driven behavior end-to-end.
+- Build the functional server-rendered pages, HTML partials, CSS, and a self-hosted HTMX browser layer.
+- Keep the Phase 3A JSON APIs intact, but make browser-facing flows HTML-over-the-wire through HTMX-driven page and fragment endpoints.
+- Server-render useful initial queue, library, and settings state before HTMX interactions take over.
+- Verify queue, library, settings, and browser-driven behavior with request-level HTML integration tests plus a manual UI smoke pass.
 
 See: `plans/2026-06-09-yourtube-design-phase-3b.md`
 
@@ -189,7 +190,7 @@ Startup behavior:
 - `/api/downloads` creates queue entries, `/api/downloads/{id}/cancel` updates cancellable rows, and `/api/downloads/{id}/file` serves completed files.
 - `/api/settings` supports read, update, and reset against the `settings` table.
 - `/api/library/{id}` deletes completed library entries through the existing library service contract.
-- Phase 3B renders queue and library state through HTML partial routes rather than new JSON list endpoints.
+- Phase 3B renders queue and library state through HTMX-driven HTML routes and fragments rather than a custom JS module or new JSON list endpoints.
 - `docker compose up` boots a fresh database and self-migrates.
 - CI fails if migrations are broken or omitted.
 

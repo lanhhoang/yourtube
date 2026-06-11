@@ -1,0 +1,10 @@
+{% extends "index.html" %}
+{% block title %}YourTube | Settings{% endblock %}
+{% block content %}
+<section class="panel">
+  <h1>Settings</h1>
+  <p>Changing max concurrent downloads takes effect after restart.</p>
+  {% include "partials/settings_form.html" %}
+  <div id="settings-status"></div>
+</section>
+{% endblock %}

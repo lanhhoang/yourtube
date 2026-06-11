@@ -1,0 +1,17 @@
+{% extends "index.html" %}
+{% block title %}YourTube | Queue{% endblock %}
+{% block content %}
+<section>
+  <h1>Active Queue</h1>
+  <p>Queued and active downloads update automatically.</p>
+  <div id="queue-status"></div>
+  <table class="data-table">
+    <thead>
+      <tr><th>Title</th><th>Status</th><th>Progress</th><th>Action</th></tr>
+    </thead>
+    <tbody id="queue-rows" hx-get="/queue/rows" hx-trigger="load, every 2s" hx-swap="innerHTML">
+      {% include "partials/queue_rows.html" %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

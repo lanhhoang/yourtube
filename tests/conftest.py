@@ -23,6 +23,7 @@ _TEST_DB_PATH = _TEST_DIR / "test.db"
 os.environ["YT_DATABASE_URL"] = f"sqlite:///{_TEST_DB_PATH}"
 os.environ.setdefault("YT_DATA_DIR", str(_TEST_DIR))
 os.environ.setdefault("YT_DOWNLOADS_DIR", str(_TEST_DIR / "downloads"))
+os.environ.setdefault("YT_SKIP_MIGRATIONS", "1")
 # Disable the worker pool during tests. Integration tests that need to
 # exercise the pool instantiate ``WorkerPool`` and drive ``_run_job``
 # directly; the lifespan-launched daemon threads would otherwise race
@@ -53,6 +54,12 @@ def pytest_configure(config: pytest.Config) -> None:
     command.upgrade(alembic_cfg, "head")
 
 
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    """Dispose the shared engine so pooled SQLite connections are closed."""
+    del session, exitstatus
+    engine.dispose()
+
+
 # --- Fixtures ---------------------------------------------------------------
 
 
@@ -60,6 +67,13 @@ def pytest_configure(config: pytest.Config) -> None:
 def db_engine() -> Engine:
     """Per-test handle to the shared migrated engine."""
     return engine
+
+
+@pytest.fixture(autouse=True)
+def dispose_shared_engine_after_test() -> Generator[None, None, None]:
+    """Close pooled DB connections after each test to avoid SQLite warnings."""
+    yield
+    engine.dispose()
 
 
 @pytest.fixture()

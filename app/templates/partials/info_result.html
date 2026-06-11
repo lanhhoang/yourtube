@@ -1,0 +1,39 @@
+<section class="panel">
+  <h2>{{ title or url }}</h2>
+  {% if thumbnail %}
+  <img src="{{ thumbnail }}" alt="" class="video-thumbnail" />
+  {% endif %}
+  <dl class="info-grid">
+    <dt>Uploader</dt>
+    <dd>{{ uploader or "Unknown" }}</dd>
+    <dt>Duration</dt>
+    <dd>{{ duration or "Unknown" }}</dd>
+  </dl>
+  <form id="enqueue-form" hx-post="/downloads/form" hx-target="#info-status" hx-swap="innerHTML">
+    <input type="hidden" name="url" value="{{ url }}" />
+    <input type="hidden" name="title" value="{{ title }}" />
+    <input type="hidden" name="uploader" value="{{ uploader or '' }}" />
+    <input type="hidden" name="duration" value="{{ duration or '' }}" />
+    <input type="hidden" name="thumbnail" value="{{ thumbnail or '' }}" />
+    <label for="video-format">Video format</label>
+    <select id="video-format" name="video_format_id">
+      <option value="">Default</option>
+      {% for item in formats %}
+      <option value="{{ item.format_id }}">{{ item.format_id }} {{ item.ext }} {{ item.resolution or '' }}</option>
+      {% endfor %}
+    </select>
+    <label for="audio-format">Audio format</label>
+    <select id="audio-format" name="audio_format_id">
+      <option value="">Default</option>
+      {% for item in formats %}
+      <option value="{{ item.format_id }}">{{ item.format_id }} {{ item.ext }}</option>
+      {% endfor %}
+    </select>
+    <label><input type="checkbox" name="subtitles" /> Download subtitles</label>
+    <label for="output-template">Output template</label>
+    <input id="output-template" name="output_template" placeholder="%(title)s.%(ext)s" />
+    <label for="audio-bitrate">Audio bitrate</label>
+    <input id="audio-bitrate" name="audio_bitrate" placeholder="192K" />
+    <button type="submit">Add to queue</button>
+  </form>
+</section>

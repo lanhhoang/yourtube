@@ -10,6 +10,7 @@ liveness/readiness probes can detect outages.
 from __future__ import annotations
 
 import logging
+import os
 import threading
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -18,12 +19,14 @@ from pathlib import Path
 from alembic.config import Config as AlembicConfig
 from fastapi import FastAPI, HTTPException
 from sqlalchemy import text
+from starlette.staticfiles import StaticFiles
 
 from alembic import command
 from app.config import settings
 from app.db import SessionLocal, engine
 from app.models import Download
 from app.routes.api import router as api_router
+from app.routes.pages import router as pages_router
 from app.services.downloader import DownloadCancelled, YtdlpProgress, run_download
 from app.services.error_mapper import friendly_ytdlp_error
 from app.services.queue import (
@@ -49,6 +52,8 @@ def _ensure_data_dir() -> None:
 
 def _run_migrations() -> None:
     """Run ``alembic upgrade head`` against the configured database."""
+    if os.environ.get("YT_SKIP_MIGRATIONS") == "1":
+        return
     alembic_cfg = AlembicConfig(str(ALEMBIC_INI_PATH))
     alembic_cfg.set_main_option("sqlalchemy.url", settings.database_url)
     command.upgrade(alembic_cfg, "head")
@@ -200,7 +205,9 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="YourTube", lifespan=lifespan)
+app.mount("/static", StaticFiles(directory=PROJECT_ROOT / "app" / "static"), name="static")
 app.include_router(api_router)
+app.include_router(pages_router)
 
 
 @app.get("/health")

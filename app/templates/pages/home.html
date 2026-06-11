@@ -1,0 +1,22 @@
+{% extends "index.html" %}
+{% block title %}YourTube | Download{% endblock %}
+{% block content %}
+<section class="panel">
+  <h1>Download a video</h1>
+  <form
+    id="info-form"
+    class="stack"
+    hx-post="/info/form"
+    hx-target="#info-result"
+    hx-swap="innerHTML"
+  >
+    <label for="video-url">Video URL</label>
+    <input id="video-url" type="url" name="url" placeholder="https://www.youtube.com/watch?v=..." required />
+    <label><input type="checkbox" name="proxy" /> Use saved proxy</label>
+    <label><input type="checkbox" name="cookies" /> Use saved cookies</label>
+    <button type="submit">Fetch formats</button>
+  </form>
+  <div id="info-status"></div>
+  <div id="info-result"></div>
+</section>
+{% endblock %}
