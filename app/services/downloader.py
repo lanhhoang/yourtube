@@ -128,6 +128,52 @@ def normalize_formats(info: dict) -> list[FormatInfo]:
     return out
 
 
+def build_ytdlp_options(
+    *,
+    skip_download: bool,
+    output_dir: str,
+    output_template: str | None = None,
+    format_selector: str | None = None,
+    proxy: str | None = None,
+    cookies_file: str | None = None,
+    subtitles: bool = False,
+    progress_hooks: list[ProgressHook] | None = None,
+    js_runtime: str = "node",
+) -> dict[str, Any]:
+    """Build a consistent ``yt_dlp`` options dict for info lookup and downloads.
+
+    Centralising this keeps ``extract_info`` and ``run_download`` in lock
+    step: both pin the same YouTube extractor args and the same explicit
+    JS runtime. yt-dlp needs a JS runtime registered to solve YouTube's
+    JS challenges on hosts that do not ship Node.js by default, so the
+    runtime is configured here rather than relying on PATH discovery.
+
+    When ``skip_download`` is true the function omits ``outtmpl`` because
+    info lookups do not write any files; the directory argument is
+    ignored in that case.
+    """
+    options: dict[str, Any] = {
+        "quiet": True,
+        "noprogress": True,
+        "skip_download": skip_download,
+        "extractor_args": {"youtube": {"player_client": ["default"]}},
+        "js_runtimes": {js_runtime: js_runtime},
+    }
+    if not skip_download:
+        options["outtmpl"] = _output_template(output_template, output_dir)
+    if format_selector:
+        options["format"] = format_selector
+    if proxy:
+        options["proxy"] = proxy
+    if cookies_file:
+        options["cookiefile"] = cookies_file
+    if subtitles:
+        options["writesubtitles"] = True
+    if progress_hooks:
+        options["progress_hooks"] = progress_hooks
+    return options
+
+
 def extract_info(
     url: str,
     *,
@@ -142,11 +188,12 @@ def extract_info(
     """
     import yt_dlp  # local import to keep module import cheap
 
-    ydl_opts: dict[str, Any] = {"quiet": True, "skip_download": True}
-    if proxy:
-        ydl_opts["proxy"] = proxy
-    if cookies_file:
-        ydl_opts["cookiefile"] = cookies_file
+    ydl_opts = build_ytdlp_options(
+        skip_download=True,
+        output_dir="",
+        proxy=proxy,
+        cookies_file=cookies_file,
+    )
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         return ydl.extract_info(url, download=False)
 
@@ -226,19 +273,15 @@ def run_download(
     import yt_dlp  # local import to keep module import cheap
 
     fmt = _format_selector(video_format_id, audio_format_id, audio_bitrate=audio_bitrate)
-    ydl_opts: dict[str, Any] = {
-        "outtmpl": _output_template(output_template, output_dir),
-        "quiet": True,
-        "noprogress": True,
-    }
-    if fmt:
-        ydl_opts["format"] = fmt
-    if proxy:
-        ydl_opts["proxy"] = proxy
-    if cookies_file:
-        ydl_opts["cookiefile"] = cookies_file
-    if subtitles:
-        ydl_opts["writesubtitles"] = True
+    ydl_opts = build_ytdlp_options(
+        skip_download=False,
+        output_dir=output_dir,
+        output_template=output_template,
+        format_selector=fmt,
+        proxy=proxy,
+        cookies_file=cookies_file,
+        subtitles=subtitles,
+    )
     captured_path: dict[str, str | None] = {"path": None}
 
     def _wrapped(d: dict[str, Any]) -> None:

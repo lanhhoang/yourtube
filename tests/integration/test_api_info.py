@@ -72,3 +72,38 @@ def test_fetch_info_uses_saved_proxy_and_cookies_when_opted_in(
     assert response.status_code == 200
     assert captured["proxy"] == "http://proxy.internal:8080"
     assert captured["cookies_file"] == str(cookies_path)
+
+
+def test_info_lookup_uses_configured_js_runtime(monkeypatch) -> None:
+    """Phase 5: ``/api/info`` must pass an explicit ``js_runtimes`` config to yt-dlp.
+
+    Without it, the YouTube extractor cannot solve JS challenges on
+    hosts that do not ship Node.js by default. The test drops a
+    monkeypatched ``FakeYDL`` into ``yt_dlp.YoutubeDL`` and asserts the
+    options the API handed it.
+    """
+    captured: dict[str, object] = {}
+
+    class FakeYDL:
+        def __init__(self, options):
+            captured["options"] = options
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def extract_info(self, url, download):
+            return {"url": url, "title": "Video", "formats": []}
+
+    monkeypatch.setattr("yt_dlp.YoutubeDL", FakeYDL)
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/info",
+            json={"url": "https://example.com/v", "proxy": False, "cookies": False},
+        )
+
+    assert response.status_code == 200
+    assert captured["options"]["js_runtimes"] == {"node": "node"}

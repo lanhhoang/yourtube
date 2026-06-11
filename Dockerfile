@@ -18,11 +18,16 @@ FROM python:3.12-slim AS runtime
 #   - ffmpeg: required by yt-dlp for muxing/transcoding video and audio
 #   - curl: used for in-container diagnostics and yt-dlp's HLS fetcher
 #   - ca-certificates: keeps TLS verification working against CDNs
+#   - nodejs + npm: yt-dlp needs a JS runtime to solve YouTube's JS
+#     challenges; the runtime contract for Phase 5 pins "node" via
+#     build_ytdlp_options, so the binary must be present on PATH.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
         ffmpeg \
+        nodejs \
+        npm \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv. Copying the prebuilt binary keeps the image small and
