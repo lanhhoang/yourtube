@@ -3,7 +3,14 @@
 {% block content %}
 <section class="panel">
   <h1>Settings</h1>
-  <form class="stack">
+  <p>Changing max concurrent downloads takes effect after restart.</p>
+  <form
+    id="settings-form"
+    class="stack"
+    hx-put="/settings/form"
+    hx-target="#settings-status"
+    hx-swap="innerHTML"
+  >
     <label for="max-concurrent">Max concurrent</label>
     <input id="max-concurrent" name="max_concurrent" value="{{ settings_values.max_concurrent }}" />
     <label for="proxy-url">Proxy URL</label>
@@ -12,6 +19,11 @@
     <input id="cookies-path" name="cookies_path" value="{{ settings_values.cookies_path }}" />
     <label for="downloads-dir">Downloads directory</label>
     <input id="downloads-dir" name="downloads_dir" value="{{ settings_values.downloads_dir }}" />
+    <div class="button-row">
+      <button type="submit">Save</button>
+      <button type="button" id="reset-settings" hx-post="/settings/reset" hx-target="#settings-form" hx-swap="outerHTML">Reset</button>
+    </div>
   </form>
+  <div id="settings-status"></div>
 </section>
 {% endblock %}

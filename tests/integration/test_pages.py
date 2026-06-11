@@ -74,3 +74,33 @@ def test_pages_extend_index_layout_and_load_local_htmx() -> None:
     assert '/static/vendor/htmx.min.js' in response.text
     assert 'hx-' in response.text
     assert htmx.status_code == 200
+
+
+def test_home_page_exposes_lookup_and_enqueue_hooks() -> None:
+    with TestClient(app) as client:
+        response = client.get("/")
+
+    assert response.status_code == 200
+    assert 'id="info-form"' in response.text
+    assert 'id="info-result"' in response.text
+    assert 'hx-post="/info/form"' in response.text
+
+
+def test_library_page_exposes_search_hooks() -> None:
+    with TestClient(app) as client:
+        response = client.get("/library")
+
+    assert response.status_code == 200
+    assert 'id="library-search-form"' in response.text
+    assert 'hx-get="/library/rows"' in response.text
+    assert 'id="library-rows"' in response.text
+
+
+def test_settings_page_exposes_form_and_restart_notice() -> None:
+    with TestClient(app) as client:
+        response = client.get("/settings")
+
+    assert response.status_code == 200
+    assert 'id="settings-form"' in response.text
+    assert 'hx-put="/settings/form"' in response.text
+    assert "takes effect after restart" in response.text
