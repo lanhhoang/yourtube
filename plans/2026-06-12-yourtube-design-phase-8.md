@@ -1,24 +1,21 @@
-# Phase 8: Stream Metadata + Contract Enrichment Implementation Plan
+# Phase 8: Stream Metadata Contract Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Expose richer stream metadata so the UI can render separate video and audio tables without guessing from raw yt-dlp payloads in the template.
+**Goal:** Expose additive stream metadata so later UI work can split video and audio streams without guessing from raw yt-dlp payloads.
 
-**Architecture:** Keep the existing `InfoResponse` contract but extend it additively. The downloader service remains the only place that translates yt-dlp formats into app-level metadata, and both `/api/info` and `/info/form` consume the same normalized shape.
+**Architecture:** Keep `InfoResponse` stable and extend only `FormatInfo`. The downloader service remains the sole place that derives app-level stream metadata from yt-dlp fields, and the existing info routes continue forwarding `normalize_formats(raw)` unchanged.
 
-**Tech Stack:** Python 3.12, FastAPI, Pydantic, Jinja2, yt-dlp, pytest, uv
+**Tech Stack:** Python 3.12, FastAPI, Pydantic, yt-dlp, pytest, uv
 
 ---
 
 ## File Structure
 
-```
+```text
 yourtube/
 ├── app/
 │   ├── schemas.py
-│   ├── routes/
-│   │   ├── api.py
-│   │   └── pages.py
 │   └── services/
 │       └── downloader.py
 └── tests/
@@ -30,20 +27,47 @@ yourtube/
 
 Responsibilities:
 
-- `app.schemas.FormatInfo` grows additive fields for stream typing and audio channel counts.
-- `app.services.downloader.normalize_formats()` becomes the only place that decides whether a format is `video`, `audio`, or `muxed`.
-- `app.routes.api` and `app.routes.pages` pass the richer metadata through unchanged.
+- `app.schemas.FormatInfo` owns the public metadata contract for each normalized stream.
+- `app.services.downloader.normalize_formats()` decides whether each stream is `video`, `audio`, or `muxed`, and preserves audio channel counts when present.
+- `tests/unit/test_downloader_format.py` verifies normalization behavior at the service seam.
+- `tests/integration/test_api_info.py` verifies the new fields serialize through `POST /api/info` without route refactors.
 
-### Task 1: Add stream-kind and channel metadata to `FormatInfo`
+## Contract Rules
+
+- Add `stream_kind` as `Literal["video", "audio", "muxed"]`, defaulting to `"muxed"`.
+- Add `audio_channels` as `int | None`.
+- Classify a normalized format as:
+  - `audio` when `vcodec == "none"` and `acodec` is present and not `"none"`.
+  - `video` when `acodec == "none"` and `vcodec` is present and not `"none"`.
+  - `muxed` for all other cases, including combined streams and missing codec metadata.
+- Do not add template-facing grouping, `picker_payload`, or route-level transformation in this phase.
+
+### Task 1: Extend the normalized format contract
 
 **Files:**
 - Modify: `app/schemas.py`
 - Modify: `app/services/downloader.py`
 - Test: `tests/unit/test_downloader_format.py`
 
-- [ ] **Step 1: Write the failing normalization tests**
+- [ ] **Step 1: Write the failing unit tests**
 
 ```python
+def test_normalize_combined_format_defaults_stream_kind_to_muxed() -> None:
+    info = _make_info(
+        {
+            "format_id": "137+140",
+            "ext": "mp4",
+            "vcodec": "avc1.640028",
+            "acodec": "mp4a.40.2",
+        }
+    )
+
+    f = normalize_formats(info)[0]
+
+    assert f.stream_kind == "muxed"
+    assert f.audio_channels is None
+
+
 def test_normalize_video_only_format_sets_stream_kind() -> None:
     info = _make_info(
         {
@@ -54,11 +78,13 @@ def test_normalize_video_only_format_sets_stream_kind() -> None:
             "height": 2160,
         }
     )
+
     f = normalize_formats(info)[0]
+
     assert f.stream_kind == "video"
 
 
-def test_normalize_audio_only_format_sets_channels() -> None:
+def test_normalize_audio_only_format_sets_stream_kind_and_channels() -> None:
     info = _make_info(
         {
             "format_id": "251",
@@ -69,25 +95,46 @@ def test_normalize_audio_only_format_sets_channels() -> None:
             "audio_channels": 2,
         }
     )
+
     f = normalize_formats(info)[0]
+
     assert f.stream_kind == "audio"
     assert f.audio_channels == 2
+
+
+def test_normalize_missing_codecs_falls_back_to_muxed() -> None:
+    info = _make_info(
+        {
+            "format_id": "999",
+            "ext": "webm",
+        }
+    )
+
+    f = normalize_formats(info)[0]
+
+    assert f.stream_kind == "muxed"
+    assert f.audio_channels is None
 ```
 
-- [ ] **Step 2: Run the normalization tests to verify they fail**
+- [ ] **Step 2: Run the targeted unit tests to verify they fail**
 
-Run: `uv run pytest tests/unit/test_downloader_format.py::test_normalize_video_only_format_sets_stream_kind tests/unit/test_downloader_format.py::test_normalize_audio_only_format_sets_channels -v`
+Run: `uv run pytest tests/unit/test_downloader_format.py::test_normalize_combined_format_defaults_stream_kind_to_muxed tests/unit/test_downloader_format.py::test_normalize_video_only_format_sets_stream_kind tests/unit/test_downloader_format.py::test_normalize_audio_only_format_sets_stream_kind_and_channels tests/unit/test_downloader_format.py::test_normalize_missing_codecs_falls_back_to_muxed -v`
 
-Expected: FAIL because `FormatInfo` does not include `stream_kind` or `audio_channels`.
+Expected: FAIL because `FormatInfo` does not yet define `stream_kind` or `audio_channels`.
 
-- [ ] **Step 3: Extend the schema and normalization logic**
+- [ ] **Step 3: Implement the additive schema and normalization fields**
 
 ```python
 # app/schemas.py
+from typing import Literal
+
+
 class FormatInfo(BaseModel):
+    """A single format entry returned by the format picker."""
+
     format_id: str
     ext: str
-    stream_kind: str = "muxed"
+    stream_kind: Literal["video", "audio", "muxed"] = "muxed"
     audio_channels: int | None = None
     resolution: str | None = None
     height: int | None = None
@@ -111,9 +158,41 @@ def _stream_kind(vcodec: str | None, acodec: str | None) -> str:
     if acodec == "none" and vcodec and vcodec != "none":
         return "video"
     return "muxed"
+
+
+def normalize_formats(info: dict) -> list[FormatInfo]:
+    raw_formats = info.get("formats") or []
+    out: list[FormatInfo] = []
+    for raw in raw_formats:
+        format_id = _safe_str(raw.get("format_id"))
+        if format_id is None:
+            continue
+        vcodec = _format_codec(raw.get("vcodec"))
+        acodec = _format_codec(raw.get("acodec"))
+        out.append(
+            FormatInfo(
+                format_id=format_id,
+                ext=_safe_str(raw.get("ext")) or "",
+                stream_kind=_stream_kind(vcodec, acodec),
+                audio_channels=_safe_int(raw.get("audio_channels")),
+                resolution=_safe_str(raw.get("resolution")),
+                height=_safe_int(raw.get("height")),
+                width=_safe_int(raw.get("width")),
+                fps=_safe_float(raw.get("fps")),
+                vcodec=vcodec,
+                acodec=acodec,
+                abr=_safe_float(raw.get("abr")),
+                vbr=_safe_float(raw.get("vbr")),
+                filesize=_safe_int(raw.get("filesize")),
+                tbr=_safe_float(raw.get("tbr")),
+                format_note=_safe_str(raw.get("format_note")),
+                container=_safe_str(raw.get("container")),
+            )
+        )
+    return out
 ```
 
-- [ ] **Step 4: Run the unit tests to verify they pass**
+- [ ] **Step 4: Run the unit test file to verify it passes**
 
 Run: `uv run pytest tests/unit/test_downloader_format.py -v`
 
@@ -123,15 +202,14 @@ Expected: PASS
 
 ```bash
 git add app/schemas.py app/services/downloader.py tests/unit/test_downloader_format.py
-git commit -m "feat: enrich normalized formats with stream type metadata"
+git commit -m "feat: enrich normalized formats with stream metadata"
 ```
 
-### Task 2: Pass enriched format metadata through the API and page routes
+### Task 2: Verify the new fields serialize through the API contract
 
 **Files:**
-- Modify: `app/routes/api.py`
-- Modify: `app/routes/pages.py`
-- Test: `tests/integration/test_api_info.py`
+- Modify: `tests/integration/test_api_info.py`
+- Read-only context: `app/routes/api.py`
 
 - [ ] **Step 1: Write the failing API regression test**
 
@@ -142,8 +220,20 @@ def test_fetch_info_returns_stream_kind_and_audio_channels(monkeypatch) -> None:
             "url": url,
             "title": "Example title",
             "formats": [
-                {"format_id": "401", "ext": "mp4", "vcodec": "avc1", "acodec": "none", "height": 2160},
-                {"format_id": "251", "ext": "webm", "vcodec": "none", "acodec": "opus", "audio_channels": 2},
+                {
+                    "format_id": "401",
+                    "ext": "mp4",
+                    "vcodec": "avc1",
+                    "acodec": "none",
+                    "height": 2160,
+                },
+                {
+                    "format_id": "251",
+                    "ext": "webm",
+                    "vcodec": "none",
+                    "acodec": "opus",
+                    "audio_channels": 2,
+                },
             ],
             "captions": {},
         }
@@ -153,20 +243,20 @@ def test_fetch_info_returns_stream_kind_and_audio_channels(monkeypatch) -> None:
     with TestClient(app) as client:
         response = client.post("/api/info", json={"url": "https://example.com/watch?v=1"})
 
+    assert response.status_code == 200
     payload = response.json()
     assert payload["formats"][0]["stream_kind"] == "video"
     assert payload["formats"][1]["stream_kind"] == "audio"
     assert payload["formats"][1]["audio_channels"] == 2
-    assert payload["formats"][1]["acodec"] == "opus"
 ```
 
-- [ ] **Step 2: Run the API test to verify it fails**
+- [ ] **Step 2: Run the targeted API test to verify it fails**
 
 Run: `uv run pytest tests/integration/test_api_info.py::test_fetch_info_returns_stream_kind_and_audio_channels -v`
 
-Expected: FAIL because `InfoResponse` does not include the new fields yet.
+Expected: FAIL because the response model does not yet expose the new fields.
 
-- [ ] **Step 3: Keep route contracts additive and pass the richer formats through**
+- [ ] **Step 3: Confirm no route code changes are needed**
 
 ```python
 # app/routes/api.py
@@ -181,32 +271,29 @@ return InfoResponse(
 )
 ```
 
-```python
-# app/routes/pages.py
-formats = normalize_formats(raw)
-return templates.TemplateResponse(
-    request,
-    "partials/info_result.html",
-    {
-        "url": url,
-        "title": raw.get("title", ""),
-        "uploader": raw.get("uploader"),
-        "duration": raw.get("duration"),
-        "thumbnail": raw.get("thumbnail"),
-        "formats": formats,
-    },
-)
-```
+Implementation note: do not edit `app/routes/api.py` or `app/routes/pages.py` unless the repo has diverged. The existing routes already forward normalized formats unchanged, which is the intended contract for this phase.
 
-- [ ] **Step 4: Run the integration tests to verify they pass**
+- [ ] **Step 4: Run the API test file to verify it passes**
 
 Run: `uv run pytest tests/integration/test_api_info.py -v`
 
-Expected: PASS for enriched format metadata.
+Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add app/routes/api.py app/routes/pages.py tests/integration/test_api_info.py
-git commit -m "feat: expose enriched stream metadata through info routes"
+git add tests/integration/test_api_info.py app/schemas.py app/services/downloader.py
+git commit -m "test: cover enriched info response metadata"
 ```
+
+## Verification
+
+- `uv run pytest tests/unit/test_downloader_format.py -v`
+- `uv run pytest tests/integration/test_api_info.py -v`
+
+## Out Of Scope
+
+- Reworking `partials/info_result.html`
+- Adding Alpine.js or `picker_payload`
+- Splitting streams into separate collections on the server
+- Changing `POST /downloads/form` request semantics
