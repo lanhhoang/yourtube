@@ -13,7 +13,7 @@ from pathlib import Path
 
 from yt_dlp import YoutubeDL
 
-from app.services.downloader import build_ytdlp_options, resolve_output_template
+from app.services.downloader import build_ytdlp_options, render_transcript_text, resolve_output_template, write_transcript_sidecar
 
 
 def test_build_ytdlp_options_sets_explicit_node_runtime(tmp_path) -> None:
@@ -113,3 +113,31 @@ def test_build_ytdlp_options_prefers_srt_english_and_auto_subtitles(tmp_path: Pa
     assert options["writeautomaticsub"] is True
     assert options["subtitlesformat"] == "srt/best"
     assert options["subtitleslangs"] == ["en.*", "en", ".*"]
+
+
+def test_render_transcript_text_strips_cues_and_timestamps() -> None:
+    srt_text = """1
+00:00:00,000 --> 00:00:01,500
+Hello there
+
+2
+00:00:02,000 --> 00:00:03,500
+General Kenobi
+"""
+
+    assert render_transcript_text(srt_text) == "Hello there\nGeneral Kenobi\n"
+
+
+def test_write_transcript_sidecar_overwrites_existing_txt_file(tmp_path: Path) -> None:
+    subtitle_path = tmp_path / "clip.en.srt"
+    subtitle_path.write_text(
+        "1\n00:00:00,000 --> 00:00:01,000\nFirst line\n",
+        encoding="utf-8",
+    )
+    transcript_path = subtitle_path.with_suffix(".txt")
+    transcript_path.write_text("old transcript\n", encoding="utf-8")
+
+    written = write_transcript_sidecar(subtitle_path)
+
+    assert written == transcript_path
+    assert transcript_path.read_text(encoding="utf-8") == "First line\n"

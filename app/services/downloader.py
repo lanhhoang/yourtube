@@ -207,6 +207,9 @@ def extract_info(
 
 
 _PERCENT_RE = re.compile(r"(-?[0-9]+(?:\.[0-9]+)?)\s*%")
+_SRT_TIMESTAMP_RE = re.compile(
+    r"^\d{2}:\d{2}:\d{2},\d{3}\s+-->\s+\d{2}:\d{2}:\d{2},\d{3}"
+)
 
 
 def parse_percent(value: Any) -> float | None:
@@ -285,6 +288,41 @@ def _subtitle_languages() -> list[str]:
     back to any other language if no English track is available.
     """
     return ["en.*", "en", ".*"]
+
+
+def render_transcript_text(subtitle_text: str) -> str:
+    """Convert SRT-formatted subtitles to a plain-text transcript.
+
+    SRT cues consist of a numeric index, a ``-->`` timestamp line, and
+    one or more caption lines. This helper drops the index, the
+    timestamp line, and blank separators, joining the remaining text
+    lines with a trailing newline each so the transcript reads as a
+    continuous paragraph-per-cue document.
+    """
+    lines: list[str] = []
+    for raw_line in subtitle_text.splitlines():
+        line = raw_line.strip()
+        if not line or line.isdigit() or _SRT_TIMESTAMP_RE.match(line):
+            continue
+        lines.append(line)
+    return "".join(f"{line}\n" for line in lines)
+
+
+def write_transcript_sidecar(subtitle_path: str | Path) -> Path:
+    """Write a sibling ``.txt`` transcript next to ``subtitle_path``.
+
+    The transcript is derived from the subtitle text by
+    :func:`render_transcript_text` and written to ``<stem>.txt``,
+    overwriting any existing file. Returns the path of the written
+    transcript file.
+    """
+    path = Path(subtitle_path)
+    transcript_path = path.with_suffix(".txt")
+    transcript_path.write_text(
+        render_transcript_text(path.read_text(encoding="utf-8")),
+        encoding="utf-8",
+    )
+    return transcript_path
 
 
 def run_download(
