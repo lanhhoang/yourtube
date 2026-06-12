@@ -176,7 +176,6 @@ def build_ytdlp_options(
         options["writesubtitles"] = True
         options["writeautomaticsub"] = True
         options["subtitlesformat"] = "srt/best"
-        options["subtitleslangs"] = _subtitle_languages()
     if progress_hooks:
         options["progress_hooks"] = progress_hooks
     return options
@@ -312,17 +311,9 @@ def resolve_output_template(template: str | None, output_dir: str | Path) -> str
     candidate = Path(template)
     if candidate.is_absolute():
         return str(candidate)
-    return str(base_dir / template)
-
-
-def _subtitle_languages() -> list[str]:
-    """Return the preferred subtitle language selection order.
-
-    English captions are tried first (``en.*`` matches any English
-    dialect, then plain ``en``); the trailing ``.*`` lets yt-dlp fall
-    back to any other language if no English track is available.
-    """
-    return ["en.*", "en", ".*"]
+    if ".." in candidate.parts:
+        raise ValueError("output template must stay within the configured downloads directory")
+    return str(base_dir / candidate)
 
 
 def render_transcript_text(subtitle_text: str) -> str:
@@ -335,11 +326,22 @@ def render_transcript_text(subtitle_text: str) -> str:
     continuous paragraph-per-cue document.
     """
     lines: list[str] = []
-    for raw_line in subtitle_text.splitlines():
-        line = raw_line.strip()
-        if not line or line.isdigit() or _SRT_TIMESTAMP_RE.match(line):
+    raw_lines = subtitle_text.splitlines()
+    index = 0
+    while index < len(raw_lines):
+        line = raw_lines[index].strip()
+        next_line = raw_lines[index + 1].strip() if index + 1 < len(raw_lines) else ""
+        if not line:
+            index += 1
+            continue
+        if line.isdigit() and _SRT_TIMESTAMP_RE.match(next_line):
+            index += 2
+            continue
+        if _SRT_TIMESTAMP_RE.match(line):
+            index += 1
             continue
         lines.append(line)
+        index += 1
     return "".join(f"{line}\n" for line in lines)
 
 
@@ -402,6 +404,17 @@ def run_download(
     Path(output_dir).mkdir(parents=True, exist_ok=True)
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        ydl.download([url])
+        info = ydl.extract_info(url, download=True)
+
+    if subtitles:
+        requested_subtitles = (info or {}).get("requested_subtitles") or {}
+        for subtitle in requested_subtitles.values():
+            subtitle_path = subtitle.get("filepath")
+            if not subtitle_path:
+                continue
+            try:
+                write_transcript_sidecar(subtitle_path)
+            except OSError as exc:
+                raise RuntimeError(f"unable to open for writing: {exc}") from exc
 
     return captured_path["path"] or ""

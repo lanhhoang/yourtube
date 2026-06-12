@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from yt_dlp import YoutubeDL
 
 from app.services.downloader import (
@@ -93,6 +94,11 @@ def test_resolve_output_template_keeps_absolute_template_absolute(tmp_path: Path
     assert resolved == str(absolute)
 
 
+def test_resolve_output_template_rejects_parent_traversal(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="configured downloads directory"):
+        resolve_output_template("../escape/%(title)s.%(ext)s", tmp_path)
+
+
 def test_build_ytdlp_options_uses_resolved_template_for_downloads(tmp_path: Path) -> None:
     options = build_ytdlp_options(
         skip_download=False,
@@ -117,7 +123,7 @@ def test_build_ytdlp_options_prefers_srt_english_and_auto_subtitles(tmp_path: Pa
     assert options["writesubtitles"] is True
     assert options["writeautomaticsub"] is True
     assert options["subtitlesformat"] == "srt/best"
-    assert options["subtitleslangs"] == ["en.*", "en", ".*"]
+    assert "subtitleslangs" not in options
 
 
 def test_render_transcript_text_strips_cues_and_timestamps() -> None:
@@ -131,6 +137,19 @@ General Kenobi
 """
 
     assert render_transcript_text(srt_text) == "Hello there\nGeneral Kenobi\n"
+
+
+def test_render_transcript_text_preserves_numeric_caption_lines() -> None:
+    srt_text = """1
+00:00:00,000 --> 00:00:01,500
+1984
+
+2
+00:00:02,000 --> 00:00:03,500
+42
+"""
+
+    assert render_transcript_text(srt_text) == "1984\n42\n"
 
 
 def test_write_transcript_sidecar_overwrites_existing_txt_file(tmp_path: Path) -> None:
