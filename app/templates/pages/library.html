@@ -1,26 +1,31 @@
 {% extends "index.html" %}
 {% block title %}YourTube | Library{% endblock %}
 {% block content %}
-<section>
-  <h1>Library</h1>
+<section class="page-panel">
+  <div class="panel-heading">
+    <p class="eyebrow">Archive</p>
+    <h1>Archive library</h1>
+    <p>Search completed downloads by title or uploader.</p>
+  </div>
   <form
     id="library-search-form"
+    class="library-search"
     hx-get="/library/rows"
     hx-target="#library-rows"
     hx-swap="innerHTML"
   >
     <label for="library-query">Search</label>
-    <input id="library-query" name="q" value="{{ query }}" placeholder="Title or uploader" />
+    <input
+      id="library-query"
+      name="q"
+      value="{{ query }}"
+      placeholder="Title or uploader"
+    />
     <button type="submit">Search</button>
   </form>
   <div id="library-status" role="status"></div>
-  <table class="data-table">
-    <thead>
-      <tr><th>Title</th><th>Uploader</th><th>Actions</th></tr>
-    </thead>
-    <tbody id="library-rows" data-partial-url="/library/rows">
-      {% include "partials/library_rows.html" %}
-    </tbody>
-  </table>
+  <div id="library-rows" class="library-list" data-partial-url="/library/rows">
+    {% include "partials/library_rows.html" %}
+  </div>
 </section>
 {% endblock %}

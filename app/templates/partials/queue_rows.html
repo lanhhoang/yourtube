@@ -1,21 +1,25 @@
 {% for row in rows %}
-<tr data-job-id="{{ row.id }}">
-  <td>{{ row.title or row.url }}</td>
-  <td>{{ row.status }}</td>
-  <td>{{ "%.1f"|format(row.progress) }}%</td>
-  <td>
+<article class="queue-entry" data-job-id="{{ row.id }}">
+  <div class="queue-entry-main">
+    <h2>{{ row.title or row.url }}</h2>
+    <p class="queue-entry-status">{{ row.status }}</p>
+  </div>
+  <div class="queue-entry-progress">{{ "%.1f"|format(row.progress) }}%</div>
+  <div class="queue-entry-action">
     {% if row.status in ("queued", "active") %}
     <button
       type="button"
       hx-post="/queue/cancel/{{ row.id }}"
       hx-target="#queue-rows"
       hx-swap="innerHTML"
-    >Cancel</button>
+    >
+      Cancel
+    </button>
     {% endif %}
-  </td>
-</tr>
+  </div>
+</article>
 {% else %}
-<tr>
-  <td colspan="4">No queued or active downloads.</td>
-</tr>
+<article class="empty-state">
+  <h2>No queued or active downloads.</h2>
+</article>
 {% endfor %}

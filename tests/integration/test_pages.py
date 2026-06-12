@@ -96,14 +96,27 @@ def test_home_page_renders_landing_first_editorial_sections() -> None:
     assert "Recent workflow" in response.text
 
 
-def test_library_page_exposes_search_hooks() -> None:
+def test_queue_page_renders_ledger_shell() -> None:
+    with TestClient(app) as client:
+        response = client.get("/queue")
+
+    assert response.status_code == 200
+    assert "Queue ledger" in response.text
+    assert 'id="queue-rows"' in response.text
+    assert 'hx-get="/queue/rows"' in response.text
+    assert 'hx-trigger="load, every 2s"' in response.text
+    assert "Queued and active downloads update automatically." in response.text
+
+
+def test_library_page_renders_archive_shell() -> None:
     with TestClient(app) as client:
         response = client.get("/library")
 
     assert response.status_code == 200
+    assert "Archive library" in response.text
     assert 'id="library-search-form"' in response.text
-    assert 'hx-get="/library/rows"' in response.text
     assert 'id="library-rows"' in response.text
+    assert 'hx-get="/library/rows"' in response.text
 
 
 def test_settings_page_exposes_form_and_restart_notice() -> None:
