@@ -39,6 +39,44 @@ def test_fetch_info_returns_normalized_formats(monkeypatch) -> None:
     assert payload["formats"][0]["ext"] == "mp4"
 
 
+def test_fetch_info_returns_stream_kind_and_audio_channels(monkeypatch) -> None:
+    """Phase 8: enriched stream metadata is exposed through the API response."""
+
+    def fake_extract_info(url: str, **_kwargs):
+        return {
+            "url": url,
+            "title": "Example title",
+            "formats": [
+                {
+                    "format_id": "401",
+                    "ext": "mp4",
+                    "vcodec": "avc1",
+                    "acodec": "none",
+                    "height": 2160,
+                },
+                {
+                    "format_id": "251",
+                    "ext": "webm",
+                    "vcodec": "none",
+                    "acodec": "opus",
+                    "audio_channels": 2,
+                },
+            ],
+            "captions": {},
+        }
+
+    monkeypatch.setattr("app.routes.api.extract_info", fake_extract_info)
+
+    with TestClient(app) as client:
+        response = client.post("/api/info", json={"url": "https://example.com/watch?v=1"})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["formats"][0]["stream_kind"] == "video"
+    assert payload["formats"][1]["stream_kind"] == "audio"
+    assert payload["formats"][1]["audio_channels"] == 2
+
+
 def test_fetch_info_uses_saved_proxy_and_cookies_when_opted_in(
     monkeypatch, db_session_visible, tmp_path
 ) -> None:
