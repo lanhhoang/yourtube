@@ -35,12 +35,15 @@ class DownloadCreate(BaseModel):
     subtitles: bool = False
 
 
+type StreamKind = Literal["video", "audio", "muxed"]
+
+
 class FormatInfo(BaseModel):
     """A single format entry returned by the format picker."""
 
     format_id: str
     ext: str
-    stream_kind: Literal["video", "audio", "muxed"] = "muxed"
+    stream_kind: StreamKind = "muxed"
     audio_channels: int | None = None
     resolution: str | None = None
     height: int | None = None

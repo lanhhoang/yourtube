@@ -13,7 +13,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from app.schemas import FormatInfo
+from app.schemas import FormatInfo, StreamKind
 
 
 class DownloadCancelled(Exception):  # noqa: N818 - name fixed by plan contract
@@ -95,7 +95,7 @@ def _format_codec(value: Any) -> str | None:
     return s
 
 
-def _stream_kind(vcodec: str | None, acodec: str | None) -> str:
+def _stream_kind(vcodec: str | None, acodec: str | None) -> StreamKind:
     """Classify a normalized format as ``"audio"``, ``"video"``, or ``"muxed"``.
 
     A format is ``"audio"`` when it has an audio codec and no video
