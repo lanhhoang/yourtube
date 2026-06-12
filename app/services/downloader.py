@@ -151,6 +151,11 @@ def build_ytdlp_options(
     When ``skip_download`` is true the function omits ``outtmpl`` because
     info lookups do not write any files; the directory argument is
     ignored in that case.
+
+    When ``subtitles`` is true, options are added to fetch SRT-formatted
+    captions in English-first order with auto-generated fallback. The
+    resulting ``.srt`` files are normalised by yt-dlp so a downstream
+    pass can derive sibling ``.txt`` transcripts.
     """
     options: dict[str, Any] = {
         "quiet": True,
@@ -169,6 +174,9 @@ def build_ytdlp_options(
         options["cookiefile"] = cookies_file
     if subtitles:
         options["writesubtitles"] = True
+        options["writeautomaticsub"] = True
+        options["subtitlesformat"] = "srt/best"
+        options["subtitleslangs"] = _subtitle_languages()
     if progress_hooks:
         options["progress_hooks"] = progress_hooks
     return options
@@ -247,10 +255,36 @@ def _format_selector(
 
 
 def _output_template(template: str | None, output_dir: str) -> str:
-    """Return the yt-dlp ``outtmpl`` expression, defaulting to ``output_dir/%(title)s.%(ext)s``."""
-    if template:
-        return template
-    return str(Path(output_dir) / "%(title)s.%(ext)s")
+    """Return the yt-dlp ``outtmpl`` expression rooted under ``output_dir``."""
+    return resolve_output_template(template, output_dir)
+
+
+def resolve_output_template(template: str | None, output_dir: str | Path) -> str:
+    """Return the yt-dlp ``outtmpl`` expression rooted under ``output_dir``.
+
+    A ``None`` template falls back to ``<output_dir>/%(title)s.%(ext)s``.
+    Relative templates are joined to ``output_dir`` so a UI-supplied
+    template never escapes the configured downloads directory. Absolute
+    templates are returned untouched so advanced users can target a
+    fully-qualified path.
+    """
+    base_dir = Path(output_dir)
+    if not template:
+        return str(base_dir / "%(title)s.%(ext)s")
+    candidate = Path(template)
+    if candidate.is_absolute():
+        return str(candidate)
+    return str(base_dir / template)
+
+
+def _subtitle_languages() -> list[str]:
+    """Return the preferred subtitle language selection order.
+
+    English captions are tried first (``en.*`` matches any English
+    dialect, then plain ``en``); the trailing ``.*`` lets yt-dlp fall
+    back to any other language if no English track is available.
+    """
+    return ["en.*", "en", ".*"]
 
 
 def run_download(

@@ -9,9 +9,11 @@ challenges on a host that ships no Node.js by default.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from yt_dlp import YoutubeDL
 
-from app.services.downloader import build_ytdlp_options
+from app.services.downloader import build_ytdlp_options, resolve_output_template
 
 
 def test_build_ytdlp_options_sets_explicit_node_runtime(tmp_path) -> None:
@@ -68,3 +70,46 @@ def test_build_ytdlp_options_is_accepted_by_ytdlp(tmp_path) -> None:
     ydl = YoutubeDL(options)
 
     assert ydl.params["js_runtimes"] == {"node": {"path": "node"}}
+
+
+def test_resolve_output_template_uses_downloads_dir_for_default_template(tmp_path: Path) -> None:
+    resolved = resolve_output_template(None, tmp_path)
+    assert resolved == str(tmp_path / "%(title)s.%(ext)s")
+
+
+def test_resolve_output_template_joins_relative_template_to_output_dir(tmp_path: Path) -> None:
+    resolved = resolve_output_template("%(title)s.%(ext)s", tmp_path)
+    assert resolved == str(tmp_path / "%(title)s.%(ext)s")
+
+
+def test_resolve_output_template_keeps_absolute_template_absolute(tmp_path: Path) -> None:
+    absolute = tmp_path / "nested" / "%(title)s.%(ext)s"
+    resolved = resolve_output_template(str(absolute), tmp_path)
+    assert resolved == str(absolute)
+
+
+def test_build_ytdlp_options_uses_resolved_template_for_downloads(tmp_path: Path) -> None:
+    options = build_ytdlp_options(
+        skip_download=False,
+        output_dir=str(tmp_path),
+        output_template="%(title)s.%(ext)s",
+        subtitles=True,
+        js_runtime="node",
+    )
+
+    assert options["outtmpl"] == str(tmp_path / "%(title)s.%(ext)s")
+    assert options["writesubtitles"] is True
+
+
+def test_build_ytdlp_options_prefers_srt_english_and_auto_subtitles(tmp_path: Path) -> None:
+    options = build_ytdlp_options(
+        skip_download=False,
+        output_dir=str(tmp_path),
+        subtitles=True,
+        js_runtime="node",
+    )
+
+    assert options["writesubtitles"] is True
+    assert options["writeautomaticsub"] is True
+    assert options["subtitlesformat"] == "srt/best"
+    assert options["subtitleslangs"] == ["en.*", "en", ".*"]
