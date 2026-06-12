@@ -21,7 +21,11 @@ from app.config import settings
 from app.db import get_session
 from app.schemas import DownloadCreate
 from app.services.diagnostics import collect_runtime_diagnostics
-from app.services.downloader import extract_info, normalize_formats
+from app.services.downloader import (
+    build_stream_picker_payload,
+    extract_info,
+    normalize_formats,
+)
 from app.services.library import delete_from_library, get_library, search_library
 from app.services.queue import cancel_job, enqueue_download, get_active_jobs
 from app.services.settings import (
@@ -131,6 +135,7 @@ def info_form(
         proxy=runtime.proxy_url if proxy else None,
         cookies_file=str(runtime.cookies_path) if cookies and runtime.cookies_path else None,
     )
+    formats = normalize_formats(raw)
     return templates.TemplateResponse(
         request,
         "partials/info_result.html",
@@ -140,7 +145,8 @@ def info_form(
             "uploader": raw.get("uploader"),
             "duration": raw.get("duration"),
             "thumbnail": raw.get("thumbnail"),
-            "formats": normalize_formats(raw),
+            "formats": formats,
+            "picker_payload": build_stream_picker_payload(formats),
         },
     )
 

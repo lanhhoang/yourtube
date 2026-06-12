@@ -171,6 +171,67 @@ def test_info_lookup_fragment_renders_editorial_media_card(monkeypatch) -> None:
     assert 'name="subtitles"' in response.text
 
 
+def test_info_lookup_fragment_renders_stream_picker_markup(monkeypatch) -> None:
+    def fake_extract_info(url: str, **_kwargs):
+        return {
+            "url": url,
+            "title": "Example title",
+            "uploader": "Uploader",
+            "duration": 123,
+            "thumbnail": "https://example.com/thumb.jpg",
+            "formats": [
+                {
+                    "format_id": "401",
+                    "ext": "mp4",
+                    "container": "mp4_dash",
+                    "vcodec": "avc1.640028",
+                    "acodec": "none",
+                    "height": 2160,
+                    "resolution": "2160p",
+                },
+                {
+                    "format_id": "140",
+                    "ext": "m4a",
+                    "container": "m4a_dash",
+                    "vcodec": "none",
+                    "acodec": "mp4a.40.2",
+                    "abr": 128.0,
+                    "audio_channels": 2,
+                },
+                {
+                    "format_id": "18",
+                    "ext": "mp4",
+                    "container": "mp4",
+                    "vcodec": "avc1.42001E",
+                    "acodec": "mp4a.40.2",
+                    "resolution": "360p",
+                },
+            ],
+            "captions": {},
+        }
+
+    monkeypatch.setattr("app.routes.pages.extract_info", fake_extract_info)
+
+    with TestClient(app) as client:
+        response = client.post("/info/form", data={"url": "https://example.com/watch?v=1"})
+
+    assert response.status_code == 200
+    assert 'x-data="streamPicker(' in response.text
+    assert "Video Streams" in response.text
+    assert "Audio Streams" in response.text
+    assert "Expected container" in response.text
+    assert 'name="video_format_id"' in response.text
+    assert 'name="audio_format_id"' in response.text
+    assert 'name="title"' in response.text
+    assert 'name="uploader"' in response.text
+    assert 'name="duration"' in response.text
+    assert 'name="thumbnail"' in response.text
+    assert 'name="output_template"' in response.text
+    assert 'name="audio_bitrate"' in response.text
+    assert 'name="subtitles"' in response.text
+    assert "Default format selection remains available" in response.text
+
+
 def test_settings_reset_returns_updated_form(db_session_visible) -> None:
     set_settings_batch(db_session_visible, {"max_concurrent": "4"})
 
