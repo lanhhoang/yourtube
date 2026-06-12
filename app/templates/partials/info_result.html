@@ -15,8 +15,10 @@
         <dd>{{ duration or "Unknown" }}</dd>
       </div>
     </dl>
+
     <form
       id="enqueue-form"
+      x-data="streamPicker({{ picker_payload|tojson|safe }})"
       hx-post="/downloads/form"
       hx-target="#info-status"
       hx-swap="innerHTML"
@@ -26,29 +28,133 @@
       <input type="hidden" name="uploader" value="{{ uploader or '' }}" />
       <input type="hidden" name="duration" value="{{ duration or '' }}" />
       <input type="hidden" name="thumbnail" value="{{ thumbnail or '' }}" />
-      <label for="video-format">Video format</label>
-      <select id="video-format" name="video_format_id">
-        <option value="">Default</option>
-        {% for item in formats %}
-        <option value="{{ item.format_id }}">
-          {{ item.format_id }} {{ item.ext }} {{ item.resolution or '' }}
-        </option>
-        {% endfor %}
-      </select>
-      <label for="audio-format">Audio format</label>
-      <select id="audio-format" name="audio_format_id">
-        <option value="">Default</option>
-        {% for item in formats %}
-        <option value="{{ item.format_id }}">
-          {{ item.format_id }} {{ item.ext }}
-        </option>
-        {% endfor %}
-      </select>
-      <label><input type="checkbox" name="subtitles" /> Download subtitles</label>
-      <label for="output-template">Output template</label>
-      <input id="output-template" name="output_template" placeholder="%(title)s.%(ext)s" />
-      <label for="audio-bitrate">Audio bitrate</label>
-      <input id="audio-bitrate" name="audio_bitrate" placeholder="192K" />
+      <input type="hidden" name="video_format_id" :value="selectedVideoId" />
+      <input type="hidden" name="audio_format_id" :value="selectedAudioId" />
+
+      <script>
+        function streamPicker(payload) {
+          return {
+            videoStreams: payload.video_streams,
+            audioStreams: payload.audio_streams,
+            expectedContainerByPair: payload.expected_container_by_pair,
+            hasMuxedStreams: payload.has_muxed_streams,
+            selectedVideoId: "",
+            selectedAudioId: "",
+            advancedOpen: false,
+            selectVideo(formatId) {
+              this.selectedVideoId = this.selectedVideoId === formatId ? "" : formatId;
+            },
+            selectAudio(formatId) {
+              this.selectedAudioId = this.selectedAudioId === formatId ? "" : formatId;
+            },
+            pairKey() {
+              return `${this.selectedVideoId}|${this.selectedAudioId}`;
+            },
+            expectedContainer() {
+              return this.expectedContainerByPair[this.pairKey()] || "unknown";
+            },
+          };
+        }
+      </script>
+
+      <section class="stream-section">
+        <div class="stream-section-head">
+          <h3>Video Streams</h3>
+          <p>Pick a video-only stream or leave blank for yt-dlp's default selection.</p>
+        </div>
+        <template x-if="videoStreams.length">
+          <table class="stream-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Resolution</th>
+                <th>Container</th>
+                <th>Video Codec</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="item in videoStreams" :key="item.format_id">
+                <tr
+                  :class="{ 'is-selected': selectedVideoId === item.format_id }"
+                  @click="selectVideo(item.format_id)"
+                >
+                  <td x-text="item.format_id"></td>
+                  <td x-text="item.resolution || '-'"></td>
+                  <td x-text="item.ext || '-'"></td>
+                  <td x-text="item.vcodec || '-'"></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </template>
+        <template x-if="!videoStreams.length">
+          <p class="stream-empty">No video-only streams were exposed for this item.</p>
+        </template>
+      </section>
+
+      <section class="stream-section">
+        <div class="stream-section-head">
+          <h3>Audio Streams</h3>
+          <p>Pick an audio-only stream or leave blank for yt-dlp's default selection.</p>
+        </div>
+        <template x-if="audioStreams.length">
+          <table class="stream-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Bitrate</th>
+                <th>Channels</th>
+                <th>Container</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="item in audioStreams" :key="item.format_id">
+                <tr
+                  :class="{ 'is-selected': selectedAudioId === item.format_id }"
+                  @click="selectAudio(item.format_id)"
+                >
+                  <td x-text="item.format_id"></td>
+                  <td x-text="item.abr ? `${item.abr} kbps` : '-'"></td>
+                  <td x-text="item.audio_channels || '-'"></td>
+                  <td x-text="item.ext || '-'"></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </template>
+        <template x-if="!audioStreams.length">
+          <p class="stream-empty">No audio-only streams were exposed for this item.</p>
+        </template>
+      </section>
+
+      <p class="stream-hint">
+        Expected container:
+        <strong x-text="expectedContainer()"></strong>
+      </p>
+
+      <template x-if="hasMuxedStreams">
+        <p class="stream-note">
+          Default format selection remains available if you leave both tables unselected.
+        </p>
+      </template>
+
+      <button
+        type="button"
+        class="advanced-toggle"
+        @click="advancedOpen = !advancedOpen"
+        :aria-expanded="advancedOpen.toString()"
+      >
+        Advanced options
+      </button>
+
+      <section class="advanced-panel" x-show="advancedOpen">
+        <label><input type="checkbox" name="subtitles" /> Download subtitles</label>
+        <label for="output-template">Output template</label>
+        <input id="output-template" name="output_template" placeholder="%(title)s.%(ext)s" />
+        <label for="audio-bitrate">Audio bitrate</label>
+        <input id="audio-bitrate" name="audio_bitrate" placeholder="192K" />
+      </section>
+
       <button type="submit">Add to queue</button>
     </form>
   </div>
