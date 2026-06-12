@@ -207,9 +207,7 @@ def extract_info(
 
 
 _PERCENT_RE = re.compile(r"(-?[0-9]+(?:\.[0-9]+)?)\s*%")
-_SRT_TIMESTAMP_RE = re.compile(
-    r"^\d{2}:\d{2}:\d{2},\d{3}\s+-->\s+\d{2}:\d{2}:\d{2},\d{3}"
-)
+_SRT_TIMESTAMP_RE = re.compile(r"^\d{2}:\d{2}:\d{2},\d{3}\s+-->\s+\d{2}:\d{2}:\d{2},\d{3}")
 
 
 def parse_percent(value: Any) -> float | None:

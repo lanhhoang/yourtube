@@ -13,7 +13,12 @@ from pathlib import Path
 
 from yt_dlp import YoutubeDL
 
-from app.services.downloader import build_ytdlp_options, render_transcript_text, resolve_output_template, write_transcript_sidecar
+from app.services.downloader import (
+    build_ytdlp_options,
+    render_transcript_text,
+    resolve_output_template,
+    write_transcript_sidecar,
+)
 
 
 def test_build_ytdlp_options_sets_explicit_node_runtime(tmp_path) -> None:

@@ -9,7 +9,11 @@ correct yt-dlp format selector expression.
 from __future__ import annotations
 
 from app.schemas import FormatInfo
-from app.services.downloader import build_format_selector, infer_expected_container, normalize_formats
+from app.services.downloader import (
+    build_format_selector,
+    infer_expected_container,
+    normalize_formats,
+)
 
 
 def _make_info(*formats: dict) -> dict:

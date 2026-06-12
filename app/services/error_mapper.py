@@ -46,7 +46,7 @@ _RULES: list[tuple[str, str, re.Pattern[str]]] = [
     ),
     (
         "output_path_unwritable",
-        "Your configured output path or template is not writable. Check downloads directory and output template settings.",
+        "Your configured output path or template is not writable. Check downloads directory and output template settings.",  # noqa: E501
         re.compile(r"unable to open for writing", re.IGNORECASE),
     ),
     (
