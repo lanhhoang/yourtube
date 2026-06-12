@@ -245,6 +245,43 @@ def build_format_selector(
     return "best"
 
 
+def infer_expected_container(video: FormatInfo | None, audio: FormatInfo | None) -> str:
+    """Return the container yt-dlp is most likely to produce after merging.
+
+    The rule is intentionally conservative: we only declare ``mp4`` when
+    the video stream is H.264/AV1 inside an MP4 container and the audio
+    stream is AAC inside an MP4/M4A container, because those are the
+    codecs the MP4 muxer can ingest without remuxing failures. Anything
+    else (WebM video, Opus audio, mismatched containers, or unknown
+    codecs) falls back to ``mkv`` so the merge container matches what
+    yt-dlp would pick. Audio-only downloads return the audio stream's
+    own extension. Missing both streams returns ``"unknown"``.
+    """
+    if video is None and audio is None:
+        return "unknown"
+
+    if video is None:
+        return audio.ext if audio and audio.ext else "unknown"
+
+    if audio is None:
+        return video.ext if video.ext else "unknown"
+
+    video_ext = (video.ext or "").lower()
+    audio_ext = (audio.ext or "").lower()
+    video_codec = (video.vcodec or "").lower()
+    audio_codec = (audio.acodec or "").lower()
+
+    if (
+        video_ext == "mp4"
+        and audio_ext in {"m4a", "mp4"}
+        and video_codec.startswith(("avc", "av01"))
+        and audio_codec.startswith("mp4a")
+    ):
+        return "mp4"
+
+    return "mkv"
+
+
 def _format_selector(
     video_format_id: str | None,
     audio_format_id: str | None,
