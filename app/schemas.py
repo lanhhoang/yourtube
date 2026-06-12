@@ -7,6 +7,7 @@ ORM instances from ``app.models`` must never be returned directly to clients.
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -39,6 +40,8 @@ class FormatInfo(BaseModel):
 
     format_id: str
     ext: str
+    stream_kind: Literal["video", "audio", "muxed"] = "muxed"
+    audio_channels: int | None = None
     resolution: str | None = None
     height: int | None = None
     width: int | None = None
