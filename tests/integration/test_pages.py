@@ -63,15 +63,25 @@ def test_settings_page_renders_persisted_values(db_session_visible) -> None:
     assert 'value="/tmp/downloads"' in response.text
 
 
-def test_pages_extend_index_layout_and_load_local_htmx() -> None:
+def test_pages_extend_editorial_shell_and_load_local_assets() -> None:
     with TestClient(app) as client:
         response = client.get("/")
         htmx = client.get("/static/vendor/htmx.min.js")
+        css = client.get("/static/css/app.css")
+        favicon = client.get("/static/assets/favicon.svg")
 
     assert response.status_code == 200
+    assert "/static/css/app.css" in response.text
     assert "/static/vendor/htmx.min.js" in response.text
-    assert "hx-" in response.text
+    assert "/static/assets/favicon.svg" in response.text
+    assert "Playfair Display" in response.text
+    assert "Work Sans" in response.text
+    assert 'class="site-header"' in response.text
+    assert 'class="site-nav"' in response.text
+    assert css.status_code == 200
+    assert "--bg:" in css.text
     assert htmx.status_code == 200
+    assert favicon.status_code == 200
 
 
 def test_home_page_exposes_lookup_and_enqueue_hooks() -> None:

@@ -4,17 +4,34 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{% block title %}YourTube{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Work+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" href="{{ url_for('static', path='assets/favicon.svg') }}" type="image/svg+xml" />
+    <style>
+      :root {
+        --font-display: "Playfair Display", serif;
+        --font-body: "Work Sans", sans-serif;
+      }
+    </style>
     <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}" />
     <script defer src="{{ url_for('static', path='vendor/htmx.min.js') }}"></script>
   </head>
   <body>
+    <div class="page-noise"></div>
     <header class="site-header">
-      <nav class="site-nav">
-        <a href="/">Download</a>
-        <a href="/queue">Queue</a>
-        <a href="/library">Library</a>
-        <a href="/settings">Settings</a>
-      </nav>
+      <div class="site-header-inner">
+        <a class="site-brand" href="/">YourTube</a>
+        <nav class="site-nav">
+          <a href="/">Home</a>
+          <a href="/queue">Queue</a>
+          <a href="/library">Library</a>
+          <a href="/settings">Settings</a>
+        </nav>
+      </div>
     </header>
     <main class="page-shell">{% block content %}{% endblock %}</main>
     <section id="flash-region"></section>
