@@ -65,7 +65,7 @@ yourtube/
 
 Responsibilities:
 
-- `app/services/downloader.py` owns output-template resolution, subtitle/transcript artifact generation, stream normalization, stream grouping helpers, and expected-container inference.
+- `app/services/downloader.py` owns output-template resolution, subtitle/transcript artifact generation, stream normalization, and expected-container inference.
 - `app/main.py` remains a thin worker orchestrator; it should not grow path-resolution logic that belongs in the downloader service.
 - `app/schemas.py` defines additive format metadata needed by the redesigned picker.
 - `app/routes/api.py` and `app/routes/pages.py` expose richer stream metadata without breaking existing endpoints.
@@ -88,6 +88,8 @@ See: `plans/2026-06-12-yourtube-design-phase-7.md`
 
 - Expand format metadata with stream typing and audio channel counts.
 - Keep API changes additive and compatible with the current route set.
+- Limit implementation to the `FormatInfo` contract, downloader normalization, and API regression coverage.
+- Do not spend a task on route edits unless the repo has diverged from the current `normalize_formats(raw)` pass-through.
 - Use yt-dlp metadata as the primary source of truth and the MartinEesmaa gist only as a labeling/reference aid.
 
 See: `plans/2026-06-12-yourtube-design-phase-8.md`
@@ -112,6 +114,7 @@ See: `plans/2026-06-12-yourtube-design-phase-10.md`
 
 - Do not broaden Alpine.js into a full client-side rewrite.
 - Do not break `POST /api/info`, `POST /downloads/form`, or the Phase 6 route set.
+- Do not add server-side stream grouping before phase 9; phase 8 only enriches per-format metadata.
 - Do not promise MP4 output for incompatible stream combinations; MKV fallback is valid and should be surfaced honestly.
 - Do not hardcode container compatibility from the gist; use actual normalized yt-dlp metadata and small compatibility helpers in code.
 - Keep tests narrow and phase-specific so each phase can be implemented and reviewed independently.

@@ -128,6 +128,74 @@ def test_normalize_skips_entries_without_format_id() -> None:
     assert formats[0].format_id == "1"
 
 
+def test_normalize_combined_format_defaults_stream_kind_to_muxed() -> None:
+    """A combined format with both codecs defaults to ``stream_kind="muxed"``."""
+    info = _make_info(
+        {
+            "format_id": "137+140",
+            "ext": "mp4",
+            "vcodec": "avc1.640028",
+            "acodec": "mp4a.40.2",
+        }
+    )
+
+    f = normalize_formats(info)[0]
+
+    assert f.stream_kind == "muxed"
+    assert f.audio_channels is None
+
+
+def test_normalize_video_only_format_sets_stream_kind() -> None:
+    """A video-only format with ``acodec="none"`` classifies as ``"video"``."""
+    info = _make_info(
+        {
+            "format_id": "401",
+            "ext": "mp4",
+            "vcodec": "av01.0.08M.08",
+            "acodec": "none",
+            "height": 2160,
+        }
+    )
+
+    f = normalize_formats(info)[0]
+
+    assert f.stream_kind == "video"
+
+
+def test_normalize_audio_only_format_sets_stream_kind_and_channels() -> None:
+    """An audio-only format classifies as ``"audio"`` and preserves channel count."""
+    info = _make_info(
+        {
+            "format_id": "251",
+            "ext": "webm",
+            "vcodec": "none",
+            "acodec": "opus",
+            "abr": 160.0,
+            "audio_channels": 2,
+        }
+    )
+
+    f = normalize_formats(info)[0]
+
+    assert f.stream_kind == "audio"
+    assert f.audio_channels == 2
+
+
+def test_normalize_missing_codecs_falls_back_to_muxed() -> None:
+    """A format with no codec metadata falls back to ``"muxed"``."""
+    info = _make_info(
+        {
+            "format_id": "999",
+            "ext": "webm",
+        }
+    )
+
+    f = normalize_formats(info)[0]
+
+    assert f.stream_kind == "muxed"
+    assert f.audio_channels is None
+
+
 def test_build_format_selector_video_only() -> None:
     """A single video id becomes ``<id>``."""
     assert build_format_selector("401", None) == "401"

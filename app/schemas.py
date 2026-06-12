@@ -7,6 +7,7 @@ ORM instances from ``app.models`` must never be returned directly to clients.
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -34,11 +35,16 @@ class DownloadCreate(BaseModel):
     subtitles: bool = False
 
 
+type StreamKind = Literal["video", "audio", "muxed"]
+
+
 class FormatInfo(BaseModel):
     """A single format entry returned by the format picker."""
 
     format_id: str
     ext: str
+    stream_kind: StreamKind = "muxed"
+    audio_channels: int | None = None
     resolution: str | None = None
     height: int | None = None
     width: int | None = None

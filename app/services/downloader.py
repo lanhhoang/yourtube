@@ -13,7 +13,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from app.schemas import FormatInfo
+from app.schemas import FormatInfo, StreamKind
 
 
 class DownloadCancelled(Exception):  # noqa: N818 - name fixed by plan contract
@@ -95,6 +95,21 @@ def _format_codec(value: Any) -> str | None:
     return s
 
 
+def _stream_kind(vcodec: str | None, acodec: str | None) -> StreamKind:
+    """Classify a normalized format as ``"audio"``, ``"video"``, or ``"muxed"``.
+
+    A format is ``"audio"`` when it has an audio codec and no video
+    codec, ``"video"`` when it has a video codec and no audio codec, and
+    ``"muxed"`` otherwise (combined streams, or streams where the codec
+    metadata is missing).
+    """
+    if vcodec == "none" and acodec and acodec != "none":
+        return "audio"
+    if acodec == "none" and vcodec and vcodec != "none":
+        return "video"
+    return "muxed"
+
+
 def normalize_formats(info: dict) -> list[FormatInfo]:
     """Convert a yt-dlp info_dict to a list of :class:`FormatInfo`.
 
@@ -107,16 +122,20 @@ def normalize_formats(info: dict) -> list[FormatInfo]:
         format_id = _safe_str(raw.get("format_id"))
         if format_id is None:
             continue
+        vcodec = _format_codec(raw.get("vcodec"))
+        acodec = _format_codec(raw.get("acodec"))
         out.append(
             FormatInfo(
                 format_id=format_id,
                 ext=_safe_str(raw.get("ext")) or "",
+                stream_kind=_stream_kind(vcodec, acodec),
+                audio_channels=_safe_int(raw.get("audio_channels")),
                 resolution=_safe_str(raw.get("resolution")),
                 height=_safe_int(raw.get("height")),
                 width=_safe_int(raw.get("width")),
                 fps=_safe_float(raw.get("fps")),
-                vcodec=_format_codec(raw.get("vcodec")),
-                acodec=_format_codec(raw.get("acodec")),
+                vcodec=vcodec,
+                acodec=acodec,
                 abr=_safe_float(raw.get("abr")),
                 vbr=_safe_float(raw.get("vbr")),
                 filesize=_safe_int(raw.get("filesize")),
