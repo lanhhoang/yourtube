@@ -84,14 +84,16 @@ def test_pages_extend_editorial_shell_and_load_local_assets() -> None:
     assert favicon.status_code == 200
 
 
-def test_home_page_exposes_lookup_and_enqueue_hooks() -> None:
+def test_home_page_renders_landing_first_editorial_sections() -> None:
     with TestClient(app) as client:
         response = client.get("/")
 
     assert response.status_code == 200
+    assert "Download with editorial calm." in response.text
     assert 'id="info-form"' in response.text
     assert 'id="info-result"' in response.text
     assert 'hx-post="/info/form"' in response.text
+    assert "Recent workflow" in response.text
 
 
 def test_library_page_exposes_search_hooks() -> None:
@@ -114,7 +116,7 @@ def test_settings_page_exposes_form_and_restart_notice() -> None:
     assert "takes effect after restart" in response.text
 
 
-def test_info_lookup_fragment_renders_enqueue_form(monkeypatch) -> None:
+def test_info_lookup_fragment_renders_editorial_media_card(monkeypatch) -> None:
     def fake_extract_info(url: str, **_kwargs):
         return {
             "url": url,
@@ -132,11 +134,13 @@ def test_info_lookup_fragment_renders_enqueue_form(monkeypatch) -> None:
         response = client.post("/info/form", data={"url": "https://example.com/watch?v=1"})
 
     assert response.status_code == 200
-    assert 'id="enqueue-form"' in response.text
+    assert 'class="media-card"' in response.text
     assert "Example title" in response.text
-    assert "Uploader" in response.text
+    assert 'name="video_format_id"' in response.text
+    assert 'name="audio_format_id"' in response.text
     assert 'name="output_template"' in response.text
     assert 'name="audio_bitrate"' in response.text
+    assert 'name="subtitles"' in response.text
 
 
 def test_settings_reset_returns_updated_form(db_session_visible) -> None:
