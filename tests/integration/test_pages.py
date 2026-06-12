@@ -67,12 +67,14 @@ def test_pages_extend_editorial_shell_and_load_local_assets() -> None:
     with TestClient(app) as client:
         response = client.get("/")
         htmx = client.get("/static/vendor/htmx.min.js")
+        alpine = client.get("/static/vendor/alpine.min.js")
         css = client.get("/static/css/app.css")
         favicon = client.get("/static/assets/favicon.svg")
 
     assert response.status_code == 200
     assert "/static/css/app.css" in response.text
     assert "/static/vendor/htmx.min.js" in response.text
+    assert "/static/vendor/alpine.min.js" in response.text
     assert "/static/assets/favicon.svg" in response.text
     assert "Playfair Display" in response.text
     assert "Work Sans" in response.text
@@ -81,7 +83,18 @@ def test_pages_extend_editorial_shell_and_load_local_assets() -> None:
     assert css.status_code == 200
     assert "--bg:" in css.text
     assert htmx.status_code == 200
+    assert alpine.status_code == 200
     assert favicon.status_code == 200
+
+
+def test_pages_load_local_alpine_asset() -> None:
+    with TestClient(app) as client:
+        response = client.get("/")
+        alpine = client.get("/static/vendor/alpine.min.js")
+
+    assert response.status_code == 200
+    assert "/static/vendor/alpine.min.js" in response.text
+    assert alpine.status_code == 200
 
 
 def test_home_page_renders_landing_first_editorial_sections() -> None:
