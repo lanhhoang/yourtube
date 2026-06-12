@@ -98,3 +98,19 @@ def test_generic_fallback() -> None:
     code, message = friendly_ytdlp_error("Something weird happened that we don't recognise")
     assert code == "ytdlp_error"
     assert message
+
+
+def test_friendly_error_maps_output_template_write_failures() -> None:
+    code, message = friendly_ytdlp_error(
+        "ERROR: unable to open for writing: [Errno 13] Permission denied: 'title.en-US.vtt.part'"
+    )
+
+    assert code == "output_path_unwritable"
+    assert "output path" in message.lower()
+
+
+def test_friendly_error_keeps_generic_permission_denied_for_non_template_errors() -> None:
+    code, message = friendly_ytdlp_error("[Errno 13] Permission denied: '/var/data/file.mp4'")
+
+    assert code == "permission_denied"
+    assert message

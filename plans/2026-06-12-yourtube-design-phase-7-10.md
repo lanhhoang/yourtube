@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Deliver the next YourTube milestone: fix subtitle/output-path failures, expose richer stream metadata, replace the select-based picker with an Alpine-enhanced table UI, and add in-app completion notifications.
+**Goal:** Deliver the next YourTube milestone: fix subtitle/output-path failures, export subtitle sidecars as `.srt` plus `.txt` transcripts, expose richer stream metadata, replace the select-based picker with an Alpine-enhanced table UI, and add in-app completion notifications.
 
-**Architecture:** Keep the current FastAPI + Jinja2 + HTMX application intact and layer the new work on top of existing route contracts. Backend correctness lands first in the downloader/worker path, then stream metadata grows additively, then the home-page fragment is refactored into an Alpine-managed table picker, and finally queue polling powers lightweight in-app completion toasts.
+**Architecture:** Keep the current FastAPI + Jinja2 + HTMX application intact and layer the new work on top of existing route contracts. Backend correctness lands first in the downloader layer, then stream metadata grows additively, then the home-page fragment is refactored into an Alpine-managed table picker, and finally queue polling powers lightweight in-app completion toasts.
 
 **Tech Stack:** Python 3.12, FastAPI, SQLAlchemy 2.x, Jinja2, HTMX, Alpine.js, yt-dlp, ffmpeg, pytest, uv
 
@@ -13,6 +13,7 @@
 ## Why This Plan Exists
 
 - Phase 6 delivered the editorial UI shell, but the downloader still has a real filesystem bug when subtitles are enabled with a relative output template.
+- Users also want subtitle downloads to produce cleaner derived artifacts by default: English-first `.srt` subtitles plus plain-text transcripts without timestamps.
 - The current home page renders the same raw format list twice and hides useful differences between video-only and audio-only streams.
 - Users need clearer output-container expectations when mixing MP4, WebM, M4A, and Opus-based formats.
 - The app currently has almost no browser-side state management; Alpine.js should be introduced narrowly where local UI state is a better fit than more HTMX round-trips.
@@ -64,8 +65,8 @@ yourtube/
 
 Responsibilities:
 
-- `app/services/downloader.py` owns output-template resolution, stream normalization, stream grouping helpers, and expected-container inference.
-- `app/main.py` consumes the resolved download plan from the downloader layer so workers do not duplicate path logic.
+- `app/services/downloader.py` owns output-template resolution, subtitle/transcript artifact generation, stream normalization, stream grouping helpers, and expected-container inference.
+- `app/main.py` remains a thin worker orchestrator; it should not grow path-resolution logic that belongs in the downloader service.
 - `app/schemas.py` defines additive format metadata needed by the redesigned picker.
 - `app/routes/api.py` and `app/routes/pages.py` expose richer stream metadata without breaking existing endpoints.
 - `app/templates/partials/info_result.html` becomes the main stream-picker surface and Alpine state root.
@@ -76,8 +77,10 @@ Responsibilities:
 ### Phase 7
 
 - Fix relative `output_template` handling so downloads and subtitle sidecars always land under the resolved downloads directory.
+- When subtitles are enabled, use yt-dlp's default single-language English-first caption selection with auto-caption fallback, emit `.srt` sidecars, and derive sibling plain-text `.txt` transcripts.
 - Add expected-container inference for selected stream pairs.
 - Differentiate path/template failures from generic yt-dlp extraction failures.
+- Keep all three changes in the downloader/error-mapper seam rather than testing them through `WorkerPool`.
 
 See: `plans/2026-06-12-yourtube-design-phase-7.md`
 
@@ -116,6 +119,7 @@ See: `plans/2026-06-12-yourtube-design-phase-10.md`
 ## Acceptance Criteria
 
 - Enabling subtitles with a relative output template no longer produces permission-denied writes in the process working directory.
+- Enabling subtitles yields best-effort English-first `.srt` subtitle export plus sibling plain-text `.txt` transcripts when captions exist, without failing the media download when captions are absent.
 - The downloader can explain when a selected stream pair is expected to merge as MP4 versus fallback to MKV.
 - `/api/info` and `/info/form` expose enough metadata to render distinct video/audio stream tables.
 - The home page shows table-based stream picking, a collapsed advanced section, and an expected-container hint without replacing HTMX.
@@ -130,7 +134,7 @@ See: `plans/2026-06-12-yourtube-design-phase-10.md`
 
 ## Testing Strategy
 
-- Phase 7: `uv run pytest tests/unit/test_downloader_runtime_resolution.py tests/unit/test_friendly_errors.py tests/integration/test_worker_pool.py -v`
+- Phase 7: `uv run pytest tests/unit/test_downloader_runtime_resolution.py tests/unit/test_downloader_format.py tests/unit/test_friendly_errors.py -v`
 - Phase 8: `uv run pytest tests/unit/test_downloader_format.py tests/integration/test_api_info.py -v`
 - Phase 9: `uv run pytest tests/integration/test_pages.py -v`
 - Phase 10: `uv run pytest tests/integration/test_pages.py tests/integration/test_worker_pool.py -v`

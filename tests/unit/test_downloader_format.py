@@ -9,7 +9,11 @@ correct yt-dlp format selector expression.
 from __future__ import annotations
 
 from app.schemas import FormatInfo
-from app.services.downloader import build_format_selector, normalize_formats
+from app.services.downloader import (
+    build_format_selector,
+    infer_expected_container,
+    normalize_formats,
+)
 
 
 def _make_info(*formats: dict) -> dict:
@@ -150,3 +154,57 @@ def test_build_format_selector_with_audio_bitrate() -> None:
     assert "401+140" in selector
     assert "bestaudio" in selector
     assert "abr<=128" in selector
+
+
+def test_infer_expected_container_prefers_mp4_for_avc_and_aac() -> None:
+    video = FormatInfo(
+        format_id="137",
+        ext="mp4",
+        container="mp4_dash",
+        vcodec="avc1.640028",
+        acodec="none",
+    )
+    audio = FormatInfo(
+        format_id="140",
+        ext="m4a",
+        container="m4a_dash",
+        vcodec="none",
+        acodec="mp4a.40.2",
+    )
+
+    assert infer_expected_container(video, audio) == "mp4"
+
+
+def test_infer_expected_container_falls_back_to_mkv_for_webm_plus_m4a() -> None:
+    video = FormatInfo(
+        format_id="400",
+        ext="webm",
+        container="webm_dash",
+        vcodec="vp9",
+        acodec="none",
+    )
+    audio = FormatInfo(
+        format_id="140",
+        ext="m4a",
+        container="m4a_dash",
+        vcodec="none",
+        acodec="mp4a.40.2",
+    )
+
+    assert infer_expected_container(video, audio) == "mkv"
+
+
+def test_infer_expected_container_returns_audio_ext_for_audio_only_stream() -> None:
+    audio = FormatInfo(
+        format_id="251",
+        ext="webm",
+        container="webm_dash",
+        vcodec="none",
+        acodec="opus",
+    )
+
+    assert infer_expected_container(None, audio) == "webm"
+
+
+def test_infer_expected_container_returns_unknown_when_no_streams_are_selected() -> None:
+    assert infer_expected_container(None, None) == "unknown"

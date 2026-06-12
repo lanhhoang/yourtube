@@ -151,6 +151,11 @@ def build_ytdlp_options(
     When ``skip_download`` is true the function omits ``outtmpl`` because
     info lookups do not write any files; the directory argument is
     ignored in that case.
+
+    When ``subtitles`` is true, options are added to fetch SRT-formatted
+    captions in English-first order with auto-generated fallback. The
+    resulting ``.srt`` files are normalised by yt-dlp so a downstream
+    pass can derive sibling ``.txt`` transcripts.
     """
     options: dict[str, Any] = {
         "quiet": True,
@@ -169,6 +174,8 @@ def build_ytdlp_options(
         options["cookiefile"] = cookies_file
     if subtitles:
         options["writesubtitles"] = True
+        options["writeautomaticsub"] = True
+        options["subtitlesformat"] = "srt/best"
     if progress_hooks:
         options["progress_hooks"] = progress_hooks
     return options
@@ -199,6 +206,7 @@ def extract_info(
 
 
 _PERCENT_RE = re.compile(r"(-?[0-9]+(?:\.[0-9]+)?)\s*%")
+_SRT_TIMESTAMP_RE = re.compile(r"^\d{2}:\d{2}:\d{2},\d{3}\s+-->\s+\d{2}:\d{2}:\d{2},\d{3}")
 
 
 def parse_percent(value: Any) -> float | None:
@@ -234,6 +242,43 @@ def build_format_selector(
     return "best"
 
 
+def infer_expected_container(video: FormatInfo | None, audio: FormatInfo | None) -> str:
+    """Return the container yt-dlp is most likely to produce after merging.
+
+    The rule is intentionally conservative: we only declare ``mp4`` when
+    the video stream is H.264/AV1 inside an MP4 container and the audio
+    stream is AAC inside an MP4/M4A container, because those are the
+    codecs the MP4 muxer can ingest without remuxing failures. Anything
+    else (WebM video, Opus audio, mismatched containers, or unknown
+    codecs) falls back to ``mkv`` so the merge container matches what
+    yt-dlp would pick. Audio-only downloads return the audio stream's
+    own extension. Missing both streams returns ``"unknown"``.
+    """
+    if video is None and audio is None:
+        return "unknown"
+
+    if video is None:
+        return audio.ext if audio and audio.ext else "unknown"
+
+    if audio is None:
+        return video.ext if video.ext else "unknown"
+
+    video_ext = (video.ext or "").lower()
+    audio_ext = (audio.ext or "").lower()
+    video_codec = (video.vcodec or "").lower()
+    audio_codec = (audio.acodec or "").lower()
+
+    if (
+        video_ext == "mp4"
+        and audio_ext in {"m4a", "mp4"}
+        and video_codec.startswith(("avc", "av01"))
+        and audio_codec.startswith("mp4a")
+    ):
+        return "mp4"
+
+    return "mkv"
+
+
 def _format_selector(
     video_format_id: str | None,
     audio_format_id: str | None,
@@ -247,10 +292,74 @@ def _format_selector(
 
 
 def _output_template(template: str | None, output_dir: str) -> str:
-    """Return the yt-dlp ``outtmpl`` expression, defaulting to ``output_dir/%(title)s.%(ext)s``."""
-    if template:
-        return template
-    return str(Path(output_dir) / "%(title)s.%(ext)s")
+    """Return the yt-dlp ``outtmpl`` expression rooted under ``output_dir``."""
+    return resolve_output_template(template, output_dir)
+
+
+def resolve_output_template(template: str | None, output_dir: str | Path) -> str:
+    """Return the yt-dlp ``outtmpl`` expression rooted under ``output_dir``.
+
+    A ``None`` template falls back to ``<output_dir>/%(title)s.%(ext)s``.
+    Relative templates are joined to ``output_dir`` so a UI-supplied
+    template never escapes the configured downloads directory. Absolute
+    templates are returned untouched so advanced users can target a
+    fully-qualified path.
+    """
+    base_dir = Path(output_dir)
+    if not template:
+        return str(base_dir / "%(title)s.%(ext)s")
+    candidate = Path(template)
+    if candidate.is_absolute():
+        return str(candidate)
+    if ".." in candidate.parts:
+        raise ValueError("output template must stay within the configured downloads directory")
+    return str(base_dir / candidate)
+
+
+def render_transcript_text(subtitle_text: str) -> str:
+    """Convert SRT-formatted subtitles to a plain-text transcript.
+
+    SRT cues consist of a numeric index, a ``-->`` timestamp line, and
+    one or more caption lines. This helper drops the index, the
+    timestamp line, and blank separators, joining the remaining text
+    lines with a trailing newline each so the transcript reads as a
+    continuous paragraph-per-cue document.
+    """
+    lines: list[str] = []
+    raw_lines = subtitle_text.splitlines()
+    index = 0
+    while index < len(raw_lines):
+        line = raw_lines[index].strip()
+        next_line = raw_lines[index + 1].strip() if index + 1 < len(raw_lines) else ""
+        if not line:
+            index += 1
+            continue
+        if line.isdigit() and _SRT_TIMESTAMP_RE.match(next_line):
+            index += 2
+            continue
+        if _SRT_TIMESTAMP_RE.match(line):
+            index += 1
+            continue
+        lines.append(line)
+        index += 1
+    return "".join(f"{line}\n" for line in lines)
+
+
+def write_transcript_sidecar(subtitle_path: str | Path) -> Path:
+    """Write a sibling ``.txt`` transcript next to ``subtitle_path``.
+
+    The transcript is derived from the subtitle text by
+    :func:`render_transcript_text` and written to ``<stem>.txt``,
+    overwriting any existing file. Returns the path of the written
+    transcript file.
+    """
+    path = Path(subtitle_path)
+    transcript_path = path.with_suffix(".txt")
+    transcript_path.write_text(
+        render_transcript_text(path.read_text(encoding="utf-8")),
+        encoding="utf-8",
+    )
+    return transcript_path
 
 
 def run_download(
@@ -295,6 +404,17 @@ def run_download(
     Path(output_dir).mkdir(parents=True, exist_ok=True)
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        ydl.download([url])
+        info = ydl.extract_info(url, download=True)
+
+    if subtitles:
+        requested_subtitles = (info or {}).get("requested_subtitles") or {}
+        for subtitle in requested_subtitles.values():
+            subtitle_path = subtitle.get("filepath")
+            if not subtitle_path:
+                continue
+            try:
+                write_transcript_sidecar(subtitle_path)
+            except OSError as exc:
+                raise RuntimeError(f"unable to open for writing: {exc}") from exc
 
     return captured_path["path"] or ""

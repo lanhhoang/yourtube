@@ -73,11 +73,13 @@ def test_run_download_raises_when_hook_cancels(tmp_path: Path) -> None:
         fake_ydl = MagicMock()
         fake_ydl.__enter__.return_value = fake_ydl
 
-        def fake_download(urls):  # noqa: ARG001
+        def fake_extract_info(url, download):  # noqa: ARG001
+            assert download is True
             for hook in captured_opts["progress_hooks"]:
                 hook({"status": "downloading", "_percent_str": "10.0%"})
+            return {}
 
-        fake_ydl.download.side_effect = fake_download
+        fake_ydl.extract_info.side_effect = fake_extract_info
         return fake_ydl
 
     with patch("yt_dlp.YoutubeDL", side_effect=factory):
@@ -101,11 +103,13 @@ def test_run_download_returns_output_path_on_success(tmp_path: Path) -> None:
         fake_ydl = MagicMock()
         fake_ydl.__enter__.return_value = fake_ydl
 
-        def fake_download(urls):  # noqa: ARG001
+        def fake_extract_info(url, download):  # noqa: ARG001
+            assert download is True
             for hook in captured_opts["progress_hooks"]:
                 hook({"status": "finished", "filename": expected_path})
+            return {}
 
-        fake_ydl.download.side_effect = fake_download
+        fake_ydl.extract_info.side_effect = fake_extract_info
         return fake_ydl
 
     with patch("yt_dlp.YoutubeDL", side_effect=factory):
@@ -129,11 +133,13 @@ def test_run_download_returns_output_path_without_progress_hook(tmp_path: Path) 
         fake_ydl = MagicMock()
         fake_ydl.__enter__.return_value = fake_ydl
 
-        def fake_download(urls):  # noqa: ARG001
+        def fake_extract_info(url, download):  # noqa: ARG001
+            assert download is True
             for hook in captured_opts["progress_hooks"]:
                 hook({"status": "finished", "filename": expected_path})
+            return {}
 
-        fake_ydl.download.side_effect = fake_download
+        fake_ydl.extract_info.side_effect = fake_extract_info
         return fake_ydl
 
     with patch("yt_dlp.YoutubeDL", side_effect=factory):
@@ -141,4 +147,75 @@ def test_run_download_returns_output_path_without_progress_hook(tmp_path: Path) 
             url="https://example.com/video",
             output_dir=str(tmp_path),
         )
+    assert result == expected_path
+
+
+def test_run_download_writes_transcript_sidecar_when_subtitles_present(tmp_path: Path) -> None:
+    """Subtitle downloads produce sibling plain-text transcript sidecars."""
+    expected_path = str(tmp_path / "video.mp4")
+    subtitle_path = tmp_path / "video.en.srt"
+    subtitle_path.write_text(
+        "1\n00:00:00,000 --> 00:00:01,000\nFirst line\n",
+        encoding="utf-8",
+    )
+
+    captured_opts: dict = {}
+
+    def factory(opts):
+        captured_opts.update(opts)
+        fake_ydl = MagicMock()
+        fake_ydl.__enter__.return_value = fake_ydl
+
+        def fake_extract_info(url, download):  # noqa: ARG001
+            for hook in captured_opts["progress_hooks"]:
+                hook({"status": "finished", "filename": expected_path})
+            return {
+                "requested_subtitles": {
+                    "en": {
+                        "ext": "srt",
+                        "filepath": str(subtitle_path),
+                    }
+                }
+            }
+
+        fake_ydl.extract_info.side_effect = fake_extract_info
+        return fake_ydl
+
+    with patch("yt_dlp.YoutubeDL", side_effect=factory):
+        result = run_download(
+            url="https://example.com/video",
+            output_dir=str(tmp_path),
+            subtitles=True,
+        )
+
+    assert result == expected_path
+    assert subtitle_path.with_suffix(".txt").read_text(encoding="utf-8") == "First line\n"
+
+
+def test_run_download_succeeds_when_requested_subtitles_are_absent(tmp_path: Path) -> None:
+    """Missing subtitles stay best-effort and do not fail the media download."""
+    expected_path = str(tmp_path / "video.mp4")
+
+    captured_opts: dict = {}
+
+    def factory(opts):
+        captured_opts.update(opts)
+        fake_ydl = MagicMock()
+        fake_ydl.__enter__.return_value = fake_ydl
+
+        def fake_extract_info(url, download):  # noqa: ARG001
+            for hook in captured_opts["progress_hooks"]:
+                hook({"status": "finished", "filename": expected_path})
+            return {"requested_subtitles": {}}
+
+        fake_ydl.extract_info.side_effect = fake_extract_info
+        return fake_ydl
+
+    with patch("yt_dlp.YoutubeDL", side_effect=factory):
+        result = run_download(
+            url="https://example.com/video",
+            output_dir=str(tmp_path),
+            subtitles=True,
+        )
+
     assert result == expected_path

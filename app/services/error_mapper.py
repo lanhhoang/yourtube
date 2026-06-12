@@ -45,6 +45,11 @@ _RULES: list[tuple[str, str, re.Pattern[str]]] = [
         re.compile(r"no space left|disk full", re.IGNORECASE),
     ),
     (
+        "output_path_unwritable",
+        "Your configured output path or template is not writable. Check downloads directory and output template settings.",  # noqa: E501
+        re.compile(r"unable to open for writing", re.IGNORECASE),
+    ),
+    (
         "permission_denied",
         "The app does not have permission to write the output file.",
         re.compile(r"permission denied", re.IGNORECASE),
