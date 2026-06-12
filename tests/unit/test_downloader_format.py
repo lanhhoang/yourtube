@@ -11,6 +11,7 @@ from __future__ import annotations
 from app.schemas import FormatInfo
 from app.services.downloader import (
     build_format_selector,
+    build_stream_picker_payload,
     infer_expected_container,
     normalize_formats,
 )
@@ -276,3 +277,74 @@ def test_infer_expected_container_returns_audio_ext_for_audio_only_stream() -> N
 
 def test_infer_expected_container_returns_unknown_when_no_streams_are_selected() -> None:
     assert infer_expected_container(None, None) == "unknown"
+
+
+def test_build_stream_picker_payload_groups_video_and_audio_rows() -> None:
+    formats = [
+        FormatInfo(
+            format_id="401",
+            ext="mp4",
+            stream_kind="video",
+            height=2160,
+            resolution="2160p",
+            vcodec="av01.0.08M.08",
+            acodec="none",
+            container="mp4_dash",
+        ),
+        FormatInfo(
+            format_id="140",
+            ext="m4a",
+            stream_kind="audio",
+            abr=128.0,
+            audio_channels=2,
+            vcodec="none",
+            acodec="mp4a.40.2",
+            container="m4a_dash",
+        ),
+        FormatInfo(
+            format_id="18",
+            ext="mp4",
+            stream_kind="muxed",
+            resolution="360p",
+            vcodec="avc1.42001E",
+            acodec="mp4a.40.2",
+            container="mp4",
+        ),
+    ]
+
+    payload = build_stream_picker_payload(formats)
+
+    assert [row["format_id"] for row in payload["video_streams"]] == ["401"]
+    assert [row["format_id"] for row in payload["audio_streams"]] == ["140"]
+    assert payload["has_muxed_streams"] is True
+
+
+def test_build_stream_picker_payload_serializes_expected_container_pairs() -> None:
+    formats = [
+        FormatInfo(
+            format_id="137",
+            ext="mp4",
+            stream_kind="video",
+            resolution="1080p",
+            vcodec="avc1.640028",
+            acodec="none",
+            container="mp4_dash",
+        ),
+        FormatInfo(
+            format_id="140",
+            ext="m4a",
+            stream_kind="audio",
+            abr=128.0,
+            audio_channels=2,
+            vcodec="none",
+            acodec="mp4a.40.2",
+            container="m4a_dash",
+        ),
+    ]
+
+    payload = build_stream_picker_payload(formats)
+
+    assert payload["expected_container_by_pair"]["|"] == "unknown"
+    assert payload["expected_container_by_pair"]["137|"] == "mp4"
+    assert payload["expected_container_by_pair"]["|140"] == "m4a"
+    assert payload["expected_container_by_pair"]["137|140"] == "mp4"
