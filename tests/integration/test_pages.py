@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+import re
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -216,12 +219,25 @@ def test_info_lookup_fragment_renders_stream_picker_markup(monkeypatch) -> None:
         response = client.post("/info/form", data={"url": "https://example.com/watch?v=1"})
 
     assert response.status_code == 200
-    assert 'x-data="streamPicker(' in response.text
+    match = re.search(r"x-data='([^']+)'", response.text)
+    assert match is not None
+    x_data = match.group(1)
+    assert x_data.startswith("streamPicker(")
+    assert x_data.endswith(")")
+    payload = json.loads(x_data.removeprefix("streamPicker(").removesuffix(")"))
     assert "Video Streams" in response.text
     assert "Audio Streams" in response.text
     assert "Expected container" in response.text
+    assert payload["video_streams"][0]["format_id"] == "401"
+    assert payload["audio_streams"][0]["format_id"] == "140"
+    assert payload["has_muxed_streams"] is True
+    assert payload["expected_container_by_pair"]["401|140"] == "mp4"
+    assert all(row["format_id"] != "18" for row in payload["video_streams"])
+    assert all(row["format_id"] != "18" for row in payload["audio_streams"])
     assert 'name="video_format_id"' in response.text
     assert 'name="audio_format_id"' in response.text
+    assert ':value="selectedVideoId"' in response.text
+    assert ':value="selectedAudioId"' in response.text
     assert 'name="title"' in response.text
     assert 'name="uploader"' in response.text
     assert 'name="duration"' in response.text
@@ -229,6 +245,7 @@ def test_info_lookup_fragment_renders_stream_picker_markup(monkeypatch) -> None:
     assert 'name="output_template"' in response.text
     assert 'name="audio_bitrate"' in response.text
     assert 'name="subtitles"' in response.text
+    assert "x-cloak" in response.text
     assert "Default format selection remains available" in response.text
 
 

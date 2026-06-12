@@ -18,7 +18,7 @@
 
     <form
       id="enqueue-form"
-      x-data="streamPicker({{ picker_payload|tojson|safe }})"
+      x-data='streamPicker({{ picker_payload|tojson }})'
       hx-post="/downloads/form"
       hx-target="#info-status"
       hx-swap="innerHTML"
@@ -147,7 +147,7 @@
         Advanced options
       </button>
 
-      <section class="advanced-panel" x-show="advancedOpen">
+      <section class="advanced-panel" x-cloak x-show="advancedOpen">
         <label><input type="checkbox" name="subtitles" /> Download subtitles</label>
         <label for="output-template">Output template</label>
         <input id="output-template" name="output_template" placeholder="%(title)s.%(ext)s" />
