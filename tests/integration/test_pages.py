@@ -17,13 +17,13 @@ def test_home_queue_library_and_settings_pages_render() -> None:
         settings = client.get("/settings")
 
     assert home.status_code == 200
-    assert "Download a video" in home.text
+    assert "Download with editorial calm." in home.text
     assert queue.status_code == 200
-    assert "Active Queue" in queue.text
+    assert "Queue ledger" in queue.text
     assert library.status_code == 200
-    assert "Library" in library.text
+    assert "Archive library" in library.text
     assert settings.status_code == 200
-    assert "Settings" in settings.text
+    assert "Control settings" in settings.text
 
 
 def test_queue_and_library_pages_render_initial_rows(db_session_visible) -> None:
@@ -119,12 +119,14 @@ def test_library_page_renders_archive_shell() -> None:
     assert 'hx-get="/library/rows"' in response.text
 
 
-def test_settings_page_exposes_form_and_restart_notice() -> None:
+def test_settings_page_renders_editorial_control_room() -> None:
     with TestClient(app) as client:
         response = client.get("/settings")
 
     assert response.status_code == 200
+    assert "Control settings" in response.text
     assert 'id="settings-form"' in response.text
+    assert 'id="settings-status"' in response.text
     assert 'hx-put="/settings/form"' in response.text
     assert "takes effect after restart" in response.text
 
@@ -169,8 +171,6 @@ def test_settings_reset_returns_updated_form(db_session_visible) -> None:
 
 
 def test_settings_page_renders_runtime_status(monkeypatch) -> None:
-    """Phase 5: the settings page surfaces a runtime status panel when degraded."""
-
     class _FakeStatus:
         def __init__(self) -> None:
             self.level = "warning"
@@ -186,5 +186,5 @@ def test_settings_page_renders_runtime_status(monkeypatch) -> None:
         response = client.get("/settings")
 
     assert response.status_code == 200
+    assert 'class="status-card status-card-warning"' in response.text
     assert "Node.js runtime missing." in response.text
-    assert "Runtime status" in response.text
