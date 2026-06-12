@@ -1,7 +1,7 @@
 {% if runtime_status.messages %}
-<section class="status-panel status-panel-{{ runtime_status.level }}">
-  <h2>Runtime status</h2>
-  <ul>
+<section class="status-card status-card-{{ runtime_status.level }}">
+  <p class="eyebrow">Runtime status</p>
+  <ul class="status-list">
     {% for message in runtime_status.messages %}
     <li>{{ message }}</li>
     {% endfor %}

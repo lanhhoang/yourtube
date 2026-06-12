@@ -135,10 +135,10 @@ See: `plans/2026-06-09-yourtube-design-phase-5.md`
 
 ### Phase 6
 
-- Refactor the HTMX UI into the approved `Media Shelf` direction.
-- Make home the primary hub with quick download, active-jobs summary, and recent library preview.
-- Keep `/queue` as the detailed management page and surface Phase 5 diagnostics in `/settings`.
-- Preserve the existing FastAPI + Jinja + HTMX stack and Phase 3A JSON APIs.
+- Refactor the existing app routes into a near-copy editorial UI based on `averygan-reclip/templates/index.html`.
+- Keep `/`, `/queue`, `/library`, and `/settings` as the route set, with `/` becoming a landing-first homepage that still contains the working downloader flow.
+- Preserve the existing HTMX fragment endpoints while redesigning their markup for archive, ledger, notebook, and media-card layouts.
+- Use `Playfair Display` for headlines and `Work Sans` for body/UI text to match the editorial direction without sacrificing operational readability.
 
 See: `plans/2026-06-09-yourtube-design-phase-6.md`
 
@@ -213,8 +213,8 @@ Startup behavior:
 - `docker compose up` boots a fresh database, self-migrates through the existing application startup flow, and serves on port `8000`.
 - Worker threads can claim and run jobs without detached-instance errors after containerized startup.
 - The shipped runtime includes a supported JS runtime for yt-dlp YouTube extraction.
-- The UI exposes lightweight runtime/worker diagnostics before the larger Media Shelf redesign lands.
-- Phase 6 redesign makes `/` the home hub while keeping `/queue` as the detailed management view.
+- The UI exposes lightweight runtime/worker diagnostics before the larger editorial app port lands.
+- Phase 6 redesign keeps the existing route set, makes `/` a landing-first editorial homepage, and ports queue/library/settings into the same shared visual system.
 - CI fails if migrations are broken or omitted.
 
 ## Design Decisions
@@ -242,7 +242,7 @@ The first migration is `20260609233000_create_downloads_and_settings.py`.
   - templates, partials, and browser interactions -> Phase 3B
   - Docker -> Phase 4
   - worker/runtime stabilization and diagnostics -> Phase 5
-  - Media Shelf UI refactor -> Phase 6
+  - editorial app port UI refactor -> Phase 6
   - CI -> Phase 1 (pre-added)
 - Placeholder scan: no `SQLModel`, no CLI-first milestones, no custom schema version flow remain.
 - Type consistency:
