@@ -8,8 +8,10 @@ download driver (``run_download`` plus the ``YtdlpProgress`` hook and
 
 from __future__ import annotations
 
+import os
 import re
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, TypedDict
 
@@ -18,6 +20,21 @@ from app.schemas import FormatInfo, StreamKind
 
 class DownloadCancelled(Exception):  # noqa: N818 - name fixed by plan contract
     """Raised inside the progress hook when cancellation is requested."""
+
+
+@dataclass(frozen=True)
+class DownloadResult:
+    """Result of :func:`run_download`: the output path plus file metadata.
+
+    ``file_size``, ``media_format``, and ``resolution_height`` are best-effort
+    — any of them may be ``None`` if yt-dlp didn't report the value and the
+    output file is unavailable for stat-ing.
+    """
+
+    path: str
+    file_size: int | None
+    media_format: str | None
+    resolution_height: int | None
 
 
 # Type alias for the yt-dlp progress hook. yt-dlp passes a dict to each
@@ -449,6 +466,31 @@ def write_transcript_sidecar(subtitle_path: str | Path) -> Path:
     return transcript_path
 
 
+def _extract_file_metadata(
+    info: dict, output_path: str
+) -> tuple[int | None, str | None, int | None]:
+    """Derive ``(file_size, media_format, resolution_height)`` for a finished download.
+
+    Prefers the on-disk file size for accuracy (yt-dlp's ``filesize`` is
+    often missing for merged formats). Falls back to ``filesize`` or
+    ``filesize_approx`` from the info dict only when stat-ing the output
+    fails. ``media_format`` and ``resolution_height`` come straight from
+    the info dict and may be ``None`` when not reported.
+    """
+    media_format = _safe_str(info.get("ext"))
+    height_raw = info.get("height")
+    resolution_height = _safe_int(height_raw)
+    file_size: int | None = None
+    if output_path:
+        try:
+            file_size = os.path.getsize(output_path)
+        except OSError:
+            file_size = None
+    if file_size is None:
+        file_size = _safe_int(info.get("filesize") or info.get("filesize_approx"))
+    return file_size, media_format, resolution_height
+
+
 def run_download(
     url: str,
     video_format_id: str | None = None,
@@ -460,8 +502,8 @@ def run_download(
     cookies_file: str | None = None,
     subtitles: bool = False,
     progress_hook: YtdlpProgress | None = None,
-) -> str:
-    """Run yt-dlp and return the output file path.
+) -> DownloadResult:
+    """Run yt-dlp and return the output path plus file metadata.
 
     Raises ``DownloadCancelled`` if the progress hook signals cancellation.
     Callers should map yt-dlp errors through ``friendly_ytdlp_error()``.
@@ -504,4 +546,11 @@ def run_download(
             except OSError as exc:
                 raise RuntimeError(f"unable to open for writing: {exc}") from exc
 
-    return captured_path["path"] or ""
+    output_path = captured_path["path"] or ""
+    file_size, media_format, resolution_height = _extract_file_metadata(info or {}, output_path)
+    return DownloadResult(
+        path=output_path,
+        file_size=file_size,
+        media_format=media_format,
+        resolution_height=resolution_height,
+    )

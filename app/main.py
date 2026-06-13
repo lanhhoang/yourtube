@@ -180,7 +180,7 @@ class WorkerPool:
             on_progress=lambda percent: _persist_progress(job_id_local, percent),
         )
         try:
-            output_path = run_download(
+            result = run_download(
                 url=job_url,
                 video_format_id=job_video_format_id,
                 audio_format_id=job_audio_format_id,
@@ -208,7 +208,15 @@ class WorkerPool:
                 )
             return
         with SessionLocal() as session:
-            release_job(session, job_id_local, status="done", file_path=output_path or None)
+            release_job(
+                session,
+                job_id_local,
+                status="done",
+                file_path=result.path or None,
+                file_size=result.file_size,
+                media_format=result.media_format,
+                resolution_height=result.resolution_height,
+            )
 
 
 @asynccontextmanager

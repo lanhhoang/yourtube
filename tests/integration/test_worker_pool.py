@@ -14,7 +14,7 @@ from pathlib import Path
 
 from app.models import Download
 from app.schemas import DownloadCreate
-from app.services.downloader import DownloadCancelled
+from app.services.downloader import DownloadCancelled, DownloadResult
 from app.services.queue import enqueue_download
 from app.services.settings import set_settings_batch
 
@@ -31,7 +31,12 @@ def test_worker_success_marks_job_done(monkeypatch, db_session_visible, tmp_path
         hook = kwargs["progress_hook"]
         hook({"status": "downloading", "_percent_str": "55.0%"})
         hook({"status": "finished", "filename": str(tmp_path / "video.mp4")})
-        return str(tmp_path / "video.mp4")
+        return DownloadResult(
+            path=str(tmp_path / "video.mp4"),
+            file_size=2048,
+            media_format="mp4",
+            resolution_height=720,
+        )
 
     monkeypatch.setattr("app.main.run_download", fake_run_download)
 
@@ -44,6 +49,9 @@ def test_worker_success_marks_job_done(monkeypatch, db_session_visible, tmp_path
     assert row.status == "done"
     assert row.progress == 55.0
     assert row.file_path == str(tmp_path / "video.mp4")
+    assert row.file_size == 2048
+    assert row.media_format == "mp4"
+    assert row.resolution_height == 720
 
 
 def test_worker_cancelled_download_ends_cancelled(
@@ -109,7 +117,12 @@ def test_worker_loop_can_run_claimed_job_without_detached_instance(
     db_session_visible.commit()
 
     def fake_run_download(**kwargs):
-        return str(tmp_path / "safe.mp4")
+        return DownloadResult(
+            path=str(tmp_path / "safe.mp4"),
+            file_size=None,
+            media_format=None,
+            resolution_height=None,
+        )
 
     monkeypatch.setattr("app.main.run_download", fake_run_download)
 
