@@ -1,3 +1,14 @@
+<div class="completion-markers" hidden>
+  {% for row in completed_rows %}
+  <span
+    data-completed-job-id="{{ row.id }}"
+    data-completed-job-title="{{ row.title or row.url }}"
+    data-completed-finished-at="{{ row.finished_at.isoformat() if row.finished_at else '' }}"
+    data-completed-cursor-id="{{ row.id }}"
+  ></span>
+  {% endfor %}
+</div>
+
 {% for row in rows %}
 <article class="queue-entry" data-job-id="{{ row.id }}">
   <div class="queue-entry-main">

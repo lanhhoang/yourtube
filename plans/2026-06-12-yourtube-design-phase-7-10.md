@@ -4,7 +4,7 @@
 
 **Goal:** Deliver the next YourTube milestone: fix subtitle/output-path failures, export subtitle sidecars as `.srt` plus `.txt` transcripts, expose richer stream metadata, replace the select-based picker with an Alpine-enhanced table UI, and add in-app completion notifications.
 
-**Architecture:** Keep the current FastAPI + Jinja2 + HTMX application intact and layer the new work on top of existing route contracts. Backend correctness lands first in the downloader layer, then stream metadata grows additively, then the home-page fragment is refactored into an Alpine-managed table picker, and finally queue polling powers lightweight in-app completion toasts.
+**Architecture:** Keep the current FastAPI + Jinja2 + HTMX application intact and layer the new work on top of existing route contracts. Backend correctness lands first in the downloader layer, then stream metadata grows additively, then the home-page fragment is refactored into an Alpine-managed table picker, and finally queue polling plus a completion cursor power queue-scoped in-app completion toasts.
 
 **Tech Stack:** Python 3.12, FastAPI, SQLAlchemy 2.x, Jinja2, HTMX, Alpine.js, yt-dlp, ffmpeg, pytest, uv
 
@@ -54,7 +54,7 @@ yourtube/
 │   └── integration/
 │       ├── test_api_info.py
 │       ├── test_pages.py
-│       └── test_worker_pool.py
+│       └── test_partials.py
 └── plans/
     ├── 2026-06-12-yourtube-design-phase-7-10.md
     ├── 2026-06-12-yourtube-design-phase-7.md
@@ -70,7 +70,7 @@ Responsibilities:
 - `app/schemas.py` defines additive format metadata needed by the redesigned picker.
 - `app/routes/api.py` and `app/routes/pages.py` expose richer stream metadata without breaking existing endpoints.
 - `app/templates/partials/info_result.html` becomes the main stream-picker surface and Alpine state root.
-- `app/templates/index.html`, `app/templates/pages/queue.html`, and `app/templates/partials/queue_rows.html` expose the toast region and completed-job markers needed for notifications.
+- `app/routes/pages.py`, `app/templates/pages/queue.html`, and `app/templates/partials/queue_rows.html` expose the completion cursor, toast shell, and completed-job markers needed for queue notifications.
 
 ## Phase Overview
 
@@ -106,9 +106,9 @@ See: `plans/2026-06-12-yourtube-design-phase-9.md`
 
 ### Phase 10
 
-- Add in-app completion toasts driven by queue polling.
-- Show each completed job notification once per page session.
-- Keep notifications in-app only; do not add the browser Notification API.
+- Add queue-page in-app completion toasts driven by queue polling.
+- Use a `(finished_at, id)` completion cursor so every newly finished job is delivered exactly once per page session without relying on a lossy recent-N query.
+- Keep notifications in-app only; do not add the browser Notification API or make the toast region global in the base template.
 
 See: `plans/2026-06-12-yourtube-design-phase-10.md`
 
@@ -130,21 +130,22 @@ See: `plans/2026-06-12-yourtube-design-phase-10.md`
 - `/api/info` remains unchanged, while `/info/form` passes enough page-only payload to render distinct video/audio stream tables.
 - The home page shows table-based stream picking, a collapsed advanced section, and an expected-container hint without replacing HTMX.
 - The home page preserves hidden `title`, `uploader`, `duration`, and `thumbnail` fields when enqueueing from the redesigned fragment.
-- The browser shows exactly one in-app toast per completed job per page session while queue polling continues to drive updates.
+- The `/queue` page shows exactly one in-app toast per completed job per page session while queue polling continues to drive updates.
+- Opening `/queue` does not replay historical completions that already existed before the page load.
 
 ## Implementation Order
 
 1. Implement Phase 7 and land all backend/path tests first.
 2. Implement Phase 8 and verify the enriched format metadata via unit and API tests.
 3. Implement Phase 9 and verify the fragment markup plus Alpine asset loading.
-4. Implement Phase 10 and verify notification behavior against queue polling.
+4. Implement Phase 10 and verify notification behavior at the queue page and queue partial seams.
 
 ## Testing Strategy
 
 - Phase 7: `uv run pytest tests/unit/test_downloader_runtime_resolution.py tests/unit/test_downloader_format.py tests/unit/test_friendly_errors.py -v`
 - Phase 8: `uv run pytest tests/unit/test_downloader_format.py tests/integration/test_api_info.py -v`
 - Phase 9: `uv run pytest tests/unit/test_downloader_format.py tests/integration/test_pages.py -v`
-- Phase 10: `uv run pytest tests/integration/test_pages.py tests/integration/test_worker_pool.py -v`
+- Phase 10: `uv run pytest tests/integration/test_pages.py tests/integration/test_partials.py -v`
 
 ## Commit Strategy
 

@@ -4,12 +4,29 @@ from __future__ import annotations
 
 import json
 import re
+from datetime import datetime
+from html.parser import HTMLParser
 
 from fastapi.testclient import TestClient
 
 from app.main import app
 from app.models import Download
 from app.services.settings import set_settings_batch
+
+
+class _InputValueParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.values: dict[str, str] = {}
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag != "input":
+            return
+        attr_map = dict(attrs)
+        input_id = attr_map.get("id")
+        value = attr_map.get("value")
+        if input_id is not None and value is not None:
+            self.values[input_id] = value
 
 
 def test_home_queue_library_and_settings_pages_render() -> None:
@@ -279,3 +296,48 @@ def test_settings_page_renders_runtime_status(monkeypatch) -> None:
     assert response.status_code == 200
     assert 'class="status-card status-card-warning"' in response.text
     assert "Node.js runtime missing." in response.text
+
+
+def test_queue_page_renders_notification_shell() -> None:
+    with TestClient(app) as client:
+        response = client.get("/queue")
+
+    assert response.status_code == 200
+    assert 'x-data="queueNotifications()"' in response.text
+    assert 'id="toast-region"' in response.text
+    assert 'id="queue-after-finished-at"' in response.text
+    assert 'id="queue-after-id"' in response.text
+
+
+def test_queue_page_seeds_cursor_without_initial_completion_markers(db_session_visible) -> None:
+    done = Download(
+        url="https://example.com/done",
+        title="Already finished",
+        status="done",
+        progress=100.0,
+        finished_at=datetime(2026, 6, 12, 9, 15, 0),
+    )
+    db_session_visible.add(done)
+    db_session_visible.commit()
+
+    with TestClient(app) as client:
+        response = client.get("/queue")
+
+    parser = _InputValueParser()
+    parser.feed(response.text)
+
+    assert response.status_code == 200
+    assert parser.values["queue-after-finished-at"] == "2026-06-12T09:15:00"
+    assert parser.values["queue-after-id"] == str(done.id)
+    assert f'data-completed-job-id="{done.id}"' not in response.text
+
+
+def test_queue_page_notification_script_persists_cursor_and_seen_ids() -> None:
+    with TestClient(app) as client:
+        response = client.get("/queue")
+
+    assert response.status_code == 200
+    assert 'sessionStorage.getItem("yt-seen-completed-jobs")' in response.text
+    assert 'sessionStorage.setItem("yt-queue-after-finished-at"' in response.text
+    assert 'hx-include="#queue-after-finished-at, #queue-after-id"' in response.text
+    assert "dismiss(jobId)" in response.text

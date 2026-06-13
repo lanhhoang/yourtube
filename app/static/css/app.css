@@ -637,3 +637,48 @@ button:active,
   border-radius: var(--radius-md);
   background: var(--card-alt);
 }
+
+.toast-region {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 30;
+  display: grid;
+  gap: 12px;
+  width: min(360px, calc(100vw - 32px));
+}
+
+.toast {
+  padding: 18px 20px;
+  border: 1px solid rgba(47, 125, 77, 0.22);
+  border-radius: var(--radius-md);
+  background: rgba(255, 253, 249, 0.97);
+  box-shadow: 0 14px 40px rgba(51, 49, 45, 0.12);
+}
+
+.toast h2 {
+  margin: 6px 0 0;
+  font-size: 1.15rem;
+}
+
+.toast-dismiss {
+  margin-top: 12px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--accent);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.toast-dismiss:hover {
+  color: var(--accent-hover);
+}
+
+@media (max-width: 720px) {
+  .toast-region {
+    right: 14px;
+    bottom: 14px;
+    width: calc(100vw - 28px);
+  }
+}

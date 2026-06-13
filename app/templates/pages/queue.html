@@ -1,12 +1,95 @@
 {% extends "index.html" %}
 {% block title %}YourTube | Queue{% endblock %}
 {% block content %}
-<section class="page-panel">
+<section class="page-panel" x-data="queueNotifications()" x-init="boot()">
+  <script>
+    function queueNotifications() {
+      return {
+        toasts: [],
+        seenCompletedJobs: new Set(
+          JSON.parse(sessionStorage.getItem("yt-seen-completed-jobs") || "[]")
+        ),
+        afterFinishedAt: sessionStorage.getItem("yt-queue-after-finished-at") || "",
+        afterId: sessionStorage.getItem("yt-queue-after-id") || "0",
+        boot() {
+          const seededFinishedAt = this.$refs.afterFinishedAt.dataset.initialValue || "";
+          const seededAfterId = this.$refs.afterId.dataset.initialValue || "0";
+          if (!this.afterFinishedAt && seededFinishedAt) {
+            this.afterFinishedAt = seededFinishedAt;
+          }
+          if ((this.afterId === "" || this.afterId === "0") && seededAfterId !== "0") {
+            this.afterId = seededAfterId;
+          }
+          this.persistCursor();
+          this.scan(this.$root);
+          document.body.addEventListener("htmx:afterSwap", (event) => {
+            if (event.target && event.target.id === "queue-rows") {
+              this.scan(event.target);
+            }
+          });
+        },
+        persistCursor() {
+          sessionStorage.setItem("yt-queue-after-finished-at", this.afterFinishedAt);
+          sessionStorage.setItem("yt-queue-after-id", this.afterId);
+          sessionStorage.setItem(
+            "yt-seen-completed-jobs",
+            JSON.stringify([...this.seenCompletedJobs])
+          );
+        },
+        scan(root) {
+          root.querySelectorAll("[data-completed-job-id]").forEach((row) => {
+            const jobId = row.dataset.completedJobId;
+            if (this.seenCompletedJobs.has(jobId)) return;
+            this.seenCompletedJobs.add(jobId);
+            this.afterFinishedAt = row.dataset.completedFinishedAt || this.afterFinishedAt;
+            this.afterId = row.dataset.completedCursorId || this.afterId;
+            this.toasts.push({ id: jobId, title: row.dataset.completedJobTitle });
+            this.persistCursor();
+            window.setTimeout(() => this.dismiss(jobId), 5000);
+          });
+        },
+        dismiss(jobId) {
+          this.toasts = this.toasts.filter((toast) => toast.id !== jobId);
+        },
+      };
+    }
+  </script>
+
   <div class="panel-heading">
     <p class="eyebrow">Operations</p>
     <h1>Queue ledger</h1>
     <p>Queued and active downloads update automatically.</p>
   </div>
+
+  <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="false">
+    <template x-for="toast in toasts" :key="toast.id">
+      <article class="toast">
+        <p class="eyebrow">Completed</p>
+        <h2 x-text="toast.title"></h2>
+        <button type="button" class="toast-dismiss" @click="dismiss(toast.id)">Dismiss</button>
+      </article>
+    </template>
+  </div>
+
+  <input
+    id="queue-after-finished-at"
+    x-ref="afterFinishedAt"
+    type="hidden"
+    name="after_finished_at"
+    value="{{ after_finished_at }}"
+    x-model="afterFinishedAt"
+    data-initial-value="{{ after_finished_at }}"
+  />
+  <input
+    id="queue-after-id"
+    x-ref="afterId"
+    type="hidden"
+    name="after_id"
+    value="{{ after_id }}"
+    x-model="afterId"
+    data-initial-value="{{ after_id }}"
+  />
+
   <div id="queue-status"></div>
   <div class="queue-ledger">
     <div class="ledger-head">
@@ -16,6 +99,7 @@
       id="queue-rows"
       hx-get="/queue/rows"
       hx-trigger="load, every 2s"
+      hx-include="#queue-after-finished-at, #queue-after-id"
       hx-swap="innerHTML"
     >
       {% include "partials/queue_rows.html" %}
