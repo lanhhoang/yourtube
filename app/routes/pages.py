@@ -2,9 +2,8 @@
 
 Page routes render full Jinja pages with useful initial state from the
 existing services. Browser-facing HTMX routes return HTML fragments for
-lookup, enqueue, queue refreshes, library actions, and settings
-changes. The existing Phase 3A JSON API in ``app.routes.api`` stays
-intact as the backend contract.
+lookup, enqueue, queue refreshes, library actions, settings
+changes, and downloaded file delivery.
 """
 
 from __future__ import annotations
