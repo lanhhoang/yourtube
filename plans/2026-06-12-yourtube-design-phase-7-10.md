@@ -98,6 +98,8 @@ See: `plans/2026-06-12-yourtube-design-phase-8.md`
 
 - Replace the select-based picker in the home-page lookup result with `Video Streams` and `Audio Streams` tables.
 - Introduce Alpine.js for local UI state only: row selection, advanced-toggle state, and expected-container hint updates.
+- Add a narrow backend helper that shapes a `picker_payload` for the fragment so stream grouping and expected-container rules stay canonical in Python.
+- Preserve the existing hidden enqueue metadata fields and keep blank selection as a valid "let yt-dlp choose" path.
 - Preserve HTMX submission and existing browser-facing route IDs.
 
 See: `plans/2026-06-12-yourtube-design-phase-9.md`
@@ -115,6 +117,7 @@ See: `plans/2026-06-12-yourtube-design-phase-10.md`
 - Do not broaden Alpine.js into a full client-side rewrite.
 - Do not break `POST /api/info`, `POST /downloads/form`, or the Phase 6 route set.
 - Do not add server-side stream grouping before phase 9; phase 8 only enriches per-format metadata.
+- Do not drop existing enqueue metadata fields when replacing the format picker UI.
 - Do not promise MP4 output for incompatible stream combinations; MKV fallback is valid and should be surfaced honestly.
 - Do not hardcode container compatibility from the gist; use actual normalized yt-dlp metadata and small compatibility helpers in code.
 - Keep tests narrow and phase-specific so each phase can be implemented and reviewed independently.
@@ -124,8 +127,9 @@ See: `plans/2026-06-12-yourtube-design-phase-10.md`
 - Enabling subtitles with a relative output template no longer produces permission-denied writes in the process working directory.
 - Enabling subtitles yields best-effort English-first `.srt` subtitle export plus sibling plain-text `.txt` transcripts when captions exist, without failing the media download when captions are absent.
 - The downloader can explain when a selected stream pair is expected to merge as MP4 versus fallback to MKV.
-- `/api/info` and `/info/form` expose enough metadata to render distinct video/audio stream tables.
+- `/api/info` remains unchanged, while `/info/form` passes enough page-only payload to render distinct video/audio stream tables.
 - The home page shows table-based stream picking, a collapsed advanced section, and an expected-container hint without replacing HTMX.
+- The home page preserves hidden `title`, `uploader`, `duration`, and `thumbnail` fields when enqueueing from the redesigned fragment.
 - The browser shows exactly one in-app toast per completed job per page session while queue polling continues to drive updates.
 
 ## Implementation Order
@@ -139,7 +143,7 @@ See: `plans/2026-06-12-yourtube-design-phase-10.md`
 
 - Phase 7: `uv run pytest tests/unit/test_downloader_runtime_resolution.py tests/unit/test_downloader_format.py tests/unit/test_friendly_errors.py -v`
 - Phase 8: `uv run pytest tests/unit/test_downloader_format.py tests/integration/test_api_info.py -v`
-- Phase 9: `uv run pytest tests/integration/test_pages.py -v`
+- Phase 9: `uv run pytest tests/unit/test_downloader_format.py tests/integration/test_pages.py -v`
 - Phase 10: `uv run pytest tests/integration/test_pages.py tests/integration/test_worker_pool.py -v`
 
 ## Commit Strategy

@@ -11,7 +11,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 
 from app.schemas import FormatInfo, StreamKind
 
@@ -23,6 +23,29 @@ class DownloadCancelled(Exception):  # noqa: N818 - name fixed by plan contract
 # Type alias for the yt-dlp progress hook. yt-dlp passes a dict to each
 # ``progress_hooks`` entry; the schema mirrors what the project consumes.
 ProgressHook = Callable[[dict[str, Any]], None]
+
+
+class StreamPickerRow(TypedDict):
+    """Serialized stream row consumed by the Alpine picker."""
+
+    format_id: str
+    ext: str
+    resolution: str | None
+    height: int | None
+    vcodec: str | None
+    acodec: str | None
+    abr: float | None
+    audio_channels: int | None
+    container: str | None
+
+
+class StreamPickerPayload(TypedDict):
+    """Browser payload for the Alpine stream picker."""
+
+    video_streams: list[StreamPickerRow]
+    audio_streams: list[StreamPickerRow]
+    has_muxed_streams: bool
+    expected_container_by_pair: dict[str, str]
 
 
 class YtdlpProgress:
@@ -296,6 +319,51 @@ def infer_expected_container(video: FormatInfo | None, audio: FormatInfo | None)
         return "mp4"
 
     return "mkv"
+
+
+def build_stream_picker_payload(formats: list[FormatInfo]) -> StreamPickerPayload:
+    """Shape normalized formats into a browser payload for the Alpine picker.
+
+    Splits the stream tables by ``stream_kind`` (``video`` vs. ``audio``),
+    records whether the source exposes any ``muxed`` combined streams so
+    the UI can show a fallback hint, and pre-computes the expected merge
+    container for every ``<video_id>|<audio_id>`` pair (including the
+    "no video" and "no audio" sentinel pairs) so the canonical Python
+    rules stay the single source of truth.
+    """
+    video_streams = [f for f in formats if f.stream_kind == "video"]
+    audio_streams = [f for f in formats if f.stream_kind == "audio"]
+    has_muxed_streams = any(f.stream_kind == "muxed" for f in formats)
+
+    def _row(item: FormatInfo) -> StreamPickerRow:
+        return {
+            "format_id": item.format_id,
+            "ext": item.ext,
+            "resolution": item.resolution,
+            "height": item.height,
+            "vcodec": item.vcodec,
+            "acodec": item.acodec,
+            "abr": item.abr,
+            "audio_channels": item.audio_channels,
+            "container": item.container,
+        }
+
+    expected_container_by_pair: dict[str, str] = {"|": "unknown"}
+    for video in video_streams:
+        expected_container_by_pair[f"{video.format_id}|"] = infer_expected_container(video, None)
+    for audio in audio_streams:
+        expected_container_by_pair[f"|{audio.format_id}"] = infer_expected_container(None, audio)
+    for video in video_streams:
+        for audio in audio_streams:
+            key = f"{video.format_id}|{audio.format_id}"
+            expected_container_by_pair[key] = infer_expected_container(video, audio)
+
+    return {
+        "video_streams": [_row(item) for item in video_streams],
+        "audio_streams": [_row(item) for item in audio_streams],
+        "has_muxed_streams": has_muxed_streams,
+        "expected_container_by_pair": expected_container_by_pair,
+    }
 
 
 def _format_selector(
