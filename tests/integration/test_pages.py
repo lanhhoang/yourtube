@@ -6,6 +6,7 @@ import json
 import re
 from datetime import datetime
 from html.parser import HTMLParser
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 
@@ -341,3 +342,42 @@ def test_queue_page_notification_script_persists_cursor_and_seen_ids() -> None:
     assert 'sessionStorage.setItem("yt-queue-after-finished-at"' in response.text
     assert 'hx-include="#queue-after-finished-at, #queue-after-id"' in response.text
     assert "dismiss(jobId)" in response.text
+
+
+def test_download_file_serves_completed_job(db_session_visible, tmp_path: Path) -> None:
+    file_path = tmp_path / "video.mp4"
+    file_path.write_bytes(b"data")
+    row = Download(
+        url="https://example.com/done",
+        status="done",
+        progress=100.0,
+        file_path=str(file_path),
+    )
+    db_session_visible.add(row)
+    db_session_visible.commit()
+    db_session_visible.refresh(row)
+
+    with TestClient(app) as client:
+        response = client.get(f"/downloads/{row.id}/file")
+
+    assert response.status_code == 200
+    assert response.content == b"data"
+
+
+def test_download_file_rejects_non_done_job(db_session_visible) -> None:
+    row = Download(url="https://example.com/queued", status="queued", progress=0.0)
+    db_session_visible.add(row)
+    db_session_visible.commit()
+    db_session_visible.refresh(row)
+
+    with TestClient(app) as client:
+        response = client.get(f"/downloads/{row.id}/file")
+
+    assert response.status_code == 409
+
+
+def test_download_file_returns_404_for_unknown_id() -> None:
+    with TestClient(app) as client:
+        response = client.get("/downloads/9999/file")
+
+    assert response.status_code == 404

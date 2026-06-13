@@ -2,9 +2,8 @@
 
 Page routes render full Jinja pages with useful initial state from the
 existing services. Browser-facing HTMX routes return HTML fragments for
-lookup, enqueue, queue refreshes, library actions, and settings
-changes. The existing Phase 3A JSON API in ``app.routes.api`` stays
-intact as the backend contract.
+lookup, enqueue, queue refreshes, library actions, settings
+changes, and downloaded file delivery.
 """
 
 from __future__ import annotations
@@ -12,14 +11,15 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Form, Query, Request
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from starlette.datastructures import FormData, UploadFile
 
 from app.config import settings
 from app.db import get_session
+from app.models import Download
 from app.schemas import DownloadCreate
 from app.services.diagnostics import collect_runtime_diagnostics
 from app.services.downloader import (
@@ -141,6 +141,24 @@ def library_rows(
         "partials/library_rows.html",
         {"rows": rows, "query": q},
     )
+
+
+@router.get("/downloads/{job_id}/file")
+def download_file(job_id: int, session: Session = Depends(get_session)) -> FileResponse:
+    """Stream the completed file for a ``done`` job.
+
+    Returns 404 when the row is missing, 409 when the job is not yet
+    ready, and 404 when the on-disk file has been moved or deleted.
+    """
+    row = session.get(Download, job_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Download not found.")
+    if row.status != "done" or not row.file_path:
+        raise HTTPException(status_code=409, detail="Download is not ready.")
+    path = Path(row.file_path)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="File is missing.")
+    return FileResponse(path)
 
 
 # --- HTMX mutation routes --------------------------------------------------

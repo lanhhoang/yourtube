@@ -45,6 +45,26 @@ def test_library_rows_partial_renders_archive_entries(db_session_visible) -> Non
     assert 'hx-delete="/library/delete/' in response.text
 
 
+def test_library_rows_partial_links_to_pages_file_route(db_session_visible) -> None:
+    row = Download(
+        url="https://example.com/done",
+        title="Done",
+        status="done",
+        progress=100.0,
+        file_path="/tmp/done.mp4",
+    )
+    db_session_visible.add(row)
+    db_session_visible.commit()
+    db_session_visible.refresh(row)
+
+    with TestClient(app) as client:
+        response = client.get("/library/rows")
+
+    assert response.status_code == 200
+    assert f'href="/downloads/{row.id}/file"' in response.text
+    assert f'href="/api/downloads/{row.id}/file"' not in response.text
+
+
 def test_library_rows_partial_filters_by_query(db_session_visible) -> None:
     keep = Download(url="https://example.com/keep", title="Keep me", status="done", progress=100.0)
     skip = Download(url="https://example.com/skip", title="Skip me", status="done", progress=100.0)
