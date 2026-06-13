@@ -143,3 +143,23 @@ def test_queue_rows_partial_breaks_same_timestamp_ties_by_id(db_session_visible)
     assert response.status_code == 200
     assert f'data-completed-job-id="{second.id}"' in response.text
     assert f'data-completed-job-id="{first.id}"' not in response.text
+
+
+def test_queue_rows_partial_exposes_completion_cursor_metadata(db_session_visible) -> None:
+    done = Download(
+        url="https://example.com/done",
+        title="Done row",
+        status="done",
+        progress=100.0,
+        finished_at=datetime(2026, 6, 12, 11, 30, 0),
+    )
+    db_session_visible.add(done)
+    db_session_visible.commit()
+
+    with TestClient(app) as client:
+        response = client.get("/queue/rows")
+
+    assert response.status_code == 200
+    assert f'data-completed-job-id="{done.id}"' in response.text
+    assert 'data-completed-finished-at="2026-06-12T11:30:00"' in response.text
+    assert f'data-completed-cursor-id="{done.id}"' in response.text
