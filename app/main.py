@@ -31,6 +31,7 @@ from app.services.error_mapper import friendly_ytdlp_error
 from app.services.queue import (
     ClaimedDownload,
     claim_next,
+    detect_stale_jobs,
     is_cancel_requested,
     release_job,
     requeue_active_on_startup,
@@ -42,6 +43,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 ALEMBIC_INI_PATH = PROJECT_ROOT / "alembic.ini"
 
 logger = logging.getLogger("yourtube")
+
+STALE_CHECK_INTERVAL_SECONDS = 60.0
+STALE_TIMEOUT_MINUTES = 10
 
 
 def _ensure_data_dir() -> None:
@@ -82,15 +86,23 @@ class WorkerPool:
     :func:`claim_next` to atomically claim the oldest queued row, then
     hands the job off to :meth:`_run_job` which drives the download
     through the existing services. State transitions, progress writes,
-    and error mapping all happen through the existing service layer.
+    and error mapping all happen through the existing service layer. A
+    separate daemon thread periodically calls :func:`detect_stale_jobs`
+    to reap rows left ``active`` by a crashed or hung worker.
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        stale_check_interval_seconds: float = STALE_CHECK_INTERVAL_SECONDS,
+        stale_timeout_minutes: int = STALE_TIMEOUT_MINUTES,
+    ) -> None:
         self._threads: list[threading.Thread] = []
         self._stop_event = threading.Event()
+        self._stale_check_interval_seconds = stale_check_interval_seconds
+        self._stale_timeout_minutes = stale_timeout_minutes
 
     def start(self, concurrency: int) -> None:
-        """Spawn ``concurrency`` daemon worker threads."""
+        """Spawn ``concurrency`` daemon worker threads plus the stale-check thread."""
         for index in range(max(1, concurrency)):
             thread = threading.Thread(
                 target=self._worker_loop,
@@ -99,6 +111,13 @@ class WorkerPool:
             )
             thread.start()
             self._threads.append(thread)
+        stale_thread = threading.Thread(
+            target=self._stale_check_loop,
+            name="stale-check",
+            daemon=True,
+        )
+        stale_thread.start()
+        self._threads.append(stale_thread)
 
     def stop(self) -> None:
         """Signal workers to stop and join them."""
@@ -115,6 +134,12 @@ class WorkerPool:
                 self._stop_event.wait(1.0)
                 continue
             self._run_job(claimed.id)
+
+    def _stale_check_loop(self) -> None:
+        """Periodically reap jobs left ``active`` by a crashed or hung worker."""
+        while not self._stop_event.wait(self._stale_check_interval_seconds):
+            with SessionLocal() as session:
+                detect_stale_jobs(session, timeout_minutes=self._stale_timeout_minutes)
 
     def _claim_once_for_test(self) -> ClaimedDownload | None:
         """Claim the next queued job from a short-lived session.
