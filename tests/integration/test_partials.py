@@ -106,66 +106,7 @@ def test_partials_render_explicit_empty_states() -> None:
     assert 'class="empty-state"' in library.text
 
 
-def test_queue_rows_partial_includes_only_completions_after_cursor(db_session_visible) -> None:
-    older = Download(
-        url="https://example.com/old",
-        title="Older done",
-        status="done",
-        progress=100.0,
-        finished_at=datetime(2026, 6, 12, 10, 0, 0),
-    )
-    newer = Download(
-        url="https://example.com/new",
-        title="Newer done",
-        status="done",
-        progress=100.0,
-        finished_at=datetime(2026, 6, 12, 10, 5, 0),
-    )
-    db_session_visible.add_all([older, newer])
-    db_session_visible.commit()
-
-    with TestClient(app) as client:
-        response = client.get(
-            "/queue/rows",
-            params={"after_finished_at": "2026-06-12T10:00:00", "after_id": older.id},
-        )
-
-    assert response.status_code == 200
-    assert f'data-completed-job-id="{newer.id}"' in response.text
-    assert f'data-completed-job-id="{older.id}"' not in response.text
-
-
-def test_queue_rows_partial_breaks_same_timestamp_ties_by_id(db_session_visible) -> None:
-    finished_at = datetime(2026, 6, 12, 10, 0, 0)
-    first = Download(
-        url="https://example.com/first",
-        title="First done",
-        status="done",
-        progress=100.0,
-        finished_at=finished_at,
-    )
-    second = Download(
-        url="https://example.com/second",
-        title="Second done",
-        status="done",
-        progress=100.0,
-        finished_at=finished_at,
-    )
-    db_session_visible.add_all([first, second])
-    db_session_visible.commit()
-
-    with TestClient(app) as client:
-        response = client.get(
-            "/queue/rows",
-            params={"after_finished_at": "2026-06-12T10:00:00", "after_id": first.id},
-        )
-
-    assert response.status_code == 200
-    assert f'data-completed-job-id="{second.id}"' in response.text
-    assert f'data-completed-job-id="{first.id}"' not in response.text
-
-
-def test_queue_rows_partial_exposes_completion_cursor_metadata(db_session_visible) -> None:
+def test_queue_rows_partial_exposes_completion_markers(db_session_visible) -> None:
     done = Download(
         url="https://example.com/done",
         title="Done row",
@@ -181,15 +122,6 @@ def test_queue_rows_partial_exposes_completion_cursor_metadata(db_session_visibl
 
     assert response.status_code == 200
     assert f'data-completed-job-id="{done.id}"' in response.text
-    assert 'data-completed-finished-at="2026-06-12T11:30:00"' in response.text
-    assert f'data-completed-cursor-id="{done.id}"' in response.text
-
-
-def test_queue_rows_partial_rejects_invalid_cursor_value() -> None:
-    with TestClient(app) as client:
-        response = client.get(
-            "/queue/rows",
-            params={"after_finished_at": "not-a-datetime", "after_id": 1},
-        )
-
-    assert response.status_code == 422
+    assert 'data-completed-job-title="Done row"' in response.text
+    assert "data-completed-finished-at" not in response.text
+    assert "data-completed-cursor-id" not in response.text
