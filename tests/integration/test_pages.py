@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+from datetime import datetime
 
 from fastapi.testclient import TestClient
 
@@ -279,3 +280,34 @@ def test_settings_page_renders_runtime_status(monkeypatch) -> None:
     assert response.status_code == 200
     assert 'class="status-card status-card-warning"' in response.text
     assert "Node.js runtime missing." in response.text
+
+
+def test_queue_page_renders_notification_shell() -> None:
+    with TestClient(app) as client:
+        response = client.get("/queue")
+
+    assert response.status_code == 200
+    assert 'x-data="queueNotifications()"' in response.text
+    assert 'id="toast-region"' in response.text
+    assert 'id="queue-after-finished-at"' in response.text
+    assert 'id="queue-after-id"' in response.text
+
+
+def test_queue_page_seeds_cursor_without_initial_completion_markers(db_session_visible) -> None:
+    done = Download(
+        url="https://example.com/done",
+        title="Already finished",
+        status="done",
+        progress=100.0,
+        finished_at=datetime(2026, 6, 12, 9, 15, 0),
+    )
+    db_session_visible.add(done)
+    db_session_visible.commit()
+
+    with TestClient(app) as client:
+        response = client.get("/queue")
+
+    assert response.status_code == 200
+    assert 'value="2026-06-12T09:15:00"' in response.text
+    assert f'value="{done.id}"' in response.text
+    assert f'data-completed-job-id="{done.id}"' not in response.text
