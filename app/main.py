@@ -25,7 +25,6 @@ from alembic import command
 from app.config import settings
 from app.db import SessionLocal, engine
 from app.models import Download
-from app.routes.api import router as api_router
 from app.routes.pages import router as pages_router
 from app.services.downloader import DownloadCancelled, YtdlpProgress, run_download
 from app.services.error_mapper import friendly_ytdlp_error
@@ -216,7 +215,6 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="YourTube", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=PROJECT_ROOT / "app" / "static"), name="static")
-app.include_router(api_router)
 app.include_router(pages_router)
 
 
