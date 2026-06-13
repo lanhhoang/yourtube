@@ -29,7 +29,6 @@ from app.routes.pages import router as pages_router
 from app.services.downloader import DownloadCancelled, YtdlpProgress, run_download
 from app.services.error_mapper import friendly_ytdlp_error
 from app.services.queue import (
-    ClaimedDownload,
     claim_next,
     detect_stale_jobs,
     is_cancel_requested,
@@ -129,11 +128,11 @@ class WorkerPool:
     def _worker_loop(self) -> None:
         """Worker loop: claim a job, run it, repeat until stopped."""
         while not self._stop_event.is_set():
-            claimed = self._claim_once_for_test()
-            if claimed is None:
+            job_id = self._claim_once_for_test()
+            if job_id is None:
                 self._stop_event.wait(1.0)
                 continue
-            self._run_job(claimed.id)
+            self._run_job(job_id)
 
     def _stale_check_loop(self) -> None:
         """Periodically reap jobs left ``active`` by a crashed or hung worker."""
@@ -144,12 +143,10 @@ class WorkerPool:
             except Exception:  # noqa: BLE001 - keep the loop alive across transient errors
                 logger.exception("stale job check failed")
 
-    def _claim_once_for_test(self) -> ClaimedDownload | None:
-        """Claim the next queued job from a short-lived session.
+    def _claim_once_for_test(self) -> int | None:
+        """Claim the next queued job id from a short-lived session.
 
-        Exposed for tests and reused by :meth:`_worker_loop`. The session
-        is closed before the caller uses the returned payload, so the
-        payload must be detached-safe (``ClaimedDownload`` is).
+        Exposed for tests and reused by :meth:`_worker_loop`.
         """
         with SessionLocal() as session:
             return claim_next(session)

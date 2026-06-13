@@ -131,7 +131,7 @@ def test_worker_loop_can_run_claimed_job_without_detached_instance(
     pool = WorkerPool()
     claimed = pool._claim_once_for_test()
     assert claimed is not None
-    pool._run_job(claimed.id)
+    pool._run_job(claimed)
 
     db_session_visible.refresh(row)
     assert row.status == "done"

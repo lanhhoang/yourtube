@@ -32,8 +32,7 @@ def test_enqueue_claim_release_to_done(db_session: Session) -> None:
     enqueued = enqueue_download(db_session, _make("https://example.com/happy"))
     claimed = claim_next(db_session)
     assert claimed is not None
-    assert claimed.id == enqueued.id
-    assert claimed.status == "active"
+    assert claimed == enqueued.id
 
     db_session.refresh(enqueued)
     assert enqueued.status == "active"
@@ -41,7 +40,7 @@ def test_enqueue_claim_release_to_done(db_session: Session) -> None:
 
     updated = release_job(
         db_session,
-        claimed.id,
+        claimed,
         status="done",
         file_path="/tmp/video.mp4",
         file_size=1024,
@@ -71,10 +70,10 @@ def test_stale_detection_marks_old_active_row_as_error(db_session: Session) -> N
     enqueued = enqueue_download(db_session, _make("https://example.com/stale"))
     claimed = claim_next(db_session)
     assert claimed is not None
-    assert claimed.id == enqueued.id
+    assert claimed == enqueued.id
     far_past = datetime.now(timezone.utc) - timedelta(minutes=30)
     db_session.execute(
-        Download.__table__.update().where(Download.id == claimed.id).values(claimed_at=far_past)
+        Download.__table__.update().where(Download.id == claimed).values(claimed_at=far_past)
     )
 
     affected = detect_stale_jobs(db_session, timeout_minutes=10)
