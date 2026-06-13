@@ -138,8 +138,11 @@ class WorkerPool:
     def _stale_check_loop(self) -> None:
         """Periodically reap jobs left ``active`` by a crashed or hung worker."""
         while not self._stop_event.wait(self._stale_check_interval_seconds):
-            with SessionLocal() as session:
-                detect_stale_jobs(session, timeout_minutes=self._stale_timeout_minutes)
+            try:
+                with SessionLocal() as session:
+                    detect_stale_jobs(session, timeout_minutes=self._stale_timeout_minutes)
+            except Exception:  # noqa: BLE001 - keep the loop alive across transient errors
+                logger.exception("stale job check failed")
 
     def _claim_once_for_test(self) -> ClaimedDownload | None:
         """Claim the next queued job from a short-lived session.
