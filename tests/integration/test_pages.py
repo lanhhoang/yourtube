@@ -311,3 +311,14 @@ def test_queue_page_seeds_cursor_without_initial_completion_markers(db_session_v
     assert 'value="2026-06-12T09:15:00"' in response.text
     assert f'value="{done.id}"' in response.text
     assert f'data-completed-job-id="{done.id}"' not in response.text
+
+
+def test_queue_page_notification_script_persists_cursor_and_seen_ids() -> None:
+    with TestClient(app) as client:
+        response = client.get("/queue")
+
+    assert response.status_code == 200
+    assert "sessionStorage.getItem(\"yt-seen-completed-jobs\")" in response.text
+    assert "sessionStorage.setItem(\"yt-queue-after-finished-at\"" in response.text
+    assert "hx-include=\"#queue-after-finished-at, #queue-after-id\"" in response.text
+    assert "dismiss(jobId)" in response.text
