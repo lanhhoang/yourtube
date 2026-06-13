@@ -118,7 +118,7 @@ def test_run_download_returns_output_path_on_success(tmp_path: Path) -> None:
             output_dir=str(tmp_path),
             progress_hook=progress,
         )
-    assert result == expected_path
+    assert result.path == expected_path
     assert progress.filename == expected_path
 
 
@@ -147,7 +147,7 @@ def test_run_download_returns_output_path_without_progress_hook(tmp_path: Path) 
             url="https://example.com/video",
             output_dir=str(tmp_path),
         )
-    assert result == expected_path
+    assert result.path == expected_path
 
 
 def test_run_download_writes_transcript_sidecar_when_subtitles_present(tmp_path: Path) -> None:
@@ -188,7 +188,7 @@ def test_run_download_writes_transcript_sidecar_when_subtitles_present(tmp_path:
             subtitles=True,
         )
 
-    assert result == expected_path
+    assert result.path == expected_path
     assert subtitle_path.with_suffix(".txt").read_text(encoding="utf-8") == "First line\n"
 
 
@@ -218,4 +218,67 @@ def test_run_download_succeeds_when_requested_subtitles_are_absent(tmp_path: Pat
             subtitles=True,
         )
 
-    assert result == expected_path
+    assert result.path == expected_path
+
+
+def test_run_download_extracts_media_format_and_resolution(tmp_path: Path) -> None:
+    """``run_download`` extracts ``ext`` and ``height`` from the yt-dlp info dict."""
+    expected_path = tmp_path / "video.mp4"
+    expected_path.write_bytes(b"x" * 2048)
+
+    captured_opts: dict = {}
+
+    def factory(opts):
+        captured_opts.update(opts)
+        fake_ydl = MagicMock()
+        fake_ydl.__enter__.return_value = fake_ydl
+
+        def fake_extract_info(url, download):  # noqa: ARG001
+            for hook in captured_opts["progress_hooks"]:
+                hook({"status": "finished", "filename": str(expected_path)})
+            return {"ext": "mp4", "height": 1080}
+
+        fake_ydl.extract_info.side_effect = fake_extract_info
+        return fake_ydl
+
+    with patch("yt_dlp.YoutubeDL", side_effect=factory):
+        result = run_download(
+            url="https://example.com/video",
+            output_dir=str(tmp_path),
+        )
+
+    assert result.path == str(expected_path)
+    assert result.media_format == "mp4"
+    assert result.resolution_height == 1080
+    assert result.file_size == 2048
+
+
+def test_run_download_falls_back_to_info_filesize_when_file_missing(tmp_path: Path) -> None:
+    """If the output file can't be stat'd, fall back to yt-dlp's reported filesize."""
+    expected_path = tmp_path / "missing.mp4"
+
+    captured_opts: dict = {}
+
+    def factory(opts):
+        captured_opts.update(opts)
+        fake_ydl = MagicMock()
+        fake_ydl.__enter__.return_value = fake_ydl
+
+        def fake_extract_info(url, download):  # noqa: ARG001
+            for hook in captured_opts["progress_hooks"]:
+                hook({"status": "finished", "filename": str(expected_path)})
+            return {"ext": "webm", "height": 720, "filesize": 4096}
+
+        fake_ydl.extract_info.side_effect = fake_extract_info
+        return fake_ydl
+
+    with patch("yt_dlp.YoutubeDL", side_effect=factory):
+        result = run_download(
+            url="https://example.com/video",
+            output_dir=str(tmp_path),
+        )
+
+    assert result.path == str(expected_path)
+    assert result.media_format == "webm"
+    assert result.resolution_height == 720
+    assert result.file_size == 4096
