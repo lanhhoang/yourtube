@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import Select, and_, func, or_, select, update
+from sqlalchemy import Select, func, select, update
 from sqlalchemy.orm import Session
 
 from app.models import Download
@@ -247,43 +247,18 @@ def requeue_active_on_startup(session: Session) -> int:
     return int(result.rowcount or 0)
 
 
-def get_latest_completion_cursor(session: Session) -> tuple[datetime | None, int]:
-    """Return the newest completion cursor as ``(finished_at, id)``.
+def get_recent_completed_jobs(session: Session, limit: int = 20) -> list[Download]:
+    """Return the most recently completed jobs, oldest-first.
 
-    The cursor seeds the queue page so historical completions do not
-    toast on initial page load. When no completed jobs exist, return
-    ``(None, 0)``.
+    Used to render completion markers on the queue page. The client
+    deduplicates toasts via a sessionStorage set, so the server only
+    needs to bound the result size — no cursor state is kept.
     """
     stmt = (
-        select(Download.finished_at, Download.id)
+        select(Download)
         .where(Download.status == "done", Download.finished_at.is_not(None))
         .order_by(Download.finished_at.desc(), Download.id.desc())
-        .limit(1)
+        .limit(limit)
     )
-    row = session.execute(stmt).one_or_none()
-    if row is None:
-        return None, 0
-    return row[0], int(row[1])
-
-
-def get_completed_jobs_after(
-    session: Session,
-    *,
-    after_finished_at: datetime | None,
-    after_id: int,
-) -> list[Download]:
-    """Return completed jobs strictly after ``(after_finished_at, after_id)``.
-
-    Results are ordered oldest-to-newest so the browser announces
-    completions in the same order they finished.
-    """
-    stmt = select(Download).where(Download.status == "done", Download.finished_at.is_not(None))
-    if after_finished_at is not None:
-        stmt = stmt.where(
-            or_(
-                Download.finished_at > after_finished_at,
-                and_(Download.finished_at == after_finished_at, Download.id > after_id),
-            )
-        )
-    stmt = stmt.order_by(Download.finished_at, Download.id)
-    return list(session.execute(stmt).scalars())
+    rows = list(session.execute(stmt).scalars())
+    return list(reversed(rows))

@@ -8,7 +8,6 @@ changes, and downloaded file delivery.
 
 from __future__ import annotations
 
-from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
@@ -32,8 +31,7 @@ from app.services.queue import (
     cancel_job,
     enqueue_download,
     get_active_jobs,
-    get_completed_jobs_after,
-    get_latest_completion_cursor,
+    get_recent_completed_jobs,
 )
 from app.services.settings import (
     get_all_settings,
@@ -66,15 +64,12 @@ def home(request: Request) -> HTMLResponse:
 
 @router.get("/queue", response_class=HTMLResponse)
 def queue_page(request: Request, session: Session = Depends(get_session)) -> HTMLResponse:
-    latest_finished_at, latest_id = get_latest_completion_cursor(session)
     return templates.TemplateResponse(
         request,
         "pages/queue.html",
         {
             "rows": get_active_jobs(session),
-            "completed_rows": [],
-            "after_finished_at": latest_finished_at.isoformat() if latest_finished_at else "",
-            "after_id": latest_id,
+            "completed_rows": get_recent_completed_jobs(session),
         },
     )
 
@@ -109,22 +104,13 @@ def settings_page(request: Request, session: Session = Depends(get_session)) -> 
 
 
 @router.get("/queue/rows", response_class=HTMLResponse)
-def queue_rows(
-    request: Request,
-    after_finished_at: datetime | None = Query(default=None),
-    after_id: int = Query(default=0),
-    session: Session = Depends(get_session),
-) -> HTMLResponse:
+def queue_rows(request: Request, session: Session = Depends(get_session)) -> HTMLResponse:
     return templates.TemplateResponse(
         request,
         "partials/queue_rows.html",
         {
             "rows": get_active_jobs(session),
-            "completed_rows": get_completed_jobs_after(
-                session,
-                after_finished_at=after_finished_at,
-                after_id=after_id,
-            ),
+            "completed_rows": get_recent_completed_jobs(session),
         },
     )
 

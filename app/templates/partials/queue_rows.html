@@ -3,8 +3,6 @@
   <span
     data-completed-job-id="{{ row.id }}"
     data-completed-job-title="{{ row.title or row.url }}"
-    data-completed-finished-at="{{ row.finished_at.isoformat() if row.finished_at else '' }}"
-    data-completed-cursor-id="{{ row.id }}"
   ></span>
   {% endfor %}
 </div>
