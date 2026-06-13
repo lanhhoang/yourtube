@@ -466,7 +466,9 @@ def write_transcript_sidecar(subtitle_path: str | Path) -> Path:
     return transcript_path
 
 
-def _extract_file_metadata(info: dict, output_path: str) -> tuple[int | None, str | None, int | None]:
+def _extract_file_metadata(
+    info: dict, output_path: str
+) -> tuple[int | None, str | None, int | None]:
     """Derive ``(file_size, media_format, resolution_height)`` for a finished download.
 
     Prefers the on-disk file size for accuracy (yt-dlp's ``filesize`` is
