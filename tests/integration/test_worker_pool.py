@@ -8,6 +8,8 @@ simulate the success, cancellation, and failure paths.
 
 from __future__ import annotations
 
+import time
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from app.models import Download
@@ -120,3 +122,32 @@ def test_worker_loop_can_run_claimed_job_without_detached_instance(
 
     db_session_visible.refresh(row)
     assert row.status == "done"
+
+
+def test_worker_pool_reaps_stale_jobs_periodically(db_session_visible) -> None:
+    """A row claimed long ago is marked ``error`` by the periodic stale check."""
+    row = Download(
+        url="https://example.com/stale",
+        status="active",
+        progress=0.0,
+        claimed_at=datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=5),
+    )
+    db_session_visible.add(row)
+    db_session_visible.commit()
+    db_session_visible.refresh(row)
+
+    from app.main import WorkerPool
+
+    pool = WorkerPool(stale_check_interval_seconds=0.05, stale_timeout_minutes=1)
+    pool.start(1)
+    try:
+        for _ in range(100):
+            db_session_visible.refresh(row)
+            if row.status == "error":
+                break
+            time.sleep(0.05)
+    finally:
+        pool.stop()
+
+    assert row.status == "error"
+    assert row.error_code == "stale_worker"
