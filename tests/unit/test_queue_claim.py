@@ -1,10 +1,9 @@
 """Unit tests for ``app.services.queue`` enqueue and claim semantics.
 
-Phase 5 tightens the claim contract: ``claim_next`` must return a
-detached-safe :class:`ClaimedDownload` dataclass so the worker loop can
-hold the result across session boundaries without tripping the
-"session is closed" error path. The earlier queue semantics still
-matter, so this file keeps the pre-existing coverage as well.
+``claim_next`` returns the claimed job's id (an ``int``) so the worker
+loop can hand the id straight to ``_run_job``, which re-fetches the
+full row from the database. Returning an ``int`` avoids exposing a
+detached-safe payload type: the integer is itself detached-safe.
 """
 
 from __future__ import annotations
@@ -17,7 +16,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.models import Download
 from app.schemas import DownloadCreate
-from app.services.queue import ClaimedDownload, claim_next, enqueue_download, release_job
+from app.services.queue import claim_next, enqueue_download, release_job
 
 
 def _make_payload(url: str = "https://example.com/v1") -> DownloadCreate:
@@ -34,17 +33,14 @@ def test_enqueue_creates_queued_row(db_session: Session) -> None:
     assert row.title == "Sample"
 
 
-def test_claim_next_returns_detached_safe_payload(db_session: Session) -> None:
-    """``claim_next`` returns a detached-safe dataclass that survives the session."""
+def test_claim_next_returns_claimed_job_id(db_session: Session) -> None:
+    """``claim_next`` returns the claimed job's id, which survives the session."""
     created = enqueue_download(db_session, DownloadCreate(url="https://example.com/watch?v=1"))
 
     claimed = claim_next(db_session)
 
     assert claimed is not None
-    assert isinstance(claimed, ClaimedDownload)
-    assert claimed.id == created.id
-    assert claimed.status == "active"
-    assert claimed.url == "https://example.com/watch?v=1"
+    assert claimed == created.id
 
 
 def test_claim_next_returns_oldest_queued_row(db_session: Session) -> None:
@@ -55,8 +51,7 @@ def test_claim_next_returns_oldest_queued_row(db_session: Session) -> None:
     claimed = claim_next(db_session)
 
     assert claimed is not None
-    assert claimed.id == first.id
-    assert claimed.status == "active"
+    assert claimed == first.id
     refreshed = db_session.get(Download, first.id)
     assert refreshed is not None
     assert refreshed.status == "active"
@@ -94,7 +89,7 @@ def test_claim_next_skips_non_queued_rows(db_session: Session) -> None:
     claimed = claim_next(db_session)
 
     assert claimed is not None
-    assert claimed.id == queued.id
+    assert claimed == queued.id
 
 
 def test_claim_next_is_idempotent_within_same_session(db_session: Session) -> None:
@@ -105,8 +100,7 @@ def test_claim_next_is_idempotent_within_same_session(db_session: Session) -> No
     second = claim_next(db_session)
 
     assert first is not None
-    assert first.id == enqueued.id
-    assert first.status == "active"
+    assert first == enqueued.id
     assert second is None
 
 
@@ -146,7 +140,7 @@ def test_two_sessions_claim_next_do_not_double_claim(db_engine: Engine) -> None:
         seed_session.close()
 
     barrier = threading.Barrier(2)
-    results: list[ClaimedDownload | None] = []
+    results: list[int | None] = []
     errors: list[BaseException] = []
     lock = threading.Lock()
 
@@ -173,7 +167,7 @@ def test_two_sessions_claim_next_do_not_double_claim(db_engine: Engine) -> None:
     assert errors == []
     claimed = [row for row in results if row is not None]
     assert len(claimed) == 1
-    assert claimed[0].id == seeded.id
+    assert claimed[0] == seeded.id
 
     with db_engine.begin() as connection:
         connection.execute(delete(Download))
