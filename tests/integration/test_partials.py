@@ -163,3 +163,13 @@ def test_queue_rows_partial_exposes_completion_cursor_metadata(db_session_visibl
     assert f'data-completed-job-id="{done.id}"' in response.text
     assert 'data-completed-finished-at="2026-06-12T11:30:00"' in response.text
     assert f'data-completed-cursor-id="{done.id}"' in response.text
+
+
+def test_queue_rows_partial_rejects_invalid_cursor_value() -> None:
+    with TestClient(app) as client:
+        response = client.get(
+            "/queue/rows",
+            params={"after_finished_at": "not-a-datetime", "after_id": 1},
+        )
+
+    assert response.status_code == 422

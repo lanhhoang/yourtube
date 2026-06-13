@@ -111,11 +111,10 @@ def settings_page(request: Request, session: Session = Depends(get_session)) -> 
 @router.get("/queue/rows", response_class=HTMLResponse)
 def queue_rows(
     request: Request,
-    after_finished_at: str = Query(default=""),
+    after_finished_at: datetime | None = Query(default=None),
     after_id: int = Query(default=0),
     session: Session = Depends(get_session),
 ) -> HTMLResponse:
-    cursor_dt = datetime.fromisoformat(after_finished_at) if after_finished_at else None
     return templates.TemplateResponse(
         request,
         "partials/queue_rows.html",
@@ -123,7 +122,7 @@ def queue_rows(
             "rows": get_active_jobs(session),
             "completed_rows": get_completed_jobs_after(
                 session,
-                after_finished_at=cursor_dt,
+                after_finished_at=after_finished_at,
                 after_id=after_id,
             ),
         },

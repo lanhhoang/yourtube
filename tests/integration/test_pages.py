@@ -5,12 +5,28 @@ from __future__ import annotations
 import json
 import re
 from datetime import datetime
+from html.parser import HTMLParser
 
 from fastapi.testclient import TestClient
 
 from app.main import app
 from app.models import Download
 from app.services.settings import set_settings_batch
+
+
+class _InputValueParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.values: dict[str, str] = {}
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag != "input":
+            return
+        attr_map = dict(attrs)
+        input_id = attr_map.get("id")
+        value = attr_map.get("value")
+        if input_id is not None and value is not None:
+            self.values[input_id] = value
 
 
 def test_home_queue_library_and_settings_pages_render() -> None:
@@ -307,9 +323,12 @@ def test_queue_page_seeds_cursor_without_initial_completion_markers(db_session_v
     with TestClient(app) as client:
         response = client.get("/queue")
 
+    parser = _InputValueParser()
+    parser.feed(response.text)
+
     assert response.status_code == 200
-    assert 'value="2026-06-12T09:15:00"' in response.text
-    assert f'value="{done.id}"' in response.text
+    assert parser.values["queue-after-finished-at"] == "2026-06-12T09:15:00"
+    assert parser.values["queue-after-id"] == str(done.id)
     assert f'data-completed-job-id="{done.id}"' not in response.text
 
 
@@ -318,7 +337,7 @@ def test_queue_page_notification_script_persists_cursor_and_seen_ids() -> None:
         response = client.get("/queue")
 
     assert response.status_code == 200
-    assert "sessionStorage.getItem(\"yt-seen-completed-jobs\")" in response.text
-    assert "sessionStorage.setItem(\"yt-queue-after-finished-at\"" in response.text
-    assert "hx-include=\"#queue-after-finished-at, #queue-after-id\"" in response.text
+    assert 'sessionStorage.getItem("yt-seen-completed-jobs")' in response.text
+    assert 'sessionStorage.setItem("yt-queue-after-finished-at"' in response.text
+    assert 'hx-include="#queue-after-finished-at, #queue-after-id"' in response.text
     assert "dismiss(jobId)" in response.text
