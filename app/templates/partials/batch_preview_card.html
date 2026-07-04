@@ -1,0 +1,42 @@
+{% if item.status == "ready" %}
+<section class="media-card">
+  {% if item.thumbnail %}
+  <img src="{{ item.thumbnail }}" alt="" class="media-card-thumb" />
+  {% endif %}
+  <div class="media-card-body">
+    <p class="eyebrow">Detected media</p>
+    <h2>{{ item.title or item.source_url }}</h2>
+    <dl class="meta-grid">
+      <div>
+        <dt>Uploader</dt>
+        <dd>{{ item.uploader or "Unknown" }}</dd>
+      </div>
+      <div>
+        <dt>Duration</dt>
+        <dd>{{ item.duration or "Unknown" }}</dd>
+      </div>
+    </dl>
+    <form
+      hx-post="/downloads/form"
+      hx-target="#batch-status"
+      hx-swap="innerHTML"
+    >
+      <input type="hidden" name="url" value="{{ item.source_url }}" />
+      <input type="hidden" name="title" value="{{ item.title or '' }}" />
+      <input type="hidden" name="uploader" value="{{ item.uploader or '' }}" />
+      <input type="hidden" name="duration" value="{{ item.duration or '' }}" />
+      <input type="hidden" name="thumbnail" value="{{ item.thumbnail or '' }}" />
+      <input type="hidden" name="target_id" value="batch-status" />
+      <button type="submit">Add to queue</button>
+    </form>
+  </div>
+</section>
+{% else %}
+<section class="media-card">
+  <div class="media-card-body">
+    <p class="eyebrow">Lookup failed</p>
+    <h2>{{ item.source_url }}</h2>
+    <p>{{ item.error_message }}</p>
+  </div>
+</section>
+{% endif %}

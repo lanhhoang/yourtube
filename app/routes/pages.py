@@ -20,7 +20,7 @@ from app.config import settings
 from app.db import get_session
 from app.models import Download
 from app.schemas import DownloadCreate
-from app.services.batch_preview import parse_source_urls
+from app.services.batch_preview import parse_source_urls, resolve_batch_preview
 from app.services.diagnostics import collect_runtime_diagnostics
 from app.services.downloader import (
     build_stream_picker_payload,
@@ -181,6 +181,28 @@ def info_form(
     )
 
 
+@router.post("/info/batch/form", response_class=HTMLResponse)
+def info_batch_form(
+    request: Request,
+    sources: str = Form(...),
+    proxy: str | None = Form(default=None),
+    cookies: str | None = Form(default=None),
+    session: Session = Depends(get_session),
+) -> HTMLResponse:
+    runtime = resolve_runtime_settings(session)
+    result = resolve_batch_preview(
+        sources,
+        extract_info=extract_info,
+        proxy=runtime.proxy_url if proxy else None,
+        cookies_file=str(runtime.cookies_path) if cookies and runtime.cookies_path else None,
+    )
+    return templates.TemplateResponse(
+        request,
+        "partials/batch_result.html",
+        {"result": result},
+    )
+
+
 @router.post("/downloads/form", response_class=HTMLResponse)
 async def downloads_form(
     request: Request,
@@ -188,6 +210,9 @@ async def downloads_form(
 ) -> HTMLResponse:
     form = await request.form()
     duration_raw = _form_str(form, "duration")
+    target_id = _form_str(form, "target_id")
+    if target_id != "batch-status":
+        target_id = "info-status"
     payload = DownloadCreate(
         url=_form_str(form, "url") or "",
         title=_form_str(form, "title"),
@@ -204,7 +229,7 @@ async def downloads_form(
     return templates.TemplateResponse(
         request,
         "partials/status_message.html",
-        {"message": "Added to queue.", "target_id": "info-status"},
+        {"message": "Added to queue.", "target_id": target_id},
     )
 
 
