@@ -264,6 +264,26 @@ def extract_info(
         return ydl.extract_info(url, download=False)
 
 
+def extract_flat_info(
+    url: str,
+    *,
+    proxy: str | None = None,
+    cookies_file: str | None = None,
+) -> dict:
+    """Return yt-dlp metadata with playlist entries flattened."""
+    import yt_dlp  # local import to keep module import cheap
+
+    ydl_opts = build_ytdlp_options(
+        skip_download=True,
+        output_dir="",
+        proxy=proxy,
+        cookies_file=cookies_file,
+    )
+    ydl_opts["extract_flat"] = True
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        return ydl.extract_info(url, download=False)
+
+
 _PERCENT_RE = re.compile(r"(-?[0-9]+(?:\.[0-9]+)?)\s*%")
 _SRT_TIMESTAMP_RE = re.compile(r"^\d{2}:\d{2}:\d{2},\d{3}\s+-->\s+\d{2}:\d{2}:\d{2},\d{3}")
 

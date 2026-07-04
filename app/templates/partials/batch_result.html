@@ -1,6 +1,9 @@
 <section class="support-card">
   <h2>Batch preview</h2>
   <p>{{ result.valid_count }} ready / {{ result.invalid_count }} failed</p>
+  {% if result.truncated_count %}
+  <p>Skipped {{ result.truncated_count }} item(s) because the batch limit is 50.</p>
+  {% endif %}
 </section>
 
 {% if result.valid_count %}

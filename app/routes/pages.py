@@ -21,10 +21,15 @@ from app.config import settings
 from app.db import get_session
 from app.models import Download
 from app.schemas import DownloadCreate
-from app.services.batch_preview import parse_source_urls, resolve_batch_preview
+from app.services.batch_preview import (
+    expand_playlist_entries,
+    parse_source_urls,
+    resolve_batch_preview,
+)
 from app.services.diagnostics import collect_runtime_diagnostics
 from app.services.downloader import (
     build_stream_picker_payload,
+    extract_flat_info,
     extract_info,
     normalize_formats,
 )
@@ -195,11 +200,19 @@ def info_batch_form(
     session: Session = Depends(get_session),
 ) -> HTMLResponse:
     runtime = resolve_runtime_settings(session)
+    proxy_url = runtime.proxy_url if proxy else None
+    cookies_file = str(runtime.cookies_path) if cookies and runtime.cookies_path else None
     result = resolve_batch_preview(
         sources,
         extract_info=extract_info,
-        proxy=runtime.proxy_url if proxy else None,
-        cookies_file=str(runtime.cookies_path) if cookies and runtime.cookies_path else None,
+        expand_playlist=lambda url: expand_playlist_entries(
+            url,
+            extract_info=extract_flat_info,
+            proxy=proxy_url,
+            cookies_file=cookies_file,
+        ),
+        proxy=proxy_url,
+        cookies_file=cookies_file,
     )
     return templates.TemplateResponse(
         request,

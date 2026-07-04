@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from app.services.batch_preview import parse_source_urls
+from app.services.batch_preview import (
+    expand_playlist_entries,
+    parse_source_urls,
+    resolve_batch_preview,
+)
 
 
 def test_parse_source_urls_splits_on_whitespace_commas_and_newlines() -> None:
@@ -125,3 +129,138 @@ def test_resolve_batch_preview_rejects_playlist_results_for_direct_only_phase() 
     assert result.items[0].status == "error"
     assert result.items[0].error_code == "unsupported_playlist"
     assert result.items[0].error_message == "Playlist previews are not supported yet."
+
+
+def test_expand_playlist_entries_returns_entry_urls_from_flat_playlist() -> None:
+    def fake_extract(
+        url: str,
+        *,
+        proxy: str | None = None,
+        cookies_file: str | None = None,
+    ) -> dict:
+        assert proxy is None
+        assert cookies_file is None
+        if url == "https://example.com/list":
+            return {
+                "entries": [
+                    {"url": "https://example.com/watch?v=1"},
+                    {"webpage_url": "https://example.com/watch?v=2"},
+                    {"url": "not-a-full-url"},
+                ]
+            }
+        return {"title": "single"}
+
+    assert expand_playlist_entries("https://example.com/list", extract_info=fake_extract) == [
+        "https://example.com/watch?v=1",
+        "https://example.com/watch?v=2",
+    ]
+    assert expand_playlist_entries("https://example.com/watch?v=3", extract_info=fake_extract) == [
+        "https://example.com/watch?v=3",
+    ]
+
+
+def test_expand_playlist_entries_accepts_lazy_entry_iterables() -> None:
+    def fake_extract(
+        url: str,
+        *,
+        proxy: str | None = None,
+        cookies_file: str | None = None,
+    ) -> dict:
+        return {"entries": ({"url": f"https://example.com/watch?v={index}"} for index in range(2))}
+
+    assert expand_playlist_entries("https://example.com/list", extract_info=fake_extract) == [
+        "https://example.com/watch?v=0",
+        "https://example.com/watch?v=1",
+    ]
+
+
+def test_resolve_batch_preview_dedupes_and_caps_after_playlist_expansion() -> None:
+    def fake_expand(url: str) -> list[str]:
+        if url == "https://example.com/list":
+            return [f"https://example.com/watch?v={index}" for index in range(60)]
+        return [url]
+
+    def fake_extract(
+        url: str,
+        *,
+        proxy: str | None = None,
+        cookies_file: str | None = None,
+    ) -> dict:
+        return {
+            "title": url,
+            "uploader": "Uploader",
+            "duration": 12,
+            "thumbnail": "https://example.com/thumb.jpg",
+        }
+
+    result = resolve_batch_preview(
+        "https://example.com/list https://example.com/watch?v=1 https://example.com/after",
+        extract_info=fake_extract,
+        expand_playlist=fake_expand,
+    )
+
+    assert len(result.items) == 50
+    assert result.items[0].source_url == "https://example.com/watch?v=0"
+    assert result.items[-1].source_url == "https://example.com/watch?v=49"
+    assert result.truncated_count == 11
+
+
+def test_resolve_batch_preview_expands_playlist_before_metadata_lookup() -> None:
+    looked_up: list[str] = []
+
+    def fake_expand(url: str) -> list[str]:
+        if url == "https://example.com/list":
+            return ["https://example.com/watch?v=1", "https://example.com/watch?v=2"]
+        return [url]
+
+    def fake_extract(
+        url: str,
+        *,
+        proxy: str | None = None,
+        cookies_file: str | None = None,
+    ) -> dict:
+        looked_up.append(url)
+        return {
+            "title": f"title for {url}",
+            "uploader": "Uploader",
+            "duration": 12,
+            "thumbnail": "https://example.com/thumb.jpg",
+        }
+
+    result = resolve_batch_preview(
+        "https://example.com/list",
+        extract_info=fake_extract,
+        expand_playlist=fake_expand,
+    )
+
+    assert looked_up == ["https://example.com/watch?v=1", "https://example.com/watch?v=2"]
+    assert [item.source_url for item in result.items] == looked_up
+    assert result.valid_count == 2
+    assert result.invalid_count == 0
+    assert result.truncated_count == 0
+
+
+def test_resolve_batch_preview_maps_fallback_source_error_when_playlist_expansion_fails() -> None:
+    def fake_expand(url: str) -> list[str]:
+        raise RuntimeError("HTTP Error 403: Forbidden")
+
+    def fake_extract(
+        url: str,
+        *,
+        proxy: str | None = None,
+        cookies_file: str | None = None,
+    ) -> dict:
+        raise RuntimeError("HTTP Error 403: Forbidden")
+
+    result = resolve_batch_preview(
+        "https://example.com/bad-list",
+        extract_info=fake_extract,
+        expand_playlist=fake_expand,
+    )
+
+    assert result.valid_count == 0
+    assert result.invalid_count == 1
+    assert result.items[0].source_url == "https://example.com/bad-list"
+    assert result.items[0].status == "error"
+    assert result.items[0].error_code == "http_forbidden"
+    assert result.items[0].error_message == "The server returned a 403 Forbidden response."
