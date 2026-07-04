@@ -176,7 +176,6 @@ def test_batch_lookup_fragment_renders_enqueue_all_form(monkeypatch) -> None:
                     uploader="Uploader",
                     duration=15,
                     thumbnail="https://example.com/thumb.jpg",
-                    picker_payload=None,
                     error_code=None,
                     error_message=None,
                 )

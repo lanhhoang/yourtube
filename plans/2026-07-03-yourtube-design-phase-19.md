@@ -223,7 +223,6 @@ def test_batch_lookup_route_expands_playlist_sources(monkeypatch) -> None:
                     uploader="Uploader",
                     duration=10,
                     thumbnail="https://example.com/1.jpg",
-                    picker_payload=None,
                     error_code=None,
                     error_message=None,
                 )

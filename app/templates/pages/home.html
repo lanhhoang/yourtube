@@ -43,13 +43,13 @@
 <section class="composer-panel">
   <div class="panel-heading">
     <h2>Queue many sources</h2>
-    <p>Paste direct video URLs and send them to the queue with default settings.</p>
+    <p>Paste direct video URLs to preview them before adding anything to the queue.</p>
   </div>
   <form
     id="batch-form"
     class="lookup-form"
-    hx-post="/downloads/batch/form"
-    hx-target="#batch-status"
+    hx-post="/info/batch/form"
+    hx-target="#batch-result"
     hx-swap="innerHTML"
   >
     <label for="batch-sources">Sources</label>
@@ -60,9 +60,14 @@
       placeholder="https://example.com/a&#10;https://example.com/b"
       required
     ></textarea>
-    <button type="submit">Add all to queue</button>
+    <div class="toggle-row">
+      <label><input type="checkbox" name="proxy" /> Use saved proxy</label>
+      <label><input type="checkbox" name="cookies" /> Use saved cookies</label>
+    </div>
+    <button type="submit">Preview batch</button>
   </form>
   <div id="batch-status"></div>
+  <div id="batch-result" class="lookup-result-slot"></div>
 </section>
 
 <section class="support-grid">

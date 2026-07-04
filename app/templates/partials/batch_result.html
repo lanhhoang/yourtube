@@ -1,0 +1,8 @@
+<section class="support-card">
+  <h2>Batch preview</h2>
+  <p>{{ result.valid_count }} ready / {{ result.invalid_count }} failed</p>
+</section>
+
+{% for item in result.items %}
+  {% include "partials/batch_preview_card.html" %}
+{% endfor %}

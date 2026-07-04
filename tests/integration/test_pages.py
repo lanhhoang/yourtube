@@ -121,7 +121,8 @@ def test_home_page_renders_batch_enqueue_panel() -> None:
     assert response.status_code == 200
     assert 'id="batch-form"' in response.text
     assert 'name="sources"' in response.text
-    assert 'hx-post="/downloads/batch/form"' in response.text
+    assert 'hx-post="/info/batch/form"' in response.text
+    assert 'id="batch-result"' in response.text
 
 
 def test_batch_enqueue_route_creates_one_queued_download_per_unique_url(
@@ -160,6 +161,86 @@ def test_batch_enqueue_route_accepts_comma_separated_sources(db_session_visible)
         "https://example.com/a",
         "https://example.com/b",
     ]
+
+
+def test_batch_lookup_fragment_renders_ready_and_error_cards(monkeypatch) -> None:
+    from app.services.batch_preview import BatchPreviewItem, BatchPreviewResult
+
+    def fake_resolve_batch_preview(raw: str, **_kwargs):
+        assert raw == "https://example.com/good\nhttps://example.com/bad"
+        return BatchPreviewResult(
+            items=[
+                BatchPreviewItem(
+                    source_url="https://example.com/good",
+                    status="ready",
+                    title="Good title",
+                    uploader="Uploader",
+                    duration=15,
+                    thumbnail="https://example.com/thumb.jpg",
+                    error_code=None,
+                    error_message=None,
+                ),
+                BatchPreviewItem(
+                    source_url="https://example.com/bad",
+                    status="error",
+                    title=None,
+                    uploader=None,
+                    duration=None,
+                    thumbnail=None,
+                    error_code="http_forbidden",
+                    error_message="The server returned a 403 Forbidden response.",
+                ),
+            ],
+            valid_count=1,
+            invalid_count=1,
+        )
+
+    monkeypatch.setattr("app.routes.pages.resolve_batch_preview", fake_resolve_batch_preview)
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/info/batch/form",
+            data={"sources": "https://example.com/good\nhttps://example.com/bad"},
+        )
+
+    assert response.status_code == 200
+    assert "Batch preview" in response.text
+    assert "1 ready / 1 failed" in response.text
+    assert "Good title" in response.text
+    assert "403 Forbidden" in response.text
+    assert 'hx-post="/downloads/form"' in response.text
+    assert 'hx-target="#batch-status"' in response.text
+    assert 'name="url"' in response.text
+    assert 'name="title"' in response.text
+    assert 'name="uploader"' in response.text
+    assert 'name="duration"' in response.text
+    assert 'name="thumbnail"' in response.text
+    assert 'name="target_id"' in response.text
+
+
+def test_batch_preview_card_enqueue_posts_metadata_to_queue(db_session_visible) -> None:
+    with TestClient(app) as client:
+        response = client.post(
+            "/downloads/form",
+            data={
+                "url": "https://example.com/good",
+                "title": "Good title",
+                "uploader": "Uploader",
+                "duration": "15",
+                "thumbnail": "https://example.com/thumb.jpg",
+                "target_id": "batch-status",
+            },
+        )
+
+    assert response.status_code == 200
+    assert 'id="batch-status"' in response.text
+    assert 'id="info-status"' not in response.text
+    row = db_session_visible.query(Download).one()
+    assert row.url == "https://example.com/good"
+    assert row.title == "Good title"
+    assert row.uploader == "Uploader"
+    assert row.duration == 15
+    assert row.thumbnail == "https://example.com/thumb.jpg"
 
 
 def test_queue_page_renders_ledger_shell() -> None:
