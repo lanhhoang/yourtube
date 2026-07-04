@@ -1,22 +1,37 @@
-# YourTube Implementation Plan — Phase 17: Preview multiple direct URLs before enqueue
+# YourTube Phase 17: Preview Multiple Direct URLs Before Enqueue Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a direct-URL batch preview that fetches metadata for multiple sources, shows ready/error cards, and lets the user add individual items to the queue.
+**Goal:** Add a direct-URL batch preview flow that resolves metadata for multiple URLs, shows ready/error cards, and lets the user enqueue one ready item at a time.
 
-**Architecture:** Keep Phase 16’s direct batch enqueue route intact and keep the existing single-item lookup untouched. Extend `app/services/batch_preview.py` with preview dataclasses plus a `resolve_batch_preview(...)` function that resolves metadata for direct URLs only. Render the result through new batch preview partials, with each ready card posting through the existing `/downloads/form` path.
+**Architecture:** Keep the existing single-item lookup route and the Phase 16 `/downloads/batch/form` direct-enqueue route intact. Extend `app/services/batch_preview.py` with preview result dataclasses and a `resolve_batch_preview(...)` helper, add a new `/info/batch/form` HTMX route, and render preview cards that reuse the existing `/downloads/form` enqueue endpoint with the same hidden metadata fields as the single-item flow.
 
 **Tech Stack:** Python 3.12, FastAPI, Jinja2, SQLAlchemy 2.x, pytest, HTMX, yt-dlp
 
 ---
 
-## Background for the worker
+## File Structure
 
-- Phase 16 introduced `parse_source_urls(...)` and `/downloads/batch/form`.
-- The existing lookup route in [pages.py](/Users/lanh/Developer/video-downloaders/yourtube/app/routes/pages.py:153) already knows how to call `extract_info(...)`, `normalize_formats(...)`, and `build_stream_picker_payload(...)`.
-- This phase does not support playlists or enqueue-all. The usable result is “preview many direct URLs, then queue any one of them.”
+- Modify: `app/services/batch_preview.py`
+  Purpose: Keep `parse_source_urls(...)` and add the direct-only preview resolver plus small result dataclasses.
+- Modify: `app/routes/pages.py`
+  Purpose: Add the batch preview route and import the new resolver without changing the existing single-item or Phase 16 enqueue routes.
+- Modify: `app/templates/pages/home.html`
+  Purpose: Point the batch form at the preview route and render preview output in a batch-specific result slot.
+- Create: `app/templates/partials/batch_result.html`
+  Purpose: Render the batch summary and include one card per preview item.
+- Create: `app/templates/partials/batch_preview_card.html`
+  Purpose: Render either a ready preview card with an enqueue form or an error card with a friendly message.
+- Modify: `tests/unit/test_batch_preview.py`
+  Purpose: Lock down direct preview success and partial-failure behavior.
+- Modify: `tests/integration/test_pages.py`
+  Purpose: Cover the new preview route, the updated home form wiring, and the ready/error preview markup.
 
----
+## Scope Notes
+
+- This phase is direct URLs only.
+- Do not add playlist expansion, batch cap logic, enqueue-all, or stream picker reuse here.
+- Do not remove or repurpose `/downloads/batch/form`; later phases still build on it.
 
 ### Task 1: Add direct batch preview resolution
 
@@ -25,12 +40,42 @@
 - Modify: `app/services/batch_preview.py`
 - Modify: `tests/unit/test_batch_preview.py`
 
-- [ ] **Step 1: Write the failing preview tests**
+- [ ] **Step 1: Write the failing unit tests**
 
 Append to `tests/unit/test_batch_preview.py`:
 
 ```python
-from app.services.batch_preview import BatchPreviewResult, resolve_batch_preview
+from app.services.batch_preview import (
+    BatchPreviewResult,
+    resolve_batch_preview,
+)
+
+
+def test_resolve_batch_preview_returns_ready_items_for_valid_direct_urls() -> None:
+    def fake_extract(url: str, *, proxy: str | None = None, cookies_file: str | None = None) -> dict:
+        assert proxy is None
+        assert cookies_file is None
+        return {
+            "title": f"title for {url}",
+            "uploader": "Uploader",
+            "duration": 12,
+            "thumbnail": "https://example.com/thumb.jpg",
+        }
+
+    result = resolve_batch_preview(
+        "https://example.com/a\nhttps://example.com/b",
+        extract_info=fake_extract,
+    )
+
+    assert isinstance(result, BatchPreviewResult)
+    assert result.valid_count == 2
+    assert result.invalid_count == 0
+    assert [item.source_url for item in result.items] == [
+        "https://example.com/a",
+        "https://example.com/b",
+    ]
+    assert [item.status for item in result.items] == ["ready", "ready"]
+    assert result.items[0].title == "title for https://example.com/a"
 
 
 def test_resolve_batch_preview_marks_lookup_failures_without_stopping_batch() -> None:
@@ -42,16 +87,6 @@ def test_resolve_batch_preview_marks_lookup_failures_without_stopping_batch() ->
             "uploader": "Uploader",
             "duration": 12,
             "thumbnail": "https://example.com/thumb.jpg",
-            "formats": [
-                {
-                    "format_id": "18",
-                    "ext": "mp4",
-                    "container": "mp4",
-                    "vcodec": "avc1.42001E",
-                    "acodec": "mp4a.40.2",
-                    "resolution": "360p",
-                },
-            ],
         }
 
     result = resolve_batch_preview(
@@ -59,34 +94,36 @@ def test_resolve_batch_preview_marks_lookup_failures_without_stopping_batch() ->
         extract_info=fake_extract,
     )
 
-    assert isinstance(result, BatchPreviewResult)
     assert result.valid_count == 1
     assert result.invalid_count == 1
     assert result.items[0].status == "ready"
     assert result.items[0].title == "title for https://example.com/good"
     assert result.items[1].status == "error"
     assert result.items[1].error_code == "http_forbidden"
+    assert result.items[1].error_message == "The server returned a 403 Forbidden response."
 ```
 
-- [ ] **Step 2: Run the preview unit tests to confirm they fail**
+- [ ] **Step 2: Run the unit tests to confirm they fail**
 
 Run:
 
 ```bash
-uv run pytest tests/unit/test_batch_preview.py::test_resolve_batch_preview_marks_lookup_failures_without_stopping_batch -v
+uv run pytest tests/unit/test_batch_preview.py::test_resolve_batch_preview_returns_ready_items_for_valid_direct_urls tests/unit/test_batch_preview.py::test_resolve_batch_preview_marks_lookup_failures_without_stopping_batch -v
 ```
 
-Expected: FAIL with `ImportError` for `BatchPreviewResult` or `resolve_batch_preview`.
+Expected: FAIL with `ImportError` because `BatchPreviewResult` and `resolve_batch_preview` do not exist yet.
 
-- [ ] **Step 3: Implement direct batch preview**
+- [ ] **Step 3: Implement the minimal preview resolver**
 
-Update `app/services/batch_preview.py` to:
+Replace `app/services/batch_preview.py` with:
 
 ```python
-from dataclasses import dataclass
-from collections.abc import Callable
+from __future__ import annotations
 
-from app.services.downloader import build_stream_picker_payload, normalize_formats
+import re
+from collections.abc import Callable
+from dataclasses import dataclass
+
 from app.services.error_mapper import friendly_ytdlp_error
 
 
@@ -98,7 +135,6 @@ class BatchPreviewItem:
     uploader: str | None
     duration: int | None
     thumbnail: str | None
-    picker_payload: dict | None
     error_code: str | None
     error_message: str | None
 
@@ -108,6 +144,20 @@ class BatchPreviewResult:
     items: list[BatchPreviewItem]
     valid_count: int
     invalid_count: int
+
+
+def parse_source_urls(raw: str) -> list[str]:
+    seen: set[str] = set()
+    urls: list[str] = []
+    for part in re.split(r"\s+|,\s*(?=https?://)", raw):
+        url = part.strip()
+        if not url or not url.startswith("http"):
+            continue
+        if url in seen:
+            continue
+        seen.add(url)
+        urls.append(url)
+    return urls
 
 
 def resolve_batch_preview(
@@ -132,7 +182,6 @@ def resolve_batch_preview(
                     uploader=None,
                     duration=None,
                     thumbnail=None,
-                    picker_payload=None,
                     error_code=code,
                     error_message=message,
                 )
@@ -147,7 +196,6 @@ def resolve_batch_preview(
                 uploader=info.get("uploader"),
                 duration=info.get("duration"),
                 thumbnail=info.get("thumbnail"),
-                picker_payload=build_stream_picker_payload(normalize_formats(info)),
                 error_code=None,
                 error_message=None,
             )
@@ -161,7 +209,7 @@ def resolve_batch_preview(
     )
 ```
 
-- [ ] **Step 4: Run the updated unit tests**
+- [ ] **Step 4: Run the unit tests to confirm they pass**
 
 Run:
 
@@ -169,9 +217,9 @@ Run:
 uv run pytest tests/unit/test_batch_preview.py -v
 ```
 
-Expected: PASS for the parser tests and the new preview test.
+Expected: PASS for the three parser tests plus the two new preview tests.
 
-- [ ] **Step 5: Commit the preview service**
+- [ ] **Step 5: Commit the batch preview service**
 
 Run:
 
@@ -180,9 +228,7 @@ git add app/services/batch_preview.py tests/unit/test_batch_preview.py
 git commit -m "feat: resolve direct batch preview items"
 ```
 
----
-
-### Task 2: Add the preview route and preview cards
+### Task 2: Add the preview route and preview templates
 
 **Files:**
 
@@ -194,22 +240,14 @@ git commit -m "feat: resolve direct batch preview items"
 
 - [ ] **Step 1: Write the failing integration tests**
 
-Add to `tests/integration/test_pages.py`:
+Append to `tests/integration/test_pages.py`:
 
 ```python
-def test_home_page_batch_form_posts_to_preview_route() -> None:
-    with TestClient(app) as client:
-        response = client.get("/")
-
-    assert response.status_code == 200
-    assert 'id="batch-form"' in response.text
-    assert 'hx-post="/info/batch/form"' in response.text
-
-
 def test_batch_lookup_fragment_renders_ready_and_error_cards(monkeypatch) -> None:
     from app.services.batch_preview import BatchPreviewItem, BatchPreviewResult
 
     def fake_resolve_batch_preview(raw: str, **_kwargs):
+        assert raw == "https://example.com/good\nhttps://example.com/bad"
         return BatchPreviewResult(
             items=[
                 BatchPreviewItem(
@@ -219,12 +257,6 @@ def test_batch_lookup_fragment_renders_ready_and_error_cards(monkeypatch) -> Non
                     uploader="Uploader",
                     duration=15,
                     thumbnail="https://example.com/thumb.jpg",
-                    picker_payload={
-                        "video_streams": [],
-                        "audio_streams": [],
-                        "has_muxed_streams": True,
-                        "expected_container_by_pair": {"|": "unknown"},
-                    },
                     error_code=None,
                     error_message=None,
                 ),
@@ -235,7 +267,6 @@ def test_batch_lookup_fragment_renders_ready_and_error_cards(monkeypatch) -> Non
                     uploader=None,
                     duration=None,
                     thumbnail=None,
-                    picker_payload=None,
                     error_code="http_forbidden",
                     error_message="The server returned a 403 Forbidden response.",
                 ),
@@ -247,13 +278,23 @@ def test_batch_lookup_fragment_renders_ready_and_error_cards(monkeypatch) -> Non
     monkeypatch.setattr("app.routes.pages.resolve_batch_preview", fake_resolve_batch_preview)
 
     with TestClient(app) as client:
-        response = client.post("/info/batch/form", data={"sources": "https://example.com/good"})
+        response = client.post(
+            "/info/batch/form",
+            data={"sources": "https://example.com/good\nhttps://example.com/bad"},
+        )
 
     assert response.status_code == 200
+    assert "Batch preview" in response.text
+    assert "1 ready / 1 failed" in response.text
     assert "Good title" in response.text
     assert "403 Forbidden" in response.text
     assert 'hx-post="/downloads/form"' in response.text
+    assert 'hx-target="#batch-status"' in response.text
     assert 'name="url"' in response.text
+    assert 'name="title"' in response.text
+    assert 'name="uploader"' in response.text
+    assert 'name="duration"' in response.text
+    assert 'name="thumbnail"' in response.text
 ```
 
 - [ ] **Step 2: Run the integration tests to confirm they fail**
@@ -261,20 +302,20 @@ def test_batch_lookup_fragment_renders_ready_and_error_cards(monkeypatch) -> Non
 Run:
 
 ```bash
-uv run pytest tests/integration/test_pages.py::test_home_page_batch_form_posts_to_preview_route tests/integration/test_pages.py::test_batch_lookup_fragment_renders_ready_and_error_cards -v
+uv run pytest tests/integration/test_pages.py::test_home_page_renders_batch_enqueue_panel tests/integration/test_pages.py::test_batch_lookup_fragment_renders_ready_and_error_cards -v
 ```
 
-Expected: FAIL because `/info/batch/form` and the preview partials do not exist yet.
+Expected: FAIL because `/info/batch/form`, `#batch-result`, and the new preview partials do not exist yet.
 
-- [ ] **Step 3: Add the route and templates**
+- [ ] **Step 3: Implement the preview route**
 
-In `app/routes/pages.py`, add:
+Update the import block in `app/routes/pages.py` to:
 
 ```python
-from app.services.batch_preview import resolve_batch_preview
+from app.services.batch_preview import parse_source_urls, resolve_batch_preview
 ```
 
-and:
+Add this route immediately after `info_form(...)`:
 
 ```python
 @router.post("/info/batch/form", response_class=HTMLResponse)
@@ -299,11 +340,25 @@ def info_batch_form(
     )
 ```
 
+- [ ] **Step 4: Implement the batch templates**
+
+Create `app/templates/partials/batch_result.html` with:
+
+```html
+<section class="support-card">
+  <h2>Batch preview</h2>
+  <p>{{ result.valid_count }} ready / {{ result.invalid_count }} failed</p>
+</section>
+
+{% for item in result.items %} {% include "partials/batch_preview_card.html" %}
+{% endfor %}
+```
+
 Create `app/templates/partials/batch_preview_card.html` with:
 
 ```html
 {% if item.status == "ready" %}
-<article class="media-card">
+<section class="media-card">
   {% if item.thumbnail %}
   <img src="{{ item.thumbnail }}" alt="" class="media-card-thumb" />
   {% endif %}
@@ -337,53 +392,68 @@ Create `app/templates/partials/batch_preview_card.html` with:
       <button type="submit">Add to queue</button>
     </form>
   </div>
-</article>
+</section>
 {% else %}
-<article class="media-card">
+<section class="media-card">
   <div class="media-card-body">
     <p class="eyebrow">Lookup failed</p>
     <h2>{{ item.source_url }}</h2>
     <p>{{ item.error_message }}</p>
   </div>
-</article>
+</section>
 {% endif %}
 ```
 
-Create `app/templates/partials/batch_result.html` with:
+- [ ] **Step 5: Rewire the home page batch form**
+
+Replace the batch form section in `app/templates/pages/home.html` with:
 
 ```html
-<section class="support-card">
-  <h2>Batch preview</h2>
-  <p>{{ result.valid_count }} valid / {{ result.invalid_count }} invalid</p>
+<section class="composer-panel">
+  <div class="panel-heading">
+    <h2>Queue many sources</h2>
+    <p>
+      Paste direct video URLs to preview them before adding anything to the
+      queue.
+    </p>
+  </div>
+  <form
+    id="batch-form"
+    class="lookup-form"
+    hx-post="/info/batch/form"
+    hx-target="#batch-result"
+    hx-swap="innerHTML"
+  >
+    <label for="batch-sources">Sources</label>
+    <textarea
+      id="batch-sources"
+      name="sources"
+      rows="5"
+      placeholder="https://example.com/a&#10;https://example.com/b"
+      required
+    ></textarea>
+    <div class="toggle-row">
+      <label><input type="checkbox" name="proxy" /> Use saved proxy</label>
+      <label><input type="checkbox" name="cookies" /> Use saved cookies</label>
+    </div>
+    <button type="submit">Preview batch</button>
+  </form>
+  <div id="batch-status"></div>
+  <div id="batch-result" class="lookup-result-slot"></div>
 </section>
-
-{% for item in result.items %} {% include "partials/batch_preview_card.html" %}
-{% endfor %}
 ```
 
-In `app/templates/pages/home.html`, change only the batch form to:
-
-```html
-<form
-  id="batch-form"
-  class="lookup-form"
-  hx-post="/info/batch/form"
-  hx-target="#info-result"
-  hx-swap="innerHTML"
-></form>
-```
-
-- [ ] **Step 4: Run the integration tests to confirm they pass**
+- [ ] **Step 6: Run the integration tests to confirm they pass**
 
 Run:
 
 ```bash
-uv run pytest tests/integration/test_pages.py::test_home_page_batch_form_posts_to_preview_route tests/integration/test_pages.py::test_batch_lookup_fragment_renders_ready_and_error_cards -v
+uv run pytest tests/integration/test_pages.py::test_home_page_renders_batch_enqueue_panel tests/integration/test_pages.py::test_batch_lookup_fragment_renders_ready_and_error_cards -v
 ```
 
-Expected: PASS for both tests.
+Expected: PASS.
 
-- [ ] **Step 5: Commit the preview UI**
+- [ ] **Step 7: Commit the preview route and templates**
 
 Run:
 
@@ -392,31 +462,41 @@ git add app/routes/pages.py app/templates/pages/home.html app/templates/partials
 git commit -m "feat: preview direct batch urls before queueing"
 ```
 
----
-
 ### Task 3: Run focused regression coverage
 
-**Files:**
-
-- Modify: `tests/integration/test_pages.py`
-
-- [ ] **Step 1: Run preview and single-item lookup tests together**
+- [ ] **Step 1: Run the focused regression suite**
 
 Run:
 
 ```bash
-uv run pytest tests/unit/test_batch_preview.py tests/integration/test_pages.py::test_home_page_batch_form_posts_to_preview_route tests/integration/test_pages.py::test_batch_lookup_fragment_renders_ready_and_error_cards tests/integration/test_pages.py::test_info_lookup_fragment_renders_editorial_media_card -v
+uv run pytest tests/unit/test_batch_preview.py tests/integration/test_pages.py::test_home_page_renders_batch_enqueue_panel tests/integration/test_pages.py::test_batch_lookup_fragment_renders_ready_and_error_cards tests/integration/test_pages.py::test_batch_enqueue_route_creates_one_queued_download_per_unique_url tests/integration/test_pages.py::test_info_lookup_fragment_renders_editorial_media_card -v
 ```
 
-Expected: PASS, proving the new preview flow does not break the original single-item lookup or enqueue flow.
+Expected: PASS. This proves the new batch preview flow works, the old direct batch enqueue route still works, and the single-item lookup flow still renders its existing enqueue form.
 
-- [ ] **Step 2: Commit any test-only regression fix**
+- [ ] **Step 2: Run the full page and partial coverage touched by this phase**
 
-If a regression appears, commit the smallest fix with:
+Run:
 
 ```bash
-git add <exact files touched>
+uv run pytest tests/unit/test_batch_preview.py tests/integration/test_pages.py tests/integration/test_partials.py -v
+```
+
+Expected: PASS.
+
+- [ ] **Step 3: Commit any regression-only test fix if needed**
+
+If the regression suite exposes a small test-only issue, commit it with:
+
+```bash
+git add tests/unit/test_batch_preview.py tests/integration/test_pages.py tests/integration/test_partials.py
 git commit -m "test: cover direct batch preview regressions"
 ```
 
-If no fix is needed, skip this step.
+If no further changes are needed after the previous commit, skip this step.
+
+## Self-Review Notes
+
+- Spec coverage: direct-only preview, partial failure handling, home form rewiring, and per-item enqueue are all covered. Playlist expansion, enqueue-all, and stream pickers are intentionally excluded because they belong to later phases.
+- Placeholder scan: no `TODO`, `TBD`, or implicit “handle it somehow” steps remain.
+- Type consistency: the plan uses `BatchPreviewItem`, `BatchPreviewResult`, and `resolve_batch_preview(...)` consistently across unit tests, route code, and template tests.
