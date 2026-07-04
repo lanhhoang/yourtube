@@ -114,6 +114,54 @@ def test_home_page_renders_landing_first_editorial_sections() -> None:
     assert "Recent workflow" in response.text
 
 
+def test_home_page_renders_batch_enqueue_panel() -> None:
+    with TestClient(app) as client:
+        response = client.get("/")
+
+    assert response.status_code == 200
+    assert 'id="batch-form"' in response.text
+    assert 'name="sources"' in response.text
+    assert 'hx-post="/downloads/batch/form"' in response.text
+
+
+def test_batch_enqueue_route_creates_one_queued_download_per_unique_url(
+    db_session_visible,
+) -> None:
+    with TestClient(app) as client:
+        response = client.post(
+            "/downloads/batch/form",
+            data={
+                "sources": "https://example.com/a\nhttps://example.com/a\nhttps://example.com/b",
+            },
+        )
+
+    assert response.status_code == 200
+    rows = db_session_visible.query(Download).order_by(Download.id).all()
+    assert [row.url for row in rows] == [
+        "https://example.com/a",
+        "https://example.com/b",
+    ]
+    assert all(row.status == "queued" for row in rows)
+    assert "Added 2 items to queue." in response.text
+
+
+def test_batch_enqueue_route_accepts_comma_separated_sources(db_session_visible) -> None:
+    with TestClient(app) as client:
+        response = client.post(
+            "/downloads/batch/form",
+            data={
+                "sources": "https://example.com/a,https://example.com/b",
+            },
+        )
+
+    assert response.status_code == 200
+    rows = db_session_visible.query(Download).order_by(Download.id).all()
+    assert [row.url for row in rows] == [
+        "https://example.com/a",
+        "https://example.com/b",
+    ]
+
+
 def test_queue_page_renders_ledger_shell() -> None:
     with TestClient(app) as client:
         response = client.get("/queue")

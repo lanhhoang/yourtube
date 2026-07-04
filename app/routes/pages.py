@@ -20,6 +20,7 @@ from app.config import settings
 from app.db import get_session
 from app.models import Download
 from app.schemas import DownloadCreate
+from app.services.batch_preview import parse_source_urls
 from app.services.diagnostics import collect_runtime_diagnostics
 from app.services.downloader import (
     build_stream_picker_payload,
@@ -204,6 +205,25 @@ async def downloads_form(
         request,
         "partials/status_message.html",
         {"message": "Added to queue.", "target_id": "info-status"},
+    )
+
+
+@router.post("/downloads/batch/form", response_class=HTMLResponse)
+async def downloads_batch_form(
+    request: Request,
+    session: Session = Depends(get_session),
+) -> HTMLResponse:
+    form = await request.form()
+    sources = _form_str(form, "sources") or ""
+    urls = parse_source_urls(sources)
+
+    for url in urls:
+        enqueue_download(session, DownloadCreate(url=url))
+
+    return templates.TemplateResponse(
+        request,
+        "partials/status_message.html",
+        {"message": f"Added {len(urls)} items to queue.", "target_id": "batch-status"},
     )
 
 
