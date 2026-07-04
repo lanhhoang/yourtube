@@ -1,5 +1,9 @@
 {% if item.status == "ready" %}
-<section class="media-card">
+<section
+  class="media-card"
+  x-data='streamPicker({{ item.picker_payload|tojson }})'
+  x-init="streamPickerOpen = false"
+>
   {% if item.thumbnail %}
   <img src="{{ item.thumbnail }}" alt="" class="media-card-thumb" />
   {% endif %}
@@ -16,6 +20,14 @@
         <dd>{{ item.duration or "Unknown" }}</dd>
       </div>
     </dl>
+    <button
+      type="button"
+      class="advanced-toggle"
+      @click="streamPickerOpen = !streamPickerOpen"
+      :aria-expanded="streamPickerOpen.toString()"
+    >
+      Formats
+    </button>
     <form
       hx-post="/downloads/form"
       hx-target="#batch-status"
@@ -27,8 +39,41 @@
       <input type="hidden" name="duration" value="{{ item.duration or '' }}" />
       <input type="hidden" name="thumbnail" value="{{ item.thumbnail or '' }}" />
       <input type="hidden" name="target_id" value="batch-status" />
+      {% include "partials/stream_picker_form.html" %}
       <button type="submit">Add to queue</button>
     </form>
+    <input form="batch-enqueue-form" type="hidden" name="url" value="{{ item.source_url }}" />
+    <input form="batch-enqueue-form" type="hidden" name="title" value="{{ item.title or '' }}" />
+    <input
+      form="batch-enqueue-form"
+      type="hidden"
+      name="uploader"
+      value="{{ item.uploader or '' }}"
+    />
+    <input
+      form="batch-enqueue-form"
+      type="hidden"
+      name="duration"
+      value="{{ item.duration or '' }}"
+    />
+    <input
+      form="batch-enqueue-form"
+      type="hidden"
+      name="thumbnail"
+      value="{{ item.thumbnail or '' }}"
+    />
+    <input
+      form="batch-enqueue-form"
+      type="hidden"
+      name="video_format_id"
+      :value="selectedVideoId"
+    />
+    <input
+      form="batch-enqueue-form"
+      type="hidden"
+      name="audio_format_id"
+      :value="selectedAudioId"
+    />
   </div>
 </section>
 {% else %}

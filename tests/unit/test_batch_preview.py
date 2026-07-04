@@ -75,6 +75,44 @@ def test_resolve_batch_preview_returns_ready_items_for_valid_direct_urls() -> No
     assert result.items[0].title == "title for https://example.com/a"
 
 
+def test_resolve_batch_preview_attaches_stream_picker_payload_to_ready_items() -> None:
+    def fake_extract(
+        url: str,
+        *,
+        proxy: str | None = None,
+        cookies_file: str | None = None,
+    ) -> dict:
+        assert proxy is None
+        assert cookies_file is None
+        return {
+            "title": "Ready",
+            "formats": [
+                {
+                    "format_id": "137",
+                    "ext": "mp4",
+                    "vcodec": "avc1.640028",
+                    "acodec": "none",
+                    "resolution": "1080p",
+                },
+                {
+                    "format_id": "140",
+                    "ext": "m4a",
+                    "vcodec": "none",
+                    "acodec": "mp4a.40.2",
+                    "abr": 128.0,
+                    "audio_channels": 2,
+                },
+            ],
+        }
+
+    result = resolve_batch_preview("https://example.com/a", extract_info=fake_extract)
+
+    payload = result.items[0].picker_payload
+    assert payload["video_streams"][0]["format_id"] == "137"
+    assert payload["audio_streams"][0]["format_id"] == "140"
+    assert payload["expected_container_by_pair"]["137|140"] == "mp4"
+
+
 def test_resolve_batch_preview_marks_lookup_failures_without_stopping_batch() -> None:
     from app.services.batch_preview import resolve_batch_preview
 

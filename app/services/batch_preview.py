@@ -2,9 +2,23 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
+from app.services.downloader import (
+    StreamPickerPayload,
+    build_stream_picker_payload,
+    normalize_formats,
+)
 from app.services.error_mapper import friendly_ytdlp_error
+
+
+def _empty_picker_payload() -> StreamPickerPayload:
+    return {
+        "video_streams": [],
+        "audio_streams": [],
+        "has_muxed_streams": False,
+        "expected_container_by_pair": {"|": "unknown"},
+    }
 
 
 @dataclass(frozen=True)
@@ -17,6 +31,7 @@ class BatchPreviewItem:
     thumbnail: str | None
     error_code: str | None
     error_message: str | None
+    picker_payload: StreamPickerPayload = field(default_factory=_empty_picker_payload)
 
 
 @dataclass(frozen=True)
@@ -138,6 +153,7 @@ def resolve_batch_preview(
                 thumbnail=info.get("thumbnail"),
                 error_code=None,
                 error_message=None,
+                picker_payload=build_stream_picker_payload(normalize_formats(info)),
             )
         )
 

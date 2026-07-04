@@ -13,13 +13,6 @@
   hx-target="#batch-status"
   hx-swap="innerHTML"
 >
-  {% for item in result.items if item.status == "ready" %}
-  <input type="hidden" name="url" value="{{ item.source_url }}" />
-  <input type="hidden" name="title" value="{{ item.title or '' }}" />
-  <input type="hidden" name="uploader" value="{{ item.uploader or '' }}" />
-  <input type="hidden" name="duration" value="{{ item.duration or '' }}" />
-  <input type="hidden" name="thumbnail" value="{{ item.thumbnail or '' }}" />
-  {% endfor %}
   <button type="submit">Enqueue all valid</button>
 </form>
 {% endif %}

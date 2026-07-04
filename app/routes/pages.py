@@ -270,12 +270,14 @@ async def downloads_batch_form(
         )
 
     queued_count = 0
-    for url, title, uploader, duration, thumbnail in zip_longest(
+    for url, title, uploader, duration, thumbnail, video_id, audio_id in zip_longest(
         _form_values(form, "url"),
         _form_values(form, "title"),
         _form_values(form, "uploader"),
         _form_values(form, "duration"),
         _form_values(form, "thumbnail"),
+        _form_values(form, "video_format_id"),
+        _form_values(form, "audio_format_id"),
         fillvalue="",
     ):
         if not url:
@@ -288,6 +290,8 @@ async def downloads_batch_form(
                 uploader=uploader or None,
                 duration=int(duration) if duration else None,
                 thumbnail=thumbnail or None,
+                video_format_id=video_id or None,
+                audio_format_id=audio_id or None,
             ),
         )
         queued_count += 1
