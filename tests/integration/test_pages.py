@@ -319,16 +319,8 @@ def test_batch_lookup_route_passes_playlist_expander(monkeypatch) -> None:
             invalid_count=0,
         )
 
-    monkeypatch.setattr(
-        "app.routes.pages.expand_playlist_entries",
-        fake_expand_playlist_entries,
-        raising=False,
-    )
-    monkeypatch.setattr(
-        "app.routes.pages.extract_flat_info",
-        fake_extract_flat_info,
-        raising=False,
-    )
+    monkeypatch.setattr("app.routes.pages.expand_playlist_entries", fake_expand_playlist_entries)
+    monkeypatch.setattr("app.routes.pages.extract_flat_info", fake_extract_flat_info)
     monkeypatch.setattr("app.routes.pages.resolve_batch_preview", fake_resolve_batch_preview)
 
     with TestClient(app) as client:

@@ -65,34 +65,6 @@ def expand_playlist_entries(
     return urls or [url]
 
 
-def expand_source_urls(
-    source_urls: list[str],
-    *,
-    expand_playlist: Callable[[str], list[str]],
-    limit: int = 50,
-) -> tuple[list[str], int]:
-    seen: set[str] = set()
-    expanded: list[str] = []
-    truncated_count = 0
-
-    for source_url in source_urls:
-        try:
-            resolved_urls = expand_playlist(source_url)
-        except Exception:  # noqa: BLE001
-            resolved_urls = [source_url]
-
-        for resolved_url in resolved_urls:
-            if resolved_url in seen:
-                continue
-            seen.add(resolved_url)
-            if len(expanded) >= limit:
-                truncated_count += 1
-                continue
-            expanded.append(resolved_url)
-
-    return expanded, truncated_count
-
-
 def resolve_batch_preview(
     raw: str,
     *,
@@ -102,13 +74,27 @@ def resolve_batch_preview(
     cookies_file: str | None = None,
 ) -> BatchPreviewResult:
     items: list[BatchPreviewItem] = []
-    source_urls = parse_source_urls(raw)
-    expanded_urls, truncated_count = expand_source_urls(
-        source_urls,
-        expand_playlist=expand_playlist or (lambda url: [url]),
-    )
+    seen: set[str] = set()
+    urls: list[str] = []
+    truncated_count = 0
+    expand = expand_playlist or (lambda url: [url])
 
-    for url in expanded_urls:
+    for source_url in parse_source_urls(raw):
+        try:
+            resolved_urls = expand(source_url)
+        except Exception:  # noqa: BLE001
+            resolved_urls = [source_url]
+
+        for resolved_url in resolved_urls:
+            if resolved_url in seen:
+                continue
+            seen.add(resolved_url)
+            if len(urls) >= 50:
+                truncated_count += 1
+                continue
+            urls.append(resolved_url)
+
+    for url in urls:
         try:
             info = extract_info(url, proxy=proxy, cookies_file=cookies_file)
         except Exception as exc:  # noqa: BLE001

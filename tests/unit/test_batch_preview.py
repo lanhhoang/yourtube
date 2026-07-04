@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from app.services.batch_preview import (
     expand_playlist_entries,
-    expand_source_urls,
     parse_source_urls,
     resolve_batch_preview,
 )
@@ -167,11 +166,7 @@ def test_expand_playlist_entries_accepts_lazy_entry_iterables() -> None:
         proxy: str | None = None,
         cookies_file: str | None = None,
     ) -> dict:
-        return {
-            "entries": (
-                {"url": f"https://example.com/watch?v={index}"} for index in range(2)
-            )
-        }
+        return {"entries": ({"url": f"https://example.com/watch?v={index}"} for index in range(2))}
 
     assert expand_playlist_entries("https://example.com/list", extract_info=fake_extract) == [
         "https://example.com/watch?v=0",
@@ -179,37 +174,35 @@ def test_expand_playlist_entries_accepts_lazy_entry_iterables() -> None:
     ]
 
 
-def test_expand_source_urls_dedupes_and_caps_after_playlist_expansion() -> None:
+def test_resolve_batch_preview_dedupes_and_caps_after_playlist_expansion() -> None:
     def fake_expand(url: str) -> list[str]:
         if url == "https://example.com/list":
             return [f"https://example.com/watch?v={index}" for index in range(60)]
         return [url]
 
-    urls, truncated_count = expand_source_urls(
-        ["https://example.com/list", "https://example.com/watch?v=1", "https://example.com/after"],
-        expand_playlist=fake_expand,
-        limit=50,
-    )
+    def fake_extract(
+        url: str,
+        *,
+        proxy: str | None = None,
+        cookies_file: str | None = None,
+    ) -> dict:
+        return {
+            "title": url,
+            "uploader": "Uploader",
+            "duration": 12,
+            "thumbnail": "https://example.com/thumb.jpg",
+        }
 
-    assert len(urls) == 50
-    assert urls[0] == "https://example.com/watch?v=0"
-    assert urls[-1] == "https://example.com/watch?v=49"
-    assert truncated_count == 11
-
-
-def test_expand_source_urls_falls_back_to_source_when_expansion_fails() -> None:
-    def fake_expand(url: str) -> list[str]:
-        if url == "https://example.com/bad-list":
-            raise RuntimeError("HTTP Error 403: Forbidden")
-        return [url]
-
-    urls, truncated_count = expand_source_urls(
-        ["https://example.com/bad-list"],
+    result = resolve_batch_preview(
+        "https://example.com/list https://example.com/watch?v=1 https://example.com/after",
+        extract_info=fake_extract,
         expand_playlist=fake_expand,
     )
 
-    assert urls == ["https://example.com/bad-list"]
-    assert truncated_count == 0
+    assert len(result.items) == 50
+    assert result.items[0].source_url == "https://example.com/watch?v=0"
+    assert result.items[-1].source_url == "https://example.com/watch?v=49"
+    assert result.truncated_count == 11
 
 
 def test_resolve_batch_preview_expands_playlist_before_metadata_lookup() -> None:
