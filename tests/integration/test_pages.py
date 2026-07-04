@@ -163,6 +163,38 @@ def test_batch_enqueue_route_accepts_comma_separated_sources(db_session_visible)
     ]
 
 
+def test_batch_enqueue_route_creates_one_queued_download_per_valid_preview_item(
+    db_session_visible,
+) -> None:
+    with TestClient(app) as client:
+        response = client.post(
+            "/downloads/batch/form",
+            data={
+                "url": ["https://example.com/a", "https://example.com/b"],
+                "title": ["Title A", "Title B"],
+                "uploader": ["Uploader A", "Uploader B"],
+                "duration": ["12", "24"],
+                "thumbnail": ["https://example.com/a.jpg", "https://example.com/b.jpg"],
+            },
+        )
+
+    assert response.status_code == 200
+    rows = db_session_visible.query(Download).order_by(Download.id).all()
+    assert [row.url for row in rows] == [
+        "https://example.com/a",
+        "https://example.com/b",
+    ]
+    assert rows[0].title == "Title A"
+    assert rows[0].uploader == "Uploader A"
+    assert rows[0].duration == 12
+    assert rows[0].thumbnail == "https://example.com/a.jpg"
+    assert rows[1].title == "Title B"
+    assert rows[1].uploader == "Uploader B"
+    assert rows[1].duration == 24
+    assert rows[1].thumbnail == "https://example.com/b.jpg"
+    assert "Added 2 items to queue." in response.text
+
+
 def test_batch_lookup_fragment_renders_ready_and_error_cards(monkeypatch) -> None:
     from app.services.batch_preview import BatchPreviewItem, BatchPreviewResult
 
@@ -216,6 +248,42 @@ def test_batch_lookup_fragment_renders_ready_and_error_cards(monkeypatch) -> Non
     assert 'name="duration"' in response.text
     assert 'name="thumbnail"' in response.text
     assert 'name="target_id"' in response.text
+
+
+def test_batch_lookup_fragment_renders_enqueue_all_form(monkeypatch) -> None:
+    from app.services.batch_preview import BatchPreviewItem, BatchPreviewResult
+
+    def fake_resolve_batch_preview(raw: str, **_kwargs):
+        assert raw == "https://example.com/good"
+        return BatchPreviewResult(
+            items=[
+                BatchPreviewItem(
+                    source_url="https://example.com/good",
+                    status="ready",
+                    title="Good title",
+                    uploader="Uploader",
+                    duration=15,
+                    thumbnail="https://example.com/thumb.jpg",
+                    error_code=None,
+                    error_message=None,
+                )
+            ],
+            valid_count=1,
+            invalid_count=0,
+        )
+
+    monkeypatch.setattr("app.routes.pages.resolve_batch_preview", fake_resolve_batch_preview)
+
+    with TestClient(app) as client:
+        response = client.post("/info/batch/form", data={"sources": "https://example.com/good"})
+
+    assert response.status_code == 200
+    assert 'id="batch-enqueue-form"' in response.text
+    assert 'hx-post="/downloads/batch/form"' in response.text
+    assert 'hx-target="#batch-status"' in response.text
+    assert 'name="url" value="https://example.com/good"' in response.text
+    assert 'name="title" value="Good title"' in response.text
+    assert "Enqueue all valid" in response.text
 
 
 def test_batch_preview_card_enqueue_posts_metadata_to_queue(db_session_visible) -> None:

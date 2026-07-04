@@ -8,6 +8,7 @@ changes, and downloaded file delivery.
 
 from __future__ import annotations
 
+from itertools import zip_longest
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
@@ -53,6 +54,10 @@ def _form_str(form: FormData, key: str) -> str | None:
     if value is None or isinstance(value, UploadFile):
         return None
     return str(value)
+
+
+def _form_values(form: FormData, key: str) -> list[str]:
+    return [str(value) for value in form.getlist(key) if not isinstance(value, UploadFile)]
 
 
 # --- Page routes -----------------------------------------------------------
@@ -239,16 +244,45 @@ async def downloads_batch_form(
     session: Session = Depends(get_session),
 ) -> HTMLResponse:
     form = await request.form()
-    sources = _form_str(form, "sources") or ""
-    urls = parse_source_urls(sources)
+    raw_sources = _form_str(form, "sources") or ""
+    urls = parse_source_urls(raw_sources)
 
-    for url in urls:
-        enqueue_download(session, DownloadCreate(url=url))
+    if urls:
+        for url in urls:
+            enqueue_download(session, DownloadCreate(url=url))
+        return templates.TemplateResponse(
+            request,
+            "partials/status_message.html",
+            {"message": f"Added {len(urls)} items to queue.", "target_id": "batch-status"},
+        )
+
+    queued_count = 0
+    for url, title, uploader, duration, thumbnail in zip_longest(
+        _form_values(form, "url"),
+        _form_values(form, "title"),
+        _form_values(form, "uploader"),
+        _form_values(form, "duration"),
+        _form_values(form, "thumbnail"),
+        fillvalue="",
+    ):
+        if not url:
+            continue
+        enqueue_download(
+            session,
+            DownloadCreate(
+                url=url,
+                title=title or None,
+                uploader=uploader or None,
+                duration=int(duration) if duration else None,
+                thumbnail=thumbnail or None,
+            ),
+        )
+        queued_count += 1
 
     return templates.TemplateResponse(
         request,
         "partials/status_message.html",
-        {"message": f"Added {len(urls)} items to queue.", "target_id": "batch-status"},
+        {"message": f"Added {queued_count} items to queue.", "target_id": "batch-status"},
     )
 
 
