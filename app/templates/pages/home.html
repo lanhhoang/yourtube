@@ -40,6 +40,31 @@
   <div id="info-result" class="lookup-result-slot"></div>
 </section>
 
+<section class="composer-panel">
+  <div class="panel-heading">
+    <h2>Queue many sources</h2>
+    <p>Paste direct video URLs and send them to the queue with default settings.</p>
+  </div>
+  <form
+    id="batch-form"
+    class="lookup-form"
+    hx-post="/downloads/batch/form"
+    hx-target="#batch-status"
+    hx-swap="innerHTML"
+  >
+    <label for="batch-sources">Sources</label>
+    <textarea
+      id="batch-sources"
+      name="sources"
+      rows="5"
+      placeholder="https://example.com/a&#10;https://example.com/b"
+      required
+    ></textarea>
+    <button type="submit">Add all to queue</button>
+  </form>
+  <div id="batch-status"></div>
+</section>
+
 <section class="support-grid">
   <article class="support-card">
     <h2>Recent workflow</h2>
