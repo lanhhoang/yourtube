@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 
 from app.services.error_mapper import friendly_ytdlp_error
@@ -50,7 +50,7 @@ def expand_playlist_entries(
 ) -> list[str]:
     info = extract_info(url, proxy=proxy, cookies_file=cookies_file)
     entries = info.get("entries")
-    if not isinstance(entries, list):
+    if isinstance(entries, (str, bytes)) or not isinstance(entries, Iterable):
         return [url]
 
     urls: list[str] = []

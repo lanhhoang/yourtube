@@ -160,6 +160,25 @@ def test_expand_playlist_entries_returns_entry_urls_from_flat_playlist() -> None
     ]
 
 
+def test_expand_playlist_entries_accepts_lazy_entry_iterables() -> None:
+    def fake_extract(
+        url: str,
+        *,
+        proxy: str | None = None,
+        cookies_file: str | None = None,
+    ) -> dict:
+        return {
+            "entries": (
+                {"url": f"https://example.com/watch?v={index}"} for index in range(2)
+            )
+        }
+
+    assert expand_playlist_entries("https://example.com/list", extract_info=fake_extract) == [
+        "https://example.com/watch?v=0",
+        "https://example.com/watch?v=1",
+    ]
+
+
 def test_expand_source_urls_dedupes_and_caps_after_playlist_expansion() -> None:
     def fake_expand(url: str) -> list[str]:
         if url == "https://example.com/list":
@@ -226,3 +245,29 @@ def test_resolve_batch_preview_expands_playlist_before_metadata_lookup() -> None
     assert result.valid_count == 2
     assert result.invalid_count == 0
     assert result.truncated_count == 0
+
+
+def test_resolve_batch_preview_maps_fallback_source_error_when_playlist_expansion_fails() -> None:
+    def fake_expand(url: str) -> list[str]:
+        raise RuntimeError("HTTP Error 403: Forbidden")
+
+    def fake_extract(
+        url: str,
+        *,
+        proxy: str | None = None,
+        cookies_file: str | None = None,
+    ) -> dict:
+        raise RuntimeError("HTTP Error 403: Forbidden")
+
+    result = resolve_batch_preview(
+        "https://example.com/bad-list",
+        extract_info=fake_extract,
+        expand_playlist=fake_expand,
+    )
+
+    assert result.valid_count == 0
+    assert result.invalid_count == 1
+    assert result.items[0].source_url == "https://example.com/bad-list"
+    assert result.items[0].status == "error"
+    assert result.items[0].error_code == "http_forbidden"
+    assert result.items[0].error_message == "The server returned a 403 Forbidden response."
