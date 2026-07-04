@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.models import Download
+from app.services.downloader import build_stream_picker_payload, normalize_formats
 from app.services.settings import set_settings_batch
 
 
@@ -195,6 +196,28 @@ def test_batch_enqueue_route_creates_one_queued_download_per_valid_preview_item(
     assert "Added 2 items to queue." in response.text
 
 
+def test_batch_enqueue_route_preserves_preview_selected_stream_ids(
+    db_session_visible,
+) -> None:
+    with TestClient(app) as client:
+        response = client.post(
+            "/downloads/batch/form",
+            data={
+                "url": ["https://example.com/a", "https://example.com/b"],
+                "title": ["Title A", "Title B"],
+                "video_format_id": ["137", ""],
+                "audio_format_id": ["140", "251"],
+            },
+        )
+
+    assert response.status_code == 200
+    rows = db_session_visible.query(Download).order_by(Download.id).all()
+    assert rows[0].video_format_id == "137"
+    assert rows[0].audio_format_id == "140"
+    assert rows[1].video_format_id is None
+    assert rows[1].audio_format_id == "251"
+
+
 def test_batch_lookup_fragment_renders_ready_and_error_cards(monkeypatch) -> None:
     from app.services.batch_preview import BatchPreviewItem, BatchPreviewResult
 
@@ -284,6 +307,65 @@ def test_batch_lookup_fragment_renders_enqueue_all_form(monkeypatch) -> None:
     assert 'name="url" value="https://example.com/good"' in response.text
     assert 'name="title" value="Good title"' in response.text
     assert "Enqueue all valid" in response.text
+
+
+def test_batch_lookup_fragment_renders_collapsed_format_picker(monkeypatch) -> None:
+    from app.services.batch_preview import BatchPreviewItem, BatchPreviewResult
+
+    def fake_resolve_batch_preview(raw: str, **_kwargs):
+        assert raw == "https://example.com/good"
+        return BatchPreviewResult(
+            items=[
+                BatchPreviewItem(
+                    source_url="https://example.com/good",
+                    status="ready",
+                    title="Good title",
+                    uploader="Uploader",
+                    duration=15,
+                    thumbnail="https://example.com/thumb.jpg",
+                    error_code=None,
+                    error_message=None,
+                    picker_payload=build_stream_picker_payload(
+                        normalize_formats(
+                            {
+                                "formats": [
+                                    {
+                                        "format_id": "137",
+                                        "resolution": "1080p",
+                                        "ext": "mp4",
+                                        "vcodec": "avc1",
+                                        "acodec": "none",
+                                    },
+                                    {
+                                        "format_id": "140",
+                                        "abr": 128.0,
+                                        "audio_channels": 2,
+                                        "ext": "m4a",
+                                        "vcodec": "none",
+                                        "acodec": "mp4a.40.2",
+                                    },
+                                ]
+                            }
+                        )
+                    ),
+                )
+            ],
+            valid_count=1,
+            invalid_count=0,
+        )
+
+    monkeypatch.setattr("app.routes.pages.resolve_batch_preview", fake_resolve_batch_preview)
+
+    with TestClient(app) as client:
+        response = client.post("/info/batch/form", data={"sources": "https://example.com/good"})
+
+    assert response.status_code == 200
+    assert "Formats" in response.text
+    assert "Video Streams" in response.text
+    assert "Audio Streams" in response.text
+    assert 'x-init="streamPickerOpen = false"' in response.text
+    assert 'form="batch-enqueue-form"' in response.text
+    assert 'name="target_id" value="batch-status"' in response.text
 
 
 def test_batch_lookup_route_passes_playlist_expander(monkeypatch) -> None:
@@ -505,6 +587,47 @@ def test_info_lookup_fragment_renders_stream_picker_markup(monkeypatch) -> None:
     assert 'name="subtitles"' in response.text
     assert "x-cloak" in response.text
     assert "Default format selection remains available" in response.text
+
+
+def test_info_lookup_fragment_gates_stream_tables_with_picker_visibility(monkeypatch) -> None:
+    def fake_extract_info(url: str, **_kwargs):
+        return {
+            "url": url,
+            "title": "Example title",
+            "uploader": "Uploader",
+            "duration": 123,
+            "thumbnail": "https://example.com/thumb.jpg",
+            "formats": [
+                {
+                    "format_id": "401",
+                    "ext": "mp4",
+                    "container": "mp4_dash",
+                    "vcodec": "avc1.640028",
+                    "acodec": "none",
+                    "height": 2160,
+                    "resolution": "2160p",
+                },
+                {
+                    "format_id": "140",
+                    "ext": "m4a",
+                    "container": "m4a_dash",
+                    "vcodec": "none",
+                    "acodec": "mp4a.40.2",
+                    "abr": 128.0,
+                    "audio_channels": 2,
+                },
+            ],
+            "captions": {},
+        }
+
+    monkeypatch.setattr("app.routes.pages.extract_info", fake_extract_info)
+
+    with TestClient(app) as client:
+        response = client.post("/info/form", data={"url": "https://example.com/watch?v=1"})
+
+    assert response.status_code == 200
+    assert "streamPickerOpen: true" in response.text
+    assert 'x-show="streamPickerOpen"' in response.text
 
 
 def test_settings_reset_returns_updated_form(db_session_visible) -> None:
