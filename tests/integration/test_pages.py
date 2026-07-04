@@ -286,6 +286,73 @@ def test_batch_lookup_fragment_renders_enqueue_all_form(monkeypatch) -> None:
     assert "Enqueue all valid" in response.text
 
 
+def test_batch_lookup_route_passes_playlist_expander(monkeypatch) -> None:
+    from app.services.batch_preview import BatchPreviewItem, BatchPreviewResult
+
+    def fake_expand_playlist_entries(url: str, **kwargs) -> list[str]:
+        assert url == "https://example.com/list"
+        assert kwargs["extract_info"] is fake_extract_flat_info
+        return ["https://example.com/watch?v=1"]
+
+    def fake_extract_flat_info(url: str, **_kwargs) -> dict:
+        return {"entries": [{"url": "https://example.com/watch?v=1"}]}
+
+    def fake_resolve_batch_preview(raw: str, **kwargs):
+        assert raw == "https://example.com/list"
+        assert kwargs["expand_playlist"]("https://example.com/list") == [
+            "https://example.com/watch?v=1"
+        ]
+        return BatchPreviewResult(
+            items=[
+                BatchPreviewItem(
+                    source_url="https://example.com/watch?v=1",
+                    status="ready",
+                    title="Episode 1",
+                    uploader="Uploader",
+                    duration=10,
+                    thumbnail="https://example.com/1.jpg",
+                    error_code=None,
+                    error_message=None,
+                )
+            ],
+            valid_count=1,
+            invalid_count=0,
+        )
+
+    monkeypatch.setattr(
+        "app.routes.pages.expand_playlist_entries",
+        fake_expand_playlist_entries,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "app.routes.pages.extract_flat_info",
+        fake_extract_flat_info,
+        raising=False,
+    )
+    monkeypatch.setattr("app.routes.pages.resolve_batch_preview", fake_resolve_batch_preview)
+
+    with TestClient(app) as client:
+        response = client.post("/info/batch/form", data={"sources": "https://example.com/list"})
+
+    assert response.status_code == 200
+    assert "Episode 1" in response.text
+
+
+def test_batch_result_renders_truncation_notice(monkeypatch) -> None:
+    from app.services.batch_preview import BatchPreviewResult
+
+    def fake_resolve_batch_preview(raw: str, **_kwargs):
+        return BatchPreviewResult(items=[], valid_count=0, invalid_count=0, truncated_count=7)
+
+    monkeypatch.setattr("app.routes.pages.resolve_batch_preview", fake_resolve_batch_preview)
+
+    with TestClient(app) as client:
+        response = client.post("/info/batch/form", data={"sources": "https://example.com/list"})
+
+    assert response.status_code == 200
+    assert "Skipped 7 item(s) because the batch limit is 50." in response.text
+
+
 def test_batch_preview_card_enqueue_posts_metadata_to_queue(db_session_visible) -> None:
     with TestClient(app) as client:
         response = client.post(
