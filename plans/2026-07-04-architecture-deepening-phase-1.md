@@ -26,6 +26,7 @@
 ### Task 1: Add a dedicated claimed-job runner module
 
 **Files:**
+
 - Create: `app/services/job_runner.py`
 - Create: `tests/unit/test_job_runner.py`
 
@@ -237,6 +238,7 @@ Expected: PASS.
 ### Task 2: Delegate `WorkerPool` execution to the new seam
 
 **Files:**
+
 - Modify: `app/main.py`
 - Modify: `tests/integration/test_worker_pool.py`
 
@@ -291,7 +293,7 @@ Replace them with:
 from app.services.queue import claim_next, detect_stale_jobs, requeue_active_on_startup
 ```
 
-- [ ] **Step 2: Replace direct execution-path integration tests with a delegation test**
+- [ ] **Step 2: Replace direct execution-path integration tests with delegation tests**
 
 In `tests/integration/test_worker_pool.py`, remove the three tests that patch `app.main.run_download` and add:
 
@@ -317,7 +319,33 @@ def test_worker_pool_delegates_claimed_job_to_job_runner(monkeypatch, db_session
     assert seen == [row.id]
 ```
 
-Keep the detached-claim test and the stale-thread test unchanged.
+Rewrite the detached-claim test so it also patches the new `app.main.run_claimed_job` seam instead of the removed `app.main.run_download` import:
+
+```python
+def test_worker_loop_can_run_claimed_job_without_detached_instance(
+    monkeypatch, db_session_visible
+) -> None:
+    row = enqueue_download(db_session_visible, DownloadCreate(url="https://example.com/safe"))
+    db_session_visible.commit()
+
+    seen: list[int] = []
+
+    def fake_run_claimed_job(job_id: int) -> None:
+        seen.append(job_id)
+
+    monkeypatch.setattr("app.main.run_claimed_job", fake_run_claimed_job)
+
+    from app.main import WorkerPool
+
+    pool = WorkerPool()
+    claimed = pool._claim_once_for_test()
+    assert claimed == row.id
+    pool._run_job(claimed)
+
+    assert seen == [row.id]
+```
+
+Keep the stale-thread test unchanged.
 
 - [ ] **Step 3: Run the focused orchestration tests**
 
@@ -334,6 +362,7 @@ Expected: PASS.
 ### Task 3: Verify the phase is atomic and usable
 
 **Files:**
+
 - Modify: none expected
 
 - [ ] **Step 1: Run the phase-local verification**
