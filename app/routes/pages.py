@@ -18,19 +18,11 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.db import get_session
 from app.models import Download
-from app.services.batch_preview import (
-    expand_playlist_entries,
-    resolve_batch_preview,
-)
 from app.services.diagnostics import collect_runtime_diagnostics
-from app.services.downloader import (
-    build_stream_picker_payload,
-    extract_flat_info,
-    extract_info,
-    normalize_formats,
-)
+from app.services.downloader import extract_info
 from app.services.enqueue_intake import build_batch_downloads, build_single_download
 from app.services.library import delete_from_library, get_library, search_library
+from app.services.preview import resolve_batch_preview, resolve_single_preview
 from app.services.queue import (
     cancel_job,
     enqueue_download,
@@ -155,23 +147,22 @@ def info_form(
     session: Session = Depends(get_session),
 ) -> HTMLResponse:
     runtime = resolve_runtime_settings(session)
-    raw = extract_info(
+    result = resolve_single_preview(
         url,
+        extract_info=extract_info,
         proxy=runtime.proxy_url if proxy else None,
         cookies_file=str(runtime.cookies_path) if cookies and runtime.cookies_path else None,
     )
-    formats = normalize_formats(raw)
     return templates.TemplateResponse(
         request,
         "partials/info_result.html",
         {
-            "url": url,
-            "title": raw.get("title", ""),
-            "uploader": raw.get("uploader"),
-            "duration": raw.get("duration"),
-            "thumbnail": raw.get("thumbnail"),
-            "formats": formats,
-            "picker_payload": build_stream_picker_payload(formats),
+            "url": result.url,
+            "title": result.title,
+            "uploader": result.uploader,
+            "duration": result.duration,
+            "thumbnail": result.thumbnail,
+            "picker_payload": result.picker_payload,
         },
     )
 
@@ -190,12 +181,6 @@ def info_batch_form(
     result = resolve_batch_preview(
         sources,
         extract_info=extract_info,
-        expand_playlist=lambda url: expand_playlist_entries(
-            url,
-            extract_info=extract_flat_info,
-            proxy=proxy_url,
-            cookies_file=cookies_file,
-        ),
         proxy=proxy_url,
         cookies_file=cookies_file,
     )

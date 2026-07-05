@@ -368,48 +368,52 @@ def test_batch_lookup_fragment_renders_collapsed_format_picker(monkeypatch) -> N
     assert 'name="target_id" value="batch-status"' in response.text
 
 
-def test_batch_lookup_route_passes_playlist_expander(monkeypatch) -> None:
-    from app.services.batch_preview import BatchPreviewItem, BatchPreviewResult
+def test_info_lookup_route_uses_preview_service(monkeypatch) -> None:
+    from app.services.preview import SinglePreviewResult
 
-    def fake_expand_playlist_entries(url: str, **kwargs) -> list[str]:
-        assert url == "https://example.com/list"
-        assert kwargs["extract_info"] is fake_extract_flat_info
-        return ["https://example.com/watch?v=1"]
+    def fake_resolve_single_preview(url: str, **_kwargs):
+        assert url == "https://example.com/watch?v=1"
+        return SinglePreviewResult(
+            url=url,
+            title="Example title",
+            uploader="Uploader",
+            duration=123,
+            thumbnail="https://example.com/thumb.jpg",
+            picker_payload={
+                "video_streams": [],
+                "audio_streams": [],
+                "has_muxed_streams": True,
+                "expected_container_by_pair": {"|": "unknown"},
+            },
+        )
 
-    def fake_extract_flat_info(url: str, **_kwargs) -> dict:
-        return {"entries": [{"url": "https://example.com/watch?v=1"}]}
+    monkeypatch.setattr("app.routes.pages.resolve_single_preview", fake_resolve_single_preview)
+
+    with TestClient(app) as client:
+        response = client.post("/info/form", data={"url": "https://example.com/watch?v=1"})
+
+    assert response.status_code == 200
+    assert "Example title" in response.text
+
+
+def test_batch_lookup_route_uses_preview_service(monkeypatch) -> None:
+    from app.services.batch_preview import BatchPreviewResult
 
     def fake_resolve_batch_preview(raw: str, **kwargs):
         assert raw == "https://example.com/list"
-        assert kwargs["expand_playlist"]("https://example.com/list") == [
-            "https://example.com/watch?v=1"
-        ]
-        return BatchPreviewResult(
-            items=[
-                BatchPreviewItem(
-                    source_url="https://example.com/watch?v=1",
-                    status="ready",
-                    title="Episode 1",
-                    uploader="Uploader",
-                    duration=10,
-                    thumbnail="https://example.com/1.jpg",
-                    error_code=None,
-                    error_message=None,
-                )
-            ],
-            valid_count=1,
-            invalid_count=0,
-        )
+        assert kwargs["extract_info"] is not None
+        assert kwargs["proxy"] is None
+        assert kwargs["cookies_file"] is None
+        assert "expand_playlist" not in kwargs
+        return BatchPreviewResult(items=[], valid_count=0, invalid_count=0)
 
-    monkeypatch.setattr("app.routes.pages.expand_playlist_entries", fake_expand_playlist_entries)
-    monkeypatch.setattr("app.routes.pages.extract_flat_info", fake_extract_flat_info)
     monkeypatch.setattr("app.routes.pages.resolve_batch_preview", fake_resolve_batch_preview)
 
     with TestClient(app) as client:
         response = client.post("/info/batch/form", data={"sources": "https://example.com/list"})
 
     assert response.status_code == 200
-    assert "Episode 1" in response.text
+    assert "Batch preview" in response.text
 
 
 def test_batch_result_renders_truncation_notice(monkeypatch) -> None:
