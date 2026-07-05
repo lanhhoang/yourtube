@@ -35,6 +35,7 @@ from app.services.settings import (
     resolve_runtime_settings,
     set_settings_batch,
 )
+from app.services.stream_selection import STREAM_FIELDS
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 TEMPLATES_DIR = PROJECT_ROOT / "app" / "templates"
@@ -163,6 +164,7 @@ def info_form(
             "duration": result.duration,
             "thumbnail": result.thumbnail,
             "picker_payload": result.picker_payload,
+            "stream_fields": STREAM_FIELDS,
         },
     )
 
@@ -187,7 +189,7 @@ def info_batch_form(
     return templates.TemplateResponse(
         request,
         "partials/batch_result.html",
-        {"result": result},
+        {"result": result, "stream_fields": STREAM_FIELDS},
     )
 
 

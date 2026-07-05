@@ -13,6 +13,23 @@ from app.main import app
 from app.models import Download
 from app.services.downloader import build_stream_picker_payload, normalize_formats
 from app.services.settings import set_settings_batch
+from app.services.stream_selection import StreamFieldNames
+
+_SENTINEL_STREAM_FIELDS = StreamFieldNames(
+    video_format_id="picked_video",
+    audio_format_id="picked_audio",
+    output_template="picked_template",
+    audio_bitrate="picked_bitrate",
+    subtitles="picked_subtitles",
+)
+
+
+def _assert_sentinel_stream_fields_rendered(markup: str) -> None:
+    assert 'name="picked_video"' in markup
+    assert 'name="picked_audio"' in markup
+    assert 'name="picked_template"' in markup
+    assert 'name="picked_bitrate"' in markup
+    assert 'name="picked_subtitles"' in markup
 
 
 def test_home_queue_library_and_settings_pages_render() -> None:
@@ -365,7 +382,45 @@ def test_batch_lookup_fragment_renders_collapsed_format_picker(monkeypatch) -> N
     assert "Audio Streams" in response.text
     assert 'x-init="streamPickerOpen = false"' in response.text
     assert 'form="batch-enqueue-form"' in response.text
+    assert 'name="video_format_id"' in response.text
+    assert 'name="audio_format_id"' in response.text
     assert 'name="target_id" value="batch-status"' in response.text
+
+
+def test_batch_lookup_fragment_uses_active_stream_field_contract(monkeypatch) -> None:
+    from app.services.batch_preview import BatchPreviewItem, BatchPreviewResult
+
+    monkeypatch.setattr(
+        "app.routes.pages.STREAM_FIELDS",
+        _SENTINEL_STREAM_FIELDS,
+    )
+
+    def fake_resolve_batch_preview(raw: str, **_kwargs):
+        assert raw == "https://example.com/good"
+        return BatchPreviewResult(
+            items=[
+                BatchPreviewItem(
+                    source_url="https://example.com/good",
+                    status="ready",
+                    title="Good title",
+                    uploader="Uploader",
+                    duration=15,
+                    thumbnail="https://example.com/thumb.jpg",
+                    error_code=None,
+                    error_message=None,
+                )
+            ],
+            valid_count=1,
+            invalid_count=0,
+        )
+
+    monkeypatch.setattr("app.routes.pages.resolve_batch_preview", fake_resolve_batch_preview)
+
+    with TestClient(app) as client:
+        response = client.post("/info/batch/form", data={"sources": "https://example.com/good"})
+
+    assert response.status_code == 200
+    _assert_sentinel_stream_fields_rendered(response.text)
 
 
 def test_info_lookup_route_uses_preview_service(monkeypatch) -> None:
@@ -394,6 +449,38 @@ def test_info_lookup_route_uses_preview_service(monkeypatch) -> None:
 
     assert response.status_code == 200
     assert "Example title" in response.text
+
+
+def test_info_lookup_fragment_uses_active_stream_field_contract(monkeypatch) -> None:
+    from app.services.preview import SinglePreviewResult
+
+    monkeypatch.setattr(
+        "app.routes.pages.STREAM_FIELDS",
+        _SENTINEL_STREAM_FIELDS,
+    )
+
+    def fake_resolve_single_preview(url: str, **_kwargs):
+        return SinglePreviewResult(
+            url=url,
+            title="Example title",
+            uploader="Uploader",
+            duration=123,
+            thumbnail="https://example.com/thumb.jpg",
+            picker_payload={
+                "video_streams": [],
+                "audio_streams": [],
+                "has_muxed_streams": True,
+                "expected_container_by_pair": {"|": "unknown"},
+            },
+        )
+
+    monkeypatch.setattr("app.routes.pages.resolve_single_preview", fake_resolve_single_preview)
+
+    with TestClient(app) as client:
+        response = client.post("/info/form", data={"url": "https://example.com/watch?v=1"})
+
+    assert response.status_code == 200
+    _assert_sentinel_stream_fields_rendered(response.text)
 
 
 def test_batch_lookup_route_uses_preview_service(monkeypatch) -> None:

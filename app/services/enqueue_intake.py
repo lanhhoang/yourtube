@@ -6,6 +6,7 @@ from starlette.datastructures import FormData, UploadFile
 
 from app.schemas import DownloadCreate
 from app.services.batch_preview import parse_source_urls
+from app.services.stream_selection import selection_from_form, selection_values_from_form
 
 
 def _form_str(form: FormData, key: str) -> str | None:
@@ -22,6 +23,7 @@ def _form_values(form: FormData, key: str) -> list[str]:
 def build_single_download(form: FormData) -> tuple[DownloadCreate, str]:
     duration_raw = _form_str(form, "duration")
     target_id = _form_str(form, "target_id")
+    selection = selection_from_form(form)
     if target_id != "batch-status":
         target_id = "info-status"
     payload = DownloadCreate(
@@ -30,11 +32,11 @@ def build_single_download(form: FormData) -> tuple[DownloadCreate, str]:
         uploader=_form_str(form, "uploader"),
         duration=int(duration_raw) if duration_raw else None,
         thumbnail=_form_str(form, "thumbnail"),
-        video_format_id=_form_str(form, "video_format_id"),
-        audio_format_id=_form_str(form, "audio_format_id"),
-        output_template=_form_str(form, "output_template"),
-        audio_bitrate=_form_str(form, "audio_bitrate"),
-        subtitles=form.get("subtitles") == "on",
+        video_format_id=selection.video_format_id,
+        audio_format_id=selection.audio_format_id,
+        output_template=selection.output_template,
+        audio_bitrate=selection.audio_bitrate,
+        subtitles=selection.subtitles,
     )
     return payload, target_id
 
@@ -45,6 +47,7 @@ def build_batch_downloads(form: FormData) -> list[DownloadCreate]:
     if urls:
         return [DownloadCreate(url=url) for url in urls]
 
+    selection_values = selection_values_from_form(form)
     payloads: list[DownloadCreate] = []
     for url, title, uploader, duration, thumbnail, video_id, audio_id in zip_longest(
         _form_values(form, "url"),
@@ -52,8 +55,8 @@ def build_batch_downloads(form: FormData) -> list[DownloadCreate]:
         _form_values(form, "uploader"),
         _form_values(form, "duration"),
         _form_values(form, "thumbnail"),
-        _form_values(form, "video_format_id"),
-        _form_values(form, "audio_format_id"),
+        selection_values.video_format_ids,
+        selection_values.audio_format_ids,
         fillvalue="",
     ):
         if not url:
