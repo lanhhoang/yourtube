@@ -24,18 +24,9 @@ from starlette.staticfiles import StaticFiles
 from alembic import command
 from app.config import settings
 from app.db import SessionLocal, engine
-from app.models import Download
 from app.routes.pages import router as pages_router
-from app.services.downloader import DownloadCancelled, YtdlpProgress, run_download
-from app.services.error_mapper import friendly_ytdlp_error
-from app.services.queue import (
-    claim_next,
-    detect_stale_jobs,
-    is_cancel_requested,
-    release_job,
-    requeue_active_on_startup,
-    update_progress,
-)
+from app.services.job_runner import run_claimed_job
+from app.services.queue import claim_next, detect_stale_jobs, requeue_active_on_startup
 from app.services.settings import resolve_runtime_settings
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -60,22 +51,6 @@ def _run_migrations() -> None:
     alembic_cfg = AlembicConfig(str(ALEMBIC_INI_PATH))
     alembic_cfg.set_main_option("sqlalchemy.url", settings.database_url)
     command.upgrade(alembic_cfg, "head")
-
-
-def _persist_progress(job_id: int, percent: float) -> None:
-    """Write a progress update from the worker thread.
-
-    Uses its own short-lived session so the worker does not have to share
-    state with the request that triggered the work.
-    """
-    with SessionLocal() as session:
-        update_progress(session, job_id, percent)
-
-
-def _cancel_requested(job_id: int) -> bool:
-    """Read the cancellation flag for a job from the worker thread."""
-    with SessionLocal() as session:
-        return is_cancel_requested(session, job_id)
 
 
 class WorkerPool:
@@ -152,68 +127,8 @@ class WorkerPool:
             return claim_next(session)
 
     def _run_job(self, job_id: int) -> None:
-        """Run a single claimed job to completion.
-
-        Pulls the job row and runtime settings in one session, executes
-        ``run_download`` (which may raise :class:`DownloadCancelled`),
-        and writes the terminal state through :func:`release_job`.
-        """
-        with SessionLocal() as session:
-            runtime = resolve_runtime_settings(session)
-            Path(runtime.downloads_dir).mkdir(parents=True, exist_ok=True)
-            job = session.get(Download, job_id)
-            if job is None:
-                return
-            job_id_local = job.id
-            job_url = job.url
-            job_video_format_id = job.video_format_id
-            job_audio_format_id = job.audio_format_id
-            job_output_template = job.output_template
-            job_audio_bitrate = job.audio_bitrate
-            job_subtitles = job.subtitles
-
-        progress = YtdlpProgress(
-            cancel_requested=lambda: _cancel_requested(job_id_local),
-            on_progress=lambda percent: _persist_progress(job_id_local, percent),
-        )
-        try:
-            result = run_download(
-                url=job_url,
-                video_format_id=job_video_format_id,
-                audio_format_id=job_audio_format_id,
-                output_template=job_output_template,
-                output_dir=str(runtime.downloads_dir),
-                audio_bitrate=job_audio_bitrate,
-                proxy=runtime.proxy_url,
-                cookies_file=str(runtime.cookies_path) if runtime.cookies_path else None,
-                subtitles=job_subtitles,
-                progress_hook=progress,
-            )
-        except DownloadCancelled:
-            with SessionLocal() as session:
-                release_job(session, job_id_local, status="cancelled")
-            return
-        except Exception as exc:  # noqa: BLE001 - surface as user-facing error
-            code, message = friendly_ytdlp_error(str(exc))
-            with SessionLocal() as session:
-                release_job(
-                    session,
-                    job_id_local,
-                    status="error",
-                    error_code=code,
-                    error_message=message,
-                )
-            return
-        with SessionLocal() as session:
-            release_job(
-                session,
-                job_id_local,
-                status="done",
-                file_path=result.path or None,
-                file_size=result.file_size,
-                media_format=result.media_format,
-                resolution_height=result.resolution_height,
-            )
+        """Run a single claimed job to completion."""
+        run_claimed_job(job_id)
 
 
 @asynccontextmanager
