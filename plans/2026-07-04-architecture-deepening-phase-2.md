@@ -295,9 +295,11 @@ Run:
 
 ```bash
 uv run pytest tests/unit/test_enqueue_intake.py tests/integration/test_pages.py::test_batch_enqueue_route_creates_one_queued_download_per_unique_url tests/integration/test_pages.py::test_batch_enqueue_route_creates_one_queued_download_per_valid_preview_item tests/integration/test_pages.py::test_batch_enqueue_route_preserves_preview_selected_stream_ids tests/integration/test_pages.py::test_batch_preview_card_enqueue_posts_metadata_to_queue -v
+uv run ruff check .
+uv run ty check .
 ```
 
-Expected: PASS.
+Expected: PASS and both quality checks report `All checks passed!`.
 
 - [ ] **Step 2: Commit the phase**
 
