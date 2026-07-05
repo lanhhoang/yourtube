@@ -53,6 +53,25 @@ def test_build_single_download_rejects_non_numeric_duration() -> None:
         build_single_download(form)
 
 
+def test_build_single_download_normalizes_empty_stream_fields() -> None:
+    form = FormData(
+        [
+            ("url", "https://example.com/watch?v=1"),
+            ("video_format_id", ""),
+            ("audio_format_id", ""),
+            ("output_template", ""),
+            ("audio_bitrate", ""),
+        ]
+    )
+
+    payload, _target_id = build_single_download(form)
+
+    assert payload.video_format_id is None
+    assert payload.audio_format_id is None
+    assert payload.output_template is None
+    assert payload.audio_bitrate is None
+
+
 def test_build_batch_downloads_prefers_raw_sources_and_dedupes_urls() -> None:
     form = FormData(
         [

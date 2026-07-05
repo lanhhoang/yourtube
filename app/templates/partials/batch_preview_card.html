@@ -65,13 +65,13 @@
     <input
       form="batch-enqueue-form"
       type="hidden"
-      name="video_format_id"
+      name="{{ stream_fields.video_format_id }}"
       :value="selectedVideoId"
     />
     <input
       form="batch-enqueue-form"
       type="hidden"
-      name="audio_format_id"
+      name="{{ stream_fields.audio_format_id }}"
       :value="selectedAudioId"
     />
   </div>

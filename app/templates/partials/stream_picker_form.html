@@ -1,5 +1,5 @@
-<input type="hidden" name="video_format_id" :value="selectedVideoId" />
-<input type="hidden" name="audio_format_id" :value="selectedAudioId" />
+<input type="hidden" name="{{ stream_fields.video_format_id }}" :value="selectedVideoId" />
+<input type="hidden" name="{{ stream_fields.audio_format_id }}" :value="selectedAudioId" />
 
 <script>
   function streamPicker(payload) {
@@ -119,9 +119,13 @@
 </button>
 
 <section class="advanced-panel" x-cloak x-show="advancedOpen">
-  <label><input type="checkbox" name="subtitles" /> Download subtitles</label>
+  <label><input type="checkbox" name="{{ stream_fields.subtitles }}" /> Download subtitles</label>
   <label for="output-template">Output template</label>
-  <input id="output-template" name="output_template" placeholder="%(title)s.%(ext)s" />
+  <input
+    id="output-template"
+    name="{{ stream_fields.output_template }}"
+    placeholder="%(title)s.%(ext)s"
+  />
   <label for="audio-bitrate">Audio bitrate</label>
-  <input id="audio-bitrate" name="audio_bitrate" placeholder="192K" />
+  <input id="audio-bitrate" name="{{ stream_fields.audio_bitrate }}" placeholder="192K" />
 </section>
