@@ -99,11 +99,24 @@ def test_resolve_batch_preview_expands_playlists_with_flat_lookup() -> None:
             "formats": [],
         }
 
+    def fake_extract_flat_info(url: str, **_kwargs) -> dict:
+        assert url == "https://example.com/list"
+        return {"entries": [{"url": "https://example.com/watch?v=1"}]}
+
+    def fake_expand_playlist_entries(url: str, **kwargs) -> list[str]:
+        assert url == "https://example.com/list"
+        assert kwargs["extract_info"] is fake_extract_flat_info
+        assert kwargs["proxy"] == "http://proxy.internal:8080"
+        assert kwargs["cookies_file"] == "/tmp/cookies.txt"
+        return ["https://example.com/watch?v=1"]
+
     result = resolve_batch_preview(
         "https://example.com/list",
         extract_info=fake_extract_info,
-        expand_playlist_entries=lambda url, **_kwargs: ["https://example.com/watch?v=1"],
-        extract_flat_info=lambda url, **_kwargs: {"entries": [{"url": "https://example.com/watch?v=1"}]},
+        expand_playlist_entries=fake_expand_playlist_entries,
+        extract_flat_info=fake_extract_flat_info,
+        proxy="http://proxy.internal:8080",
+        cookies_file="/tmp/cookies.txt",
     )
 
     assert result.valid_count == 1
@@ -217,7 +230,6 @@ In `app/routes/pages.py`, replace:
 ```python
 from app.services.batch_preview import (
     expand_playlist_entries,
-    parse_source_urls,
     resolve_batch_preview,
 )
 from app.services.downloader import (
@@ -303,14 +315,37 @@ def test_info_lookup_route_uses_preview_service(monkeypatch) -> None:
     assert "Example title" in response.text
 ```
 
-Keep the existing batch-preview route patches unchanged.
+Replace the old route-level playlist wiring test
+`test_batch_lookup_route_passes_playlist_expander` with a route delegation
+test. Playlist expansion is now covered by `tests/unit/test_preview.py`;
+the route should only prove it calls the preview service:
+
+```python
+def test_batch_lookup_route_uses_preview_service(monkeypatch) -> None:
+    from app.services.batch_preview import BatchPreviewResult
+
+    def fake_resolve_batch_preview(raw: str, **kwargs):
+        assert raw == "https://example.com/list"
+        assert kwargs["extract_info"] is not None
+        assert kwargs["proxy"] is None
+        assert kwargs["cookies_file"] is None
+        return BatchPreviewResult(items=[], valid_count=0, invalid_count=0)
+
+    monkeypatch.setattr("app.routes.pages.resolve_batch_preview", fake_resolve_batch_preview)
+
+    with TestClient(app) as client:
+        response = client.post("/info/batch/form", data={"sources": "https://example.com/list"})
+
+    assert response.status_code == 200
+    assert "Batch preview" in response.text
+```
 
 - [ ] **Step 3: Run the focused route tests**
 
 Run:
 
 ```bash
-uv run pytest tests/integration/test_pages.py::test_info_lookup_route_uses_preview_service tests/integration/test_pages.py::test_batch_lookup_fragment_renders_ready_and_error_cards -v
+uv run pytest tests/integration/test_pages.py::test_info_lookup_route_uses_preview_service tests/integration/test_pages.py::test_batch_lookup_route_uses_preview_service tests/integration/test_pages.py::test_batch_lookup_fragment_renders_ready_and_error_cards -v
 ```
 
 Expected: PASS.
@@ -327,10 +362,13 @@ Expected: PASS.
 Run:
 
 ```bash
-uv run pytest tests/unit/test_preview.py tests/unit/test_batch_preview.py tests/integration/test_pages.py::test_info_lookup_route_uses_preview_service tests/integration/test_pages.py::test_batch_lookup_fragment_renders_ready_and_error_cards tests/integration/test_pages.py::test_batch_lookup_fragment_renders_collapsed_format_picker -v
+uv run pytest tests/unit/test_preview.py tests/unit/test_batch_preview.py tests/integration/test_pages.py::test_info_lookup_route_uses_preview_service tests/integration/test_pages.py::test_batch_lookup_route_uses_preview_service tests/integration/test_pages.py::test_batch_lookup_fragment_renders_ready_and_error_cards tests/integration/test_pages.py::test_batch_lookup_fragment_renders_collapsed_format_picker -v
+uv run ruff check .
+uv run ruff format --check .
+uv run ty check app tests
 ```
 
-Expected: PASS.
+Expected: PASS and all quality checks report no issues.
 
 - [ ] **Step 2: Commit the phase**
 
