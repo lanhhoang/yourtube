@@ -265,6 +265,7 @@ async def settings_form_put(
         session,
         {
             "max_concurrent": str(form["max_concurrent"]),
+            "playlist_page_size": str(form["playlist_page_size"]),
             "proxy_url": str(form.get("proxy_url", "")),
             "cookies_path": str(form.get("cookies_path", "")),
             "downloads_dir": str(form.get("downloads_dir", "")),

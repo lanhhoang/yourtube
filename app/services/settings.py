@@ -28,6 +28,7 @@ class RuntimeSettings:
     """
 
     max_concurrent: int
+    playlist_page_size: int
     proxy_url: str | None
     cookies_path: Path | None
     downloads_dir: Path
@@ -44,6 +45,8 @@ def resolve_runtime_settings(session: Session) -> RuntimeSettings:
       ``app.config.settings.downloads_dir``.
     - ``max_concurrent`` is clamped to ``[1, 5]`` to match the catalog
       validation rules.
+    - ``playlist_page_size`` is clamped to ``[1, 50]``; malformed stored
+      values fall back to the catalog default.
     """
     stored = get_all_settings(session)
     raw_concurrent = stored["max_concurrent"] or "1"
@@ -51,6 +54,14 @@ def resolve_runtime_settings(session: Session) -> RuntimeSettings:
         max_concurrent = int(raw_concurrent)
     except (TypeError, ValueError):
         max_concurrent = 1
+    raw_page_size = stored["playlist_page_size"] or "20"
+    if not raw_page_size.isdecimal():
+        playlist_page_size = 20
+    else:
+        try:
+            playlist_page_size = int(raw_page_size)
+        except (TypeError, ValueError):
+            playlist_page_size = 20
     downloads_dir = (
         Path(stored["downloads_dir"]) if stored["downloads_dir"] else app_settings.downloads_dir
     )
@@ -60,6 +71,7 @@ def resolve_runtime_settings(session: Session) -> RuntimeSettings:
     )
     return RuntimeSettings(
         max_concurrent=max(1, min(5, max_concurrent)),
+        playlist_page_size=max(1, min(50, playlist_page_size)),
         proxy_url=proxy_url,
         cookies_path=cookies_path,
         downloads_dir=downloads_dir,
@@ -71,6 +83,7 @@ def resolve_runtime_settings(session: Session) -> RuntimeSettings:
 # callable that raises ``ValueError`` on invalid input.
 SETTINGS_CATALOG: dict[str, str] = {
     "max_concurrent": "1",
+    "playlist_page_size": "20",
     "proxy_url": "",
     "cookies_path": "",
     "downloads_dir": "",
@@ -86,6 +99,15 @@ def _validate(key: str, value: str) -> None:
             raise ValueError(f"max_concurrent must be an integer 1-5, got {value!r}") from exc
         if n < 1 or n > 5:
             raise ValueError(f"max_concurrent must be 1-5, got {n}")
+    if key == "playlist_page_size":
+        if not value.isdecimal():
+            raise ValueError(f"playlist_page_size must be an integer 1-50, got {value!r}")
+        try:
+            n = int(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"playlist_page_size must be an integer 1-50, got {value!r}") from exc
+        if n < 1 or n > 50:
+            raise ValueError(f"playlist_page_size must be 1-50, got {n}")
 
 
 def get_setting(session: Session, key: str) -> str | None:

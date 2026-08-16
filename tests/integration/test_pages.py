@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.models import Download
 from app.services.downloader import build_stream_picker_payload, normalize_formats
-from app.services.settings import set_settings_batch
+from app.services.settings import get_setting, set_settings_batch
 from app.services.stream_selection import StreamFieldNames
 
 _SENTINEL_STREAM_FIELDS = StreamFieldNames(
@@ -73,6 +73,7 @@ def test_settings_page_renders_persisted_values(db_session_visible) -> None:
             "proxy_url": "http://proxy.internal:8080",
             "cookies_path": "/tmp/cookies.txt",
             "downloads_dir": "/tmp/downloads",
+            "playlist_page_size": "37",
         },
     )
 
@@ -84,6 +85,29 @@ def test_settings_page_renders_persisted_values(db_session_visible) -> None:
     assert 'value="http://proxy.internal:8080"' in response.text
     assert 'value="/tmp/cookies.txt"' in response.text
     assert 'value="/tmp/downloads"' in response.text
+    assert 'name="playlist_page_size"' in response.text
+    assert 'value="37"' in response.text
+    assert 'type="number"' in response.text
+    assert 'min="1"' in response.text
+    assert 'max="50"' in response.text
+
+
+def test_settings_form_persists_playlist_page_size(db_session_visible) -> None:
+    with TestClient(app) as client:
+        response = client.put(
+            "/settings/form",
+            data={
+                "max_concurrent": "2",
+                "proxy_url": "",
+                "cookies_path": "",
+                "downloads_dir": "",
+                "playlist_page_size": "37",
+            },
+        )
+
+    assert response.status_code == 200
+    assert "Settings saved." in response.text
+    assert get_setting(db_session_visible, "playlist_page_size") == "37"
 
 
 def test_pages_extend_editorial_shell_and_load_local_assets() -> None:

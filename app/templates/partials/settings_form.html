@@ -8,6 +8,16 @@
   <div class="settings-grid">
     <label for="max-concurrent">Max concurrent</label>
     <input id="max-concurrent" name="max_concurrent" value="{{ settings_values.max_concurrent }}" />
+    <label for="playlist-page-size">Playlist preview page size</label>
+    <input
+      id="playlist-page-size"
+      name="playlist_page_size"
+      type="number"
+      min="1"
+      max="50"
+      required
+      value="{{ settings_values.playlist_page_size }}"
+    />
     <label for="proxy-url">Proxy URL</label>
     <input id="proxy-url" name="proxy_url" value="{{ settings_values.proxy_url }}" />
     <label for="cookies-path">Cookies path</label>

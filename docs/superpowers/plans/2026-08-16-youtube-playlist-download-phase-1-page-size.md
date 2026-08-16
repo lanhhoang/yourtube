@@ -16,6 +16,7 @@
 
 - Use settings key `playlist_page_size` with default string value `"20"`.
 - Accept only integer values from `1` through `50`.
+- Resolve the runtime value as an integer clamped to `1..50`; malformed persisted values fall back to `20`.
 - Preserve atomic settings updates and all existing settings behavior.
 - Do not add a migration or dependency.
 
@@ -23,8 +24,8 @@
 
 - Modify: `app/services/settings.py`
 - Modify: `app/routes/pages.py`
-- Modify: `app/templates/pages/settings.html`
 - Modify: `app/templates/partials/settings_form.html`
+- Test: `tests/unit/test_settings.py`
 - Test: `tests/unit/test_settings_runtime_resolution.py`
 - Test: `tests/integration/test_pages.py`
 
@@ -33,16 +34,19 @@
 - `RuntimeSettings.playlist_page_size: int`
 - `SETTINGS_CATALOG["playlist_page_size"] == "20"`
 - Existing `set_settings_batch()` remains the write boundary.
+- `PUT /settings/form` includes `playlist_page_size` in its atomic update.
 
 ## Steps
 
-- [ ] **Step 1: Write failing unit tests** for the default value, persisted values, accepted boundaries `1` and `50`, and rejected values `0`, `51`, and non-integers.
-- [ ] **Step 2: Run** `uv run pytest tests/unit/test_settings_runtime_resolution.py -q`; confirm the new tests fail.
-- [ ] **Step 3: Add the catalog key and validation** in `app/services/settings.py`; resolve the clamped integer into `RuntimeSettings.playlist_page_size`.
-- [ ] **Step 4: Add the Settings form field and route update** using the existing settings form submission and atomic batch update.
-- [ ] **Step 5: Add an integration assertion** that the persisted page-size value renders in the Settings page.
-- [ ] **Step 6: Run** `uv run pytest tests/unit/test_settings_runtime_resolution.py tests/integration/test_pages.py -q`; confirm all focused tests pass.
-- [ ] **Step 7: Commit** with `git add app/services/settings.py app/routes/pages.py app/templates/pages/settings.html app/templates/partials/settings_form.html tests/unit/test_settings_runtime_resolution.py tests/integration/test_pages.py && git commit -m "feat: configure playlist preview page size"`.
+- [ ] **Step 1: Write failing tests**:
+  - Update `tests/unit/test_settings.py` so the catalog default/reset coverage includes `playlist_page_size`, and cover accepted values `1` and `50` plus rejected values `0`, `51`, and non-integers through the existing setting write boundary.
+  - Update `tests/unit/test_settings_runtime_resolution.py` to cover the default, a persisted value, and malformed/out-of-range persisted values falling back/clamping safely.
+  - Update `tests/integration/test_pages.py` to assert the persisted value renders and `PUT /settings/form` saves the submitted page size.
+- [ ] **Step 2: Run** `uv run pytest tests/unit/test_settings.py tests/unit/test_settings_runtime_resolution.py tests/integration/test_pages.py -q`; confirm the new tests fail.
+- [ ] **Step 3: Add the catalog key, validation, and typed runtime resolution** in `app/services/settings.py`; preserve the existing atomic batch-update behavior.
+- [ ] **Step 4: Add the Settings form field** in `app/templates/partials/settings_form.html` with native numeric bounds `1..50`, and pass it through `app/routes/pages.py` using the existing settings form submission.
+- [ ] **Step 5: Run** `uv run pytest tests/unit/test_settings.py tests/unit/test_settings_runtime_resolution.py tests/integration/test_pages.py -q`; confirm all focused tests pass.
+- [ ] **Step 6: Commit** with `git add app/services/settings.py app/routes/pages.py app/templates/partials/settings_form.html tests/unit/test_settings.py tests/unit/test_settings_runtime_resolution.py tests/integration/test_pages.py && git commit -m "feat: configure playlist preview page size"`.
 
 ## Usable result
 
