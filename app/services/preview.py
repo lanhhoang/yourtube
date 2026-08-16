@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 
-from app.services.batch_preview import BatchPreviewResult, expand_playlist_entries
+from app.services.batch_preview import BatchPreviewResult, _ExpandedEntry, expand_playlist_entries
 from app.services.downloader import (
     StreamPickerPayload,
     build_stream_picker_payload,
@@ -45,20 +45,30 @@ def resolve_batch_preview(
     raw: str,
     *,
     extract_info: Callable[..., dict],
+    expand_playlist: Callable[[str], Iterable[str | _ExpandedEntry]] | None = None,
     proxy: str | None = None,
     cookies_file: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
 ) -> BatchPreviewResult:
     from app.services.batch_preview import resolve_batch_preview as resolve_existing_batch_preview
 
-    return resolve_existing_batch_preview(
-        raw,
-        extract_info=extract_info,
-        expand_playlist=lambda url: expand_playlist_entries(
+    # ponytail: re-expand each request; add playlist sessions only if repeated
+    # extraction becomes a measured bottleneck.
+    expand = expand_playlist or (
+        lambda url: expand_playlist_entries(
             url,
             extract_info=extract_flat_info,
             proxy=proxy,
             cookies_file=cookies_file,
-        ),
+        )
+    )
+    return resolve_existing_batch_preview(
+        raw,
+        extract_info=extract_info,
+        expand_playlist=expand,
         proxy=proxy,
         cookies_file=cookies_file,
+        page=page,
+        page_size=page_size,
     )
