@@ -58,7 +58,7 @@ def test_resolve_runtime_settings_uses_saved_proxy_and_cookies(db_session, tmp_p
 
 @pytest.mark.parametrize(
     ("stored_value", "expected_page_size"),
-    [("not-an-integer", 20), ("0", 1), ("51", 50)],
+    [("not-an-integer", 20), ("1_0", 20), ("+1", 20), (" 1", 20), ("0", 1), ("51", 50)],
 )
 def test_resolve_runtime_settings_normalizes_invalid_stored_playlist_page_size(
     db_session, stored_value: str, expected_page_size: int

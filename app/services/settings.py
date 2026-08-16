@@ -55,10 +55,13 @@ def resolve_runtime_settings(session: Session) -> RuntimeSettings:
     except (TypeError, ValueError):
         max_concurrent = 1
     raw_page_size = stored["playlist_page_size"] or "20"
-    try:
-        playlist_page_size = int(raw_page_size)
-    except (TypeError, ValueError):
+    if not raw_page_size.isdecimal():
         playlist_page_size = 20
+    else:
+        try:
+            playlist_page_size = int(raw_page_size)
+        except (TypeError, ValueError):
+            playlist_page_size = 20
     downloads_dir = (
         Path(stored["downloads_dir"]) if stored["downloads_dir"] else app_settings.downloads_dir
     )
