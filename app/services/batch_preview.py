@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
-from typing import TypeGuard, cast
+from typing import cast
 from urllib.parse import urlparse
 
 from app.services.downloader import (
@@ -72,18 +72,13 @@ def parse_source_urls(raw: str, *, dedupe: bool = True) -> list[str]:
     return urls
 
 
-def _is_full_http_url(value: object) -> TypeGuard[str]:
-    if not isinstance(value, str):
-        return False
-    parsed = urlparse(value)
-    return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
-
-
 def _entry_url(entry: dict[str, object]) -> str | None:
     for key in ("webpage_url", "url"):
         value = entry.get(key)
-        if _is_full_http_url(value):
-            return value
+        if isinstance(value, str):
+            parsed = urlparse(value)
+            if parsed.scheme in {"http", "https"} and parsed.netloc:
+                return value
     entry_id = entry.get("id")
     if isinstance(entry_id, str) and entry_id:
         return f"https://www.youtube.com/watch?v={entry_id}"
