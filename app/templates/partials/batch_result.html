@@ -1,9 +1,26 @@
 <section class="support-card">
   <h2>Batch preview</h2>
   <p>{{ result.valid_count }} ready / {{ result.invalid_count }} failed</p>
+  <p>Page {{ result.page }} of {{ result.total_pages }} · {{ result.total_count }} total</p>
   {% if result.truncated_count %}
   <p>Skipped {{ result.truncated_count }} item(s) because the batch limit is 50.</p>
   {% endif %}
+  <nav aria-label="Batch preview pages" class="button-row">
+    <form hx-post="/info/batch/form" hx-target="#batch-result" hx-swap="innerHTML">
+      <input type="hidden" name="sources" value="{{ sources }}" />
+      {% if use_proxy %}<input type="hidden" name="proxy" value="on" />{% endif %}
+      {% if use_cookies %}<input type="hidden" name="cookies" value="on" />{% endif %}
+      <input type="hidden" name="page" value="{{ previous_page }}" />
+      <button type="submit"{% if not result.has_previous %} disabled{% endif %}>Previous</button>
+    </form>
+    <form hx-post="/info/batch/form" hx-target="#batch-result" hx-swap="innerHTML">
+      <input type="hidden" name="sources" value="{{ sources }}" />
+      {% if use_proxy %}<input type="hidden" name="proxy" value="on" />{% endif %}
+      {% if use_cookies %}<input type="hidden" name="cookies" value="on" />{% endif %}
+      <input type="hidden" name="page" value="{{ next_page }}" />
+      <button type="submit"{% if not result.has_next %} disabled{% endif %}>Next</button>
+    </form>
+  </nav>
 </section>
 
 {% if result.valid_count %}

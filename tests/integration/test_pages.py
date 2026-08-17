@@ -515,6 +515,8 @@ def test_batch_lookup_route_uses_preview_service(monkeypatch) -> None:
         assert kwargs["extract_info"] is not None
         assert kwargs["proxy"] is None
         assert kwargs["cookies_file"] is None
+        assert kwargs["page"] == 1
+        assert kwargs["page_size"] == 20
         assert "expand_playlist" not in kwargs
         return BatchPreviewResult(items=[], valid_count=0, invalid_count=0)
 
@@ -525,6 +527,152 @@ def test_batch_lookup_route_uses_preview_service(monkeypatch) -> None:
 
     assert response.status_code == 200
     assert "Batch preview" in response.text
+    assert '<button type="submit" disabled>Previous</button>' in response.text
+    assert '<button type="submit" disabled>Next</button>' in response.text
+
+
+def test_batch_lookup_route_uses_configured_page_and_network_options(
+    db_session_visible,
+    monkeypatch,
+) -> None:
+    from app.services.batch_preview import BatchPreviewResult
+
+    set_settings_batch(
+        db_session_visible,
+        {
+            "playlist_page_size": "2",
+            "proxy_url": "http://proxy.internal:8080",
+            "cookies_path": "/tmp/cookies.txt",
+        },
+    )
+
+    def fake_resolve_batch_preview(raw: str, **kwargs):
+        assert raw == "https://example.com/list"
+        assert kwargs["page"] == 2
+        assert kwargs["page_size"] == 2
+        assert kwargs["proxy"] == "http://proxy.internal:8080"
+        assert kwargs["cookies_file"] == "/tmp/cookies.txt"
+        return BatchPreviewResult(
+            items=[],
+            valid_count=0,
+            invalid_count=0,
+            page=2,
+            page_size=2,
+            total_count=5,
+            total_pages=3,
+            has_previous=True,
+            has_next=True,
+        )
+
+    monkeypatch.setattr("app.routes.pages.resolve_batch_preview", fake_resolve_batch_preview)
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/info/batch/form",
+            data={
+                "sources": "https://example.com/list",
+                "page": "2",
+                "proxy": "on",
+                "cookies": "on",
+            },
+        )
+
+    assert response.status_code == 200
+
+
+def test_batch_lookup_fragment_renders_paginated_navigation(monkeypatch) -> None:
+    from app.services.batch_preview import BatchPreviewResult
+
+    def fake_resolve_batch_preview(raw: str, **_kwargs):
+        assert raw == "https://example.com/list"
+        return BatchPreviewResult(
+            items=[],
+            valid_count=0,
+            invalid_count=0,
+            page=2,
+            page_size=2,
+            total_count=5,
+            total_pages=3,
+            has_previous=True,
+            has_next=True,
+        )
+
+    monkeypatch.setattr("app.routes.pages.resolve_batch_preview", fake_resolve_batch_preview)
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/info/batch/form",
+            data={
+                "sources": "https://example.com/list",
+                "proxy": "on",
+                "cookies": "on",
+            },
+        )
+
+    assert response.status_code == 200
+    assert "Page 2 of 3" in response.text
+    assert "5 total" in response.text
+    assert '<nav aria-label="Batch preview pages" class="button-row">' in response.text
+    assert response.text.count('hx-post="/info/batch/form"') == 2
+    assert response.text.count('hx-target="#batch-result"') == 2
+    assert response.text.count('hx-swap="innerHTML"') == 2
+    assert response.text.count('name="sources" value="https://example.com/list"') == 2
+    assert response.text.count('name="proxy" value="on"') == 2
+    assert response.text.count('name="cookies" value="on"') == 2
+    assert 'name="page" value="1"' in response.text
+    assert 'name="page" value="3"' in response.text
+    assert '<button type="submit">Previous</button>' in response.text
+    assert '<button type="submit">Next</button>' in response.text
+
+
+def test_batch_lookup_fragment_disables_previous_on_first_page(monkeypatch) -> None:
+    from app.services.batch_preview import BatchPreviewResult
+
+    monkeypatch.setattr(
+        "app.routes.pages.resolve_batch_preview",
+        lambda _raw, **_kwargs: BatchPreviewResult(
+            items=[],
+            valid_count=0,
+            invalid_count=0,
+            page=1,
+            total_count=5,
+            total_pages=3,
+            has_previous=False,
+            has_next=True,
+        ),
+    )
+
+    with TestClient(app) as client:
+        response = client.post("/info/batch/form", data={"sources": "https://example.com/list"})
+
+    assert response.status_code == 200
+    assert '<button type="submit" disabled>Previous</button>' in response.text
+    assert '<button type="submit">Next</button>' in response.text
+
+
+def test_batch_lookup_fragment_disables_next_on_last_page(monkeypatch) -> None:
+    from app.services.batch_preview import BatchPreviewResult
+
+    monkeypatch.setattr(
+        "app.routes.pages.resolve_batch_preview",
+        lambda _raw, **_kwargs: BatchPreviewResult(
+            items=[],
+            valid_count=0,
+            invalid_count=0,
+            page=3,
+            total_count=5,
+            total_pages=3,
+            has_previous=True,
+            has_next=False,
+        ),
+    )
+
+    with TestClient(app) as client:
+        response = client.post("/info/batch/form", data={"sources": "https://example.com/list"})
+
+    assert response.status_code == 200
+    assert '<button type="submit">Previous</button>' in response.text
+    assert '<button type="submit" disabled>Next</button>' in response.text
 
 
 def test_batch_result_renders_truncation_notice(monkeypatch) -> None:

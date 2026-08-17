@@ -173,6 +173,7 @@ def info_form(
 def info_batch_form(
     request: Request,
     sources: str = Form(...),
+    page: int = Form(default=1),
     proxy: str | None = Form(default=None),
     cookies: str | None = Form(default=None),
     session: Session = Depends(get_session),
@@ -185,11 +186,21 @@ def info_batch_form(
         extract_info=extract_info,
         proxy=proxy_url,
         cookies_file=cookies_file,
+        page=page,
+        page_size=runtime.playlist_page_size,
     )
     return templates.TemplateResponse(
         request,
         "partials/batch_result.html",
-        {"result": result, "stream_fields": STREAM_FIELDS},
+        {
+            "result": result,
+            "sources": sources,
+            "use_proxy": bool(proxy),
+            "use_cookies": bool(cookies),
+            "previous_page": result.page - 1 if result.has_previous else result.page,
+            "next_page": result.page + 1 if result.has_next else result.page,
+            "stream_fields": STREAM_FIELDS,
+        },
     )
 
 
