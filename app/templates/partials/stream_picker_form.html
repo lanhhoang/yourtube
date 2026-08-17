@@ -10,6 +10,9 @@
       hasMuxedStreams: payload.has_muxed_streams,
       selectedVideoId: "",
       selectedAudioId: "",
+      selectedOutputTemplate: "",
+      selectedAudioBitrate: "",
+      selectedSubtitles: false,
       advancedOpen: false,
       streamPickerOpen: true,
       selectVideo(formatId) {
@@ -119,13 +122,22 @@
 </button>
 
 <section class="advanced-panel" x-cloak x-show="advancedOpen">
-  <label><input type="checkbox" name="{{ stream_fields.subtitles }}" /> Download subtitles</label>
+  <label>
+    <input type="checkbox" name="{{ stream_fields.subtitles }}" x-model="selectedSubtitles" />
+    Download subtitles
+  </label>
   <label for="output-template">Output template</label>
   <input
     id="output-template"
     name="{{ stream_fields.output_template }}"
     placeholder="%(title)s.%(ext)s"
+    x-model="selectedOutputTemplate"
   />
   <label for="audio-bitrate">Audio bitrate</label>
-  <input id="audio-bitrate" name="{{ stream_fields.audio_bitrate }}" placeholder="192K" />
+  <input
+    id="audio-bitrate"
+    name="{{ stream_fields.audio_bitrate }}"
+    placeholder="192K"
+    x-model="selectedAudioBitrate"
+  />
 </section>

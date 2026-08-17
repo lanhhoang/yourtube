@@ -229,10 +229,11 @@ async def downloads_batch_form(
     for payload in payloads:
         enqueue_download(session, payload)
 
+    message = f"Added {len(payloads)} items to queue." if payloads else "No videos selected."
     return templates.TemplateResponse(
         request,
         "partials/status_message.html",
-        {"message": f"Added {len(payloads)} items to queue.", "target_id": "batch-status"},
+        {"message": message, "target_id": "batch-status"},
     )
 
 

@@ -43,13 +43,13 @@ def _str_values(form: FormData, key: str) -> list[str]:
     return [str(value) for value in form.getlist(key) if not isinstance(value, UploadFile)]
 
 
-def selection_from_form(form: FormData) -> StreamSelection:
+def selection_from_form(form: FormData, *, suffix: str = "") -> StreamSelection:
     return StreamSelection(
-        video_format_id=_str_value(form, STREAM_FIELDS.video_format_id),
-        audio_format_id=_str_value(form, STREAM_FIELDS.audio_format_id),
-        output_template=_str_value(form, STREAM_FIELDS.output_template),
-        audio_bitrate=_str_value(form, STREAM_FIELDS.audio_bitrate),
-        subtitles=form.get(STREAM_FIELDS.subtitles) == "on",
+        video_format_id=_str_value(form, f"{STREAM_FIELDS.video_format_id}{suffix}"),
+        audio_format_id=_str_value(form, f"{STREAM_FIELDS.audio_format_id}{suffix}"),
+        output_template=_str_value(form, f"{STREAM_FIELDS.output_template}{suffix}"),
+        audio_bitrate=_str_value(form, f"{STREAM_FIELDS.audio_bitrate}{suffix}"),
+        subtitles=form.get(f"{STREAM_FIELDS.subtitles}{suffix}") == "on",
     )
 
 

@@ -117,3 +117,60 @@ def test_build_batch_downloads_uses_preview_rows_when_sources_are_empty() -> Non
     assert payloads[1].duration == 24
     assert payloads[1].video_format_id is None
     assert payloads[1].audio_format_id == "251"
+
+
+def test_build_batch_downloads_uses_selected_indexed_row_and_preserves_options() -> None:
+    form = FormData(
+        [
+            ("selected_index", "1"),
+            ("url_0", "https://example.com/unchecked"),
+            ("url_1", "https://example.com/selected"),
+            ("title_1", "Selected title"),
+            ("uploader_1", "Selected uploader"),
+            ("duration_1", "42"),
+            ("thumbnail_1", "https://example.com/selected.jpg"),
+            ("video_format_id_1", "137"),
+            ("audio_format_id_1", "140"),
+            ("output_template_1", "%(title)s.%(ext)s"),
+            ("audio_bitrate_1", "128K"),
+            ("subtitles_1", "on"),
+        ]
+    )
+
+    payloads = build_batch_downloads(form)
+
+    assert len(payloads) == 1
+    payload = payloads[0]
+    assert payload.url == "https://example.com/selected"
+    assert payload.title == "Selected title"
+    assert payload.uploader == "Selected uploader"
+    assert payload.duration == 42
+    assert payload.thumbnail == "https://example.com/selected.jpg"
+    assert payload.video_format_id == "137"
+    assert payload.audio_format_id == "140"
+    assert payload.output_template == "%(title)s.%(ext)s"
+    assert payload.audio_bitrate == "128K"
+    assert payload.subtitles is True
+
+
+def test_build_batch_downloads_ignores_invalid_duplicate_and_missing_selected_rows() -> None:
+    form = FormData(
+        [
+            ("selected_index", "1"),
+            ("selected_index", "1"),
+            ("selected_index", "bad"),
+            ("selected_index", "-1"),
+            ("selected_index", "2"),
+            ("url_1", "https://example.com/selected"),
+        ]
+    )
+
+    payloads = build_batch_downloads(form)
+
+    assert [payload.url for payload in payloads] == ["https://example.com/selected"]
+
+
+def test_build_batch_downloads_ignores_oversized_decimal_selected_index() -> None:
+    form = FormData([("selected_index", "9" * 5000)])
+
+    assert build_batch_downloads(form) == []
