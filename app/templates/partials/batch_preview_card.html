@@ -20,6 +20,16 @@
         <dd>{{ item.duration or "Unknown" }}</dd>
       </div>
     </dl>
+    <label>
+      <input
+        form="batch-enqueue-form"
+        type="checkbox"
+        name="selected_index"
+        value="{{ row_index }}"
+        checked
+      />
+      Select this video
+    </label>
     <button
       type="button"
       class="advanced-toggle"
@@ -42,37 +52,65 @@
       {% include "partials/stream_picker_form.html" %}
       <button type="submit">Add to queue</button>
     </form>
-    <input form="batch-enqueue-form" type="hidden" name="url" value="{{ item.source_url }}" />
-    <input form="batch-enqueue-form" type="hidden" name="title" value="{{ item.title or '' }}" />
     <input
       form="batch-enqueue-form"
       type="hidden"
-      name="uploader"
+      name="url_{{ row_index }}"
+      value="{{ item.source_url }}"
+    />
+    <input
+      form="batch-enqueue-form"
+      type="hidden"
+      name="title_{{ row_index }}"
+      value="{{ item.title or '' }}"
+    />
+    <input
+      form="batch-enqueue-form"
+      type="hidden"
+      name="uploader_{{ row_index }}"
       value="{{ item.uploader or '' }}"
     />
     <input
       form="batch-enqueue-form"
       type="hidden"
-      name="duration"
+      name="duration_{{ row_index }}"
       value="{{ item.duration or '' }}"
     />
     <input
       form="batch-enqueue-form"
       type="hidden"
-      name="thumbnail"
+      name="thumbnail_{{ row_index }}"
       value="{{ item.thumbnail or '' }}"
     />
     <input
       form="batch-enqueue-form"
       type="hidden"
-      name="{{ stream_fields.video_format_id }}"
+      name="{{ stream_fields.video_format_id }}_{{ row_index }}"
       :value="selectedVideoId"
     />
     <input
       form="batch-enqueue-form"
       type="hidden"
-      name="{{ stream_fields.audio_format_id }}"
+      name="{{ stream_fields.audio_format_id }}_{{ row_index }}"
       :value="selectedAudioId"
+    />
+    <input
+      form="batch-enqueue-form"
+      type="hidden"
+      name="{{ stream_fields.output_template }}_{{ row_index }}"
+      :value="selectedOutputTemplate"
+    />
+    <input
+      form="batch-enqueue-form"
+      type="hidden"
+      name="{{ stream_fields.audio_bitrate }}_{{ row_index }}"
+      :value="selectedAudioBitrate"
+    />
+    <input
+      form="batch-enqueue-form"
+      type="hidden"
+      name="{{ stream_fields.subtitles }}_{{ row_index }}"
+      :value="selectedSubtitles ? 'on' : ''"
     />
   </div>
 </section>

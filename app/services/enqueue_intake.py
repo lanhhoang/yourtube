@@ -20,6 +20,23 @@ def _form_values(form: FormData, key: str) -> list[str]:
     return [str(value) for value in form.getlist(key) if not isinstance(value, UploadFile)]
 
 
+def _selected_indices(form: FormData) -> list[int]:
+    indices: list[int] = []
+    seen: set[int] = set()
+    for value in _form_values(form, "selected_index"):
+        if not value.isdecimal():
+            continue
+        try:
+            index = int(value)
+        except ValueError:
+            continue
+        if index in seen:
+            continue
+        seen.add(index)
+        indices.append(index)
+    return indices
+
+
 def build_single_download(form: FormData) -> tuple[DownloadCreate, str]:
     duration_raw = _form_str(form, "duration")
     target_id = _form_str(form, "target_id")
@@ -42,6 +59,31 @@ def build_single_download(form: FormData) -> tuple[DownloadCreate, str]:
 
 
 def build_batch_downloads(form: FormData) -> list[DownloadCreate]:
+    selected_values = _form_values(form, "selected_index")
+    if selected_values:
+        payloads: list[DownloadCreate] = []
+        for index in _selected_indices(form):
+            url = _form_str(form, f"url_{index}")
+            if not url:
+                continue
+            duration_raw = _form_str(form, f"duration_{index}")
+            selection = selection_from_form(form, suffix=f"_{index}")
+            payloads.append(
+                DownloadCreate(
+                    url=url,
+                    title=_form_str(form, f"title_{index}") or None,
+                    uploader=_form_str(form, f"uploader_{index}") or None,
+                    duration=int(duration_raw) if duration_raw else None,
+                    thumbnail=_form_str(form, f"thumbnail_{index}") or None,
+                    video_format_id=selection.video_format_id,
+                    audio_format_id=selection.audio_format_id,
+                    output_template=selection.output_template,
+                    audio_bitrate=selection.audio_bitrate,
+                    subtitles=selection.subtitles,
+                )
+            )
+        return payloads
+
     raw_sources = _form_str(form, "sources") or ""
     urls = parse_source_urls(raw_sources)
     if urls:

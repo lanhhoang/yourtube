@@ -58,6 +58,26 @@ def test_selection_from_form_normalizes_empty_stream_values() -> None:
     assert selection.subtitles is False
 
 
+def test_selection_from_form_reads_suffixed_fields() -> None:
+    form = FormData(
+        [
+            ("video_format_id_1", "137"),
+            ("audio_format_id_1", "140"),
+            ("output_template_1", "%(title)s.%(ext)s"),
+            ("audio_bitrate_1", "128K"),
+            ("subtitles_1", "on"),
+        ]
+    )
+
+    selection = selection_from_form(form, suffix="_1")
+
+    assert selection.video_format_id == "137"
+    assert selection.audio_format_id == "140"
+    assert selection.output_template == "%(title)s.%(ext)s"
+    assert selection.audio_bitrate == "128K"
+    assert selection.subtitles is True
+
+
 def test_selection_values_from_form_preserves_repeated_values_for_batch_alignment() -> None:
     form = FormData(
         [

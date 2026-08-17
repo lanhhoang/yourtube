@@ -32,6 +32,14 @@ def _assert_sentinel_stream_fields_rendered(markup: str) -> None:
     assert 'name="picked_subtitles"' in markup
 
 
+def _assert_sentinel_indexed_stream_fields_rendered(markup: str) -> None:
+    assert 'name="picked_video_0"' in markup
+    assert 'name="picked_audio_0"' in markup
+    assert 'name="picked_template_0"' in markup
+    assert 'name="picked_bitrate_0"' in markup
+    assert 'name="picked_subtitles_0"' in markup
+
+
 def test_home_queue_library_and_settings_pages_render() -> None:
     with TestClient(app) as client:
         home = client.get("/")
@@ -259,6 +267,57 @@ def test_batch_enqueue_route_preserves_preview_selected_stream_ids(
     assert rows[1].audio_format_id == "251"
 
 
+def test_batch_enqueue_route_creates_one_queued_download_for_the_selected_indexed_row(
+    db_session_visible,
+) -> None:
+    with TestClient(app) as client:
+        response = client.post(
+            "/downloads/batch/form",
+            data={
+                "selected_index": "1",
+                "url_0": "https://example.com/unchecked",
+                "url_1": "https://example.com/selected",
+                "title_1": "Selected title",
+                "uploader_1": "Selected uploader",
+                "duration_1": "42",
+                "thumbnail_1": "https://example.com/selected.jpg",
+                "video_format_id_1": "137",
+                "audio_format_id_1": "140",
+                "output_template_1": "%(title)s.%(ext)s",
+                "audio_bitrate_1": "128K",
+                "subtitles_1": "on",
+            },
+        )
+
+    assert response.status_code == 200
+    rows = db_session_visible.query(Download).order_by(Download.id).all()
+    assert len(rows) == 1
+    row = rows[0]
+    assert row.url == "https://example.com/selected"
+    assert row.title == "Selected title"
+    assert row.uploader == "Selected uploader"
+    assert row.duration == 42
+    assert row.thumbnail == "https://example.com/selected.jpg"
+    assert row.video_format_id == "137"
+    assert row.audio_format_id == "140"
+    assert row.output_template == "%(title)s.%(ext)s"
+    assert row.audio_bitrate == "128K"
+    assert row.subtitles is True
+    assert "Added 1 items to queue." in response.text
+
+
+def test_batch_enqueue_route_reports_no_selected_videos(db_session_visible) -> None:
+    with TestClient(app) as client:
+        response = client.post(
+            "/downloads/batch/form",
+            data={"url_0": "https://example.com/not-selected"},
+        )
+
+    assert response.status_code == 200
+    assert db_session_visible.query(Download).count() == 0
+    assert "No videos selected." in response.text
+
+
 def test_batch_lookup_fragment_renders_ready_and_error_cards(monkeypatch) -> None:
     from app.services.batch_preview import BatchPreviewItem, BatchPreviewResult
 
@@ -312,9 +371,13 @@ def test_batch_lookup_fragment_renders_ready_and_error_cards(monkeypatch) -> Non
     assert 'name="duration"' in response.text
     assert 'name="thumbnail"' in response.text
     assert 'name="target_id"' in response.text
+    assert response.text.count('name="selected_index"') == 1
+    assert 'name="url_0"' in response.text
+    assert 'value="https://example.com/good"' in response.text
+    assert 'name="url_1"' not in response.text
 
 
-def test_batch_lookup_fragment_renders_enqueue_all_form(monkeypatch) -> None:
+def test_batch_lookup_fragment_renders_selected_enqueue_form(monkeypatch) -> None:
     from app.services.batch_preview import BatchPreviewItem, BatchPreviewResult
 
     def fake_resolve_batch_preview(raw: str, **_kwargs):
@@ -345,9 +408,11 @@ def test_batch_lookup_fragment_renders_enqueue_all_form(monkeypatch) -> None:
     assert 'id="batch-enqueue-form"' in response.text
     assert 'hx-post="/downloads/batch/form"' in response.text
     assert 'hx-target="#batch-status"' in response.text
-    assert 'name="url" value="https://example.com/good"' in response.text
-    assert 'name="title" value="Good title"' in response.text
-    assert "Enqueue all valid" in response.text
+    assert 'name="selected_index"' in response.text
+    assert 'value="0"\n        checked' in response.text
+    assert 'name="url_0"' in response.text
+    assert 'name="title_0"' in response.text
+    assert "Enqueue selected" in response.text
 
 
 def test_batch_lookup_fragment_renders_collapsed_format_picker(monkeypatch) -> None:
@@ -406,8 +471,14 @@ def test_batch_lookup_fragment_renders_collapsed_format_picker(monkeypatch) -> N
     assert "Audio Streams" in response.text
     assert 'x-init="streamPickerOpen = false"' in response.text
     assert 'form="batch-enqueue-form"' in response.text
-    assert 'name="video_format_id"' in response.text
-    assert 'name="audio_format_id"' in response.text
+    assert 'name="video_format_id_0"' in response.text
+    assert 'name="audio_format_id_0"' in response.text
+    assert 'name="output_template_0"' in response.text
+    assert 'name="audio_bitrate_0"' in response.text
+    assert 'name="subtitles_0"' in response.text
+    assert 'x-model="selectedOutputTemplate"' in response.text
+    assert 'x-model="selectedAudioBitrate"' in response.text
+    assert 'x-model="selectedSubtitles"' in response.text
     assert 'name="target_id" value="batch-status"' in response.text
 
 
@@ -445,6 +516,7 @@ def test_batch_lookup_fragment_uses_active_stream_field_contract(monkeypatch) ->
 
     assert response.status_code == 200
     _assert_sentinel_stream_fields_rendered(response.text)
+    _assert_sentinel_indexed_stream_fields_rendered(response.text)
 
 
 def test_info_lookup_route_uses_preview_service(monkeypatch) -> None:
