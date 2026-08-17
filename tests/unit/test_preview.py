@@ -86,3 +86,30 @@ def test_resolve_batch_preview_expands_playlists_with_flat_lookup(monkeypatch) -
 
     assert result.valid_count == 1
     assert result.items[0].source_url == "https://example.com/watch?v=1"
+
+
+def test_resolve_batch_preview_uses_injected_expansion_for_the_requested_page() -> None:
+    def fake_expand(url: str) -> list[str]:
+        assert url == "https://example.com/list"
+        return [
+            "https://example.com/watch?v=1",
+            "https://example.com/watch?v=2",
+            "https://example.com/watch?v=3",
+        ]
+
+    def fake_extract_info(url: str, **_kwargs) -> dict:
+        return {"title": url, "formats": []}
+
+    result = resolve_batch_preview(
+        "https://example.com/list",
+        extract_info=fake_extract_info,
+        expand_playlist=fake_expand,
+        page=2,
+        page_size=2,
+    )
+
+    assert [item.source_url for item in result.items] == ["https://example.com/watch?v=3"]
+    assert result.page == 2
+    assert result.page_size == 2
+    assert result.has_previous is True
+    assert result.has_next is False
