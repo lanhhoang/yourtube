@@ -12,23 +12,25 @@
 # would split schema authority between Docker and the application.
 # ----------------------------------------------------------------------------
 
-FROM python:3.12-slim AS runtime
+FROM node:22-trixie-slim AS node-runtime
+
+FROM python:3.12-slim-trixie AS runtime
 
 # System dependencies:
 #   - ffmpeg: required by yt-dlp for muxing/transcoding video and audio
 #   - curl: used for in-container diagnostics and yt-dlp's HLS fetcher
 #   - ca-certificates: keeps TLS verification working against CDNs
-#   - nodejs + npm: yt-dlp needs a JS runtime to solve YouTube's JS
-#     challenges; the runtime contract for Phase 5 pins "node" via
-#     build_ytdlp_options, so the binary must be present on PATH.
+#   - libatomic1: required by the bundled Node.js runtime on ARM
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
         ffmpeg \
-        nodejs \
-        npm \
+        libatomic1 \
     && rm -rf /var/lib/apt/lists/*
+
+# yt-dlp's EJS solver requires Node.js 22 or newer. npm is not needed.
+COPY --from=node-runtime /usr/local/bin/node /usr/local/bin/node
 
 # Install uv. Copying the prebuilt binary keeps the image small and
 # avoids the cost of pip-installing uv itself. The version pin matches

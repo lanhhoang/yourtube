@@ -22,15 +22,26 @@ from app.services.downloader import (
 )
 
 
-def test_build_ytdlp_options_sets_explicit_node_runtime(tmp_path) -> None:
+def test_build_ytdlp_options_avoids_youtube_android_vr_403(tmp_path) -> None:
     options = build_ytdlp_options(
         skip_download=True,
         output_dir=str(tmp_path),
         js_runtime="node",
     )
 
-    assert options["extractor_args"]["youtube"]["player_client"] == ["default"]
+    assert options["extractor_args"]["youtube"]["player_client"] == [
+        "web_embedded",
+        "default",
+    ]
     assert options["js_runtimes"] == {"node": {"path": "node"}}
+    assert "remote_components" not in options
+
+
+def test_dockerfile_bundles_supported_node_runtime() -> None:
+    dockerfile = (Path(__file__).resolve().parents[2] / "Dockerfile").read_text()
+
+    assert "FROM node:22-trixie-slim AS node-runtime" in dockerfile
+    assert "COPY --from=node-runtime /usr/local/bin/node /usr/local/bin/node" in dockerfile
 
 
 def test_build_ytdlp_options_emits_output_template_only_for_downloads(tmp_path) -> None:
