@@ -20,6 +20,8 @@ Current features:
 - Lightweight runtime diagnostics (Phase 5): the settings page shows a
   warning panel when the environment is degraded (missing Node.js,
   workers disabled)
+- Paginated YouTube playlist preview with page-local selection, per-video
+  formats, and independent queue jobs
 - Docker and Docker Compose packaging for local deployment
 
 ## Quick Start
