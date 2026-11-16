@@ -8,6 +8,16 @@ from typing import Any
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+REPO_ROOT = Path(__file__).resolve().parents[3]
+
+_RELATIVE_TO_ROOT = ("data_dir", "downloads_dir", "cookies_path")
+
+
+def resolve_repo_path(value: str | Path) -> Path:
+    """Return ``value`` as a path, joining relative paths onto ``REPO_ROOT``."""
+    path = Path(value)
+    return path if path.is_absolute() else REPO_ROOT / path
+
 
 class Settings(BaseSettings):
     """Runtime configuration for the YourTube web app.
@@ -19,19 +29,20 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(
         env_prefix="YT_",
-        env_file=".env",
+        env_file=REPO_ROOT / ".env",
         env_file_encoding="utf-8",
         extra="ignore",
     )
 
     host: str = "127.0.0.1"
     port: int = 8000
-    data_dir: Path = Path("./tmp/data")
-    downloads_dir: Path = Path("./tmp/downloads")
+    data_dir: Path = REPO_ROOT / "tmp/data"
+    downloads_dir: Path = REPO_ROOT / "tmp/downloads"
     cookies_path: Path | None = None
     proxy_url: str | None = None
     log_level: str = "INFO"
     workers: int = 1
+    web_dist_dir: Path = REPO_ROOT / "apps/web/dist"
     database_url: str = ""
     # When False, the FastAPI lifespan skips starting the worker pool.
     # Tests set this so the lifespan can run without spawning threads
@@ -44,11 +55,14 @@ class Settings(BaseSettings):
         if not isinstance(data, dict):
             return data
 
+        for key in _RELATIVE_TO_ROOT:
+            if data.get(key):
+                data[key] = resolve_repo_path(data[key])
+
         if data.get("database_url"):
             return data
 
-        raw_data_dir = data.get("data_dir", "./tmp/data")
-        data_dir = raw_data_dir if isinstance(raw_data_dir, Path) else Path(raw_data_dir)
+        data_dir = data.get("data_dir", REPO_ROOT / "tmp/data")
         data["database_url"] = f"sqlite:///{data_dir / 'yourtube.db'}"
         return data
 

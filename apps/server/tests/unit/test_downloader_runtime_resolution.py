@@ -38,7 +38,7 @@ def test_build_ytdlp_options_avoids_youtube_android_vr_403(tmp_path) -> None:
 
 
 def test_dockerfile_bundles_supported_node_runtime() -> None:
-    dockerfile = (Path(__file__).resolve().parents[2] / "Dockerfile").read_text()
+    dockerfile = (Path(__file__).resolve().parents[4] / "Dockerfile").read_text()
 
     assert "FROM node:22-trixie-slim AS node-runtime" in dockerfile
     assert "COPY --from=node-runtime /usr/local/bin/node /usr/local/bin/node" in dockerfile

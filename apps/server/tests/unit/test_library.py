@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 from sqlalchemy.orm import Session
 
+from app.config import REPO_ROOT
 from app.models import Download
 from app.schemas import DownloadCreate
 from app.services.library import (
@@ -143,3 +144,21 @@ def test_delete_from_library_returns_delete_failed_on_permission_error(
     assert success is False
     assert message == "delete_failed"
     assert db_session.get(Download, row.id) is not None
+
+
+def test_delete_from_library_resolves_relative_file_path(db_session: Session) -> None:
+    """A relative ``file_path`` from an older row is resolved against the repo root."""
+    row = enqueue_download(db_session, _make("https://example.com/rel", title="Rel"))
+    _mark_done(row, db_session)
+    db_session.execute(
+        Download.__table__.update()
+        .where(Download.id == row.id)
+        .values(file_path="tmp/downloads/rel.mp4")
+    )
+    db_session.expire(row)
+
+    with patch("app.services.library.os.remove") as remove:
+        success, _ = delete_from_library(db_session, row.id)
+
+    assert success is True
+    remove.assert_called_once_with(REPO_ROOT / "tmp" / "downloads" / "rel.mp4")

@@ -7,6 +7,7 @@ import os
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
+from app.config import resolve_repo_path
 from app.models import Download
 
 
@@ -56,7 +57,7 @@ def delete_from_library(session: Session, job_id: int) -> tuple[bool, str]:
     file_missing = False
     if row.file_path:
         try:
-            os.remove(row.file_path)
+            os.remove(resolve_repo_path(row.file_path))
         except FileNotFoundError:
             file_missing = True
         except OSError:

@@ -14,6 +14,7 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config import resolve_repo_path
 from app.config import settings as app_settings
 from app.models import Setting
 
@@ -63,11 +64,15 @@ def resolve_runtime_settings(session: Session) -> RuntimeSettings:
         except (TypeError, ValueError):
             playlist_page_size = 20
     downloads_dir = (
-        Path(stored["downloads_dir"]) if stored["downloads_dir"] else app_settings.downloads_dir
+        resolve_repo_path(stored["downloads_dir"])
+        if stored["downloads_dir"]
+        else app_settings.downloads_dir
     )
     proxy_url = stored["proxy_url"] or app_settings.proxy_url
     cookies_path = (
-        Path(stored["cookies_path"]) if stored["cookies_path"] else app_settings.cookies_path
+        resolve_repo_path(stored["cookies_path"])
+        if stored["cookies_path"]
+        else app_settings.cookies_path
     )
     return RuntimeSettings(
         max_concurrent=max(1, min(5, max_concurrent)),

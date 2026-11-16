@@ -1074,3 +1074,26 @@ def test_download_file_returns_404_for_unknown_id() -> None:
         response = client.get("/downloads/9999/file")
 
     assert response.status_code == 404
+
+
+def test_download_file_resolves_relative_path_against_repo_root(
+    db_session_visible, monkeypatch, tmp_path: Path
+) -> None:
+    (tmp_path / "tmp" / "downloads").mkdir(parents=True)
+    (tmp_path / "tmp" / "downloads" / "rel.mp4").write_bytes(b"rel")
+    monkeypatch.setattr("app.config.REPO_ROOT", tmp_path)
+    row = Download(
+        url="https://example.com/rel",
+        status="done",
+        progress=100.0,
+        file_path="tmp/downloads/rel.mp4",
+    )
+    db_session_visible.add(row)
+    db_session_visible.commit()
+    db_session_visible.refresh(row)
+
+    with TestClient(app) as client:
+        response = client.get(f"/downloads/{row.id}/file")
+
+    assert response.status_code == 200
+    assert response.content == b"rel"
