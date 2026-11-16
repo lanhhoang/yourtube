@@ -11,9 +11,6 @@ jobs:
   quality:
     name: ${{ matrix.os }} / Python 3.12
     runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        working-directory: apps/server
     strategy:
       fail-fast: true
       matrix:
@@ -22,6 +19,18 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install web dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
@@ -34,18 +43,10 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install dependencies
+      - name: Install server dependencies
+        working-directory: apps/server
         run: uv sync --dev --frozen
 
-      - name: Run lint
-        run: uv run ruff check --output-format=github .
-
-      - name: Check formatting
-        run: uv run ruff format --check .
-
-      - name: Run type checks
-        run: uv run ty check --output-format=github app tests
-
-      - name: Run tests with coverage
-        # Threshold set low for skeleton phase; increase to 80 after Phase 4
-        run: uv run pytest --cov=app --cov-fail-under=50
+      - name: Run all checks
+        # Server coverage threshold is low for now; increase to 80 after Phase 4
+        run: pnpm check
