@@ -50,3 +50,11 @@ jobs:
       - name: Run all checks
         # Server coverage threshold is low for now; increase to 80 after Phase 4
         run: pnpm check
+
+      - name: Install Chromium
+        if: matrix.os == 'ubuntu-latest'
+        run: pnpm --filter @app/web exec playwright install --with-deps chromium
+
+      - name: Run e2e
+        if: matrix.os == 'ubuntu-latest'
+        run: pnpm e2e
