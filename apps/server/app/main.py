@@ -22,6 +22,9 @@ from sqlalchemy import text
 from starlette.staticfiles import StaticFiles
 
 from alembic import command
+from app.api import api_router
+from app.api.errors import install_error_handlers
+from app.api.spa import spa_router
 from app.config import settings
 from app.db import SessionLocal, engine
 from app.routes.pages import router as pages_router
@@ -163,6 +166,8 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="YourTube", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=PROJECT_ROOT / "app" / "static"), name="static")
+install_error_handlers(app)
+app.include_router(api_router)
 app.include_router(pages_router)
 
 
@@ -184,3 +189,7 @@ def health() -> dict[str, str]:
             detail={"code": "db_unreachable", "message": str(exc)},
         ) from exc
     return {"status": "ok"}
+
+
+# Registered last: a catch-all that serves the built web app.
+app.include_router(spa_router)

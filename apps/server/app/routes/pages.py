@@ -40,7 +40,7 @@ from app.services.stream_selection import STREAM_FIELDS
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 TEMPLATES_DIR = PROJECT_ROOT / "app" / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
-router = APIRouter()
+router = APIRouter(include_in_schema=False)
 
 
 # --- Page routes -----------------------------------------------------------
