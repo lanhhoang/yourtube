@@ -19,6 +19,22 @@ def resolve_repo_path(value: str | Path) -> Path:
     return path if path.is_absolute() else REPO_ROOT / path
 
 
+def _resolve_sqlite_url(url: str) -> str:
+    """Re-root a relative ``sqlite:///`` file path onto ``REPO_ROOT``.
+
+    ``sqlite:///./tmp/data/x.db`` keeps meaning ``<repo>/tmp/data/x.db`` no
+    matter which directory the server starts from. Absolute paths,
+    ``:memory:`` and non-SQLite URLs are returned unchanged.
+    """
+    prefix = "sqlite:///"
+    if not url.startswith(prefix):
+        return url
+    path = url.removeprefix(prefix)
+    if not path or path.startswith(("/", ":memory:")):
+        return url
+    return f"{prefix}{resolve_repo_path(path)}"
+
+
 class Settings(BaseSettings):
     """Runtime configuration for the YourTube web app.
 
@@ -58,8 +74,13 @@ class Settings(BaseSettings):
         for key in _RELATIVE_TO_ROOT:
             if data.get(key):
                 data[key] = resolve_repo_path(data[key])
+            elif key in data:
+                # An empty value (e.g. ``YT_DATA_DIR=``) means "use the default".
+                del data[key]
 
-        if data.get("database_url"):
+        database_url = data.get("database_url")
+        if database_url:
+            data["database_url"] = _resolve_sqlite_url(database_url)
             return data
 
         data_dir = data.get("data_dir", REPO_ROOT / "tmp/data")

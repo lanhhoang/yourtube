@@ -43,3 +43,29 @@ def test_absolute_dirs_are_kept(monkeypatch, tmp_path):
 def test_resolve_repo_path():
     assert resolve_repo_path("tmp/downloads/a.mp4") == REPO_ROOT / "tmp/downloads/a.mp4"
     assert resolve_repo_path("/abs/a.mp4") == Path("/abs/a.mp4")
+
+
+def test_empty_path_vars_fall_back_to_defaults(monkeypatch):
+    monkeypatch.setenv("YT_DATA_DIR", "")
+    monkeypatch.setenv("YT_DOWNLOADS_DIR", "")
+    monkeypatch.setenv("YT_COOKIES_PATH", "")
+    monkeypatch.delenv("YT_DATABASE_URL", raising=False)
+    s = Settings()
+    assert s.data_dir == REPO_ROOT / "tmp" / "data"
+    assert s.downloads_dir == REPO_ROOT / "tmp" / "downloads"
+    assert s.cookies_path is None
+    assert s.database_url == f"sqlite:///{REPO_ROOT / 'tmp' / 'data' / 'yourtube.db'}"
+
+
+def test_relative_sqlite_database_url_resolves_against_repo_root(monkeypatch):
+    monkeypatch.setenv("YT_DATABASE_URL", "sqlite:///./tmp/data/custom.db")
+    assert Settings().database_url == f"sqlite:///{REPO_ROOT / 'tmp' / 'data' / 'custom.db'}"
+
+
+def test_absolute_and_non_sqlite_database_urls_are_kept(monkeypatch, tmp_path):
+    monkeypatch.setenv("YT_DATABASE_URL", f"sqlite:///{tmp_path / 'x.db'}")
+    assert Settings().database_url == f"sqlite:///{tmp_path / 'x.db'}"
+    monkeypatch.setenv("YT_DATABASE_URL", "sqlite:///:memory:")
+    assert Settings().database_url == "sqlite:///:memory:"
+    monkeypatch.setenv("YT_DATABASE_URL", "postgresql://u@h/db")
+    assert Settings().database_url == "postgresql://u@h/db"

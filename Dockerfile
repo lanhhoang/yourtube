@@ -59,7 +59,7 @@ COPY apps/server/app ./app
 RUN uv sync --frozen --no-dev
 
 # Hand the application files off to the non-root user. uv created the
-# project-local .venv under /app/.venv which must also be readable by
+# project-local .venv under /app/apps/server/.venv which must be readable by
 # the runtime user.
 RUN chown -R yourtube:yourtube /app
 
