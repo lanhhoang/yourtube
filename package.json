@@ -2,10 +2,26 @@
   "private": true,
   "type": "module",
   "packageManager": "pnpm@12.9.1",
-  "engines": { "node": ">=24.15.0" },
+  "engines": {
+    "node": ">=24.15.0"
+  },
   "scripts": {
-    "dev": "pnpm --filter @app/server dev",
+    "dev": "pnpm -r --parallel --filter @app/server --filter @app/web dev",
+    "build": "pnpm --filter @app/web build",
     "start": "pnpm --filter @app/server start",
-    "check": "pnpm --filter @app/server check"
+    "typegen": "pnpm --filter @app/web typegen",
+    "e2e": "pnpm --filter @app/web e2e",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "lint": "biome lint .",
+    "typecheck": "pnpm --filter @app/web typecheck",
+    "test": "vitest run",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm --filter @app/web typegen:check && pnpm --filter @app/server check"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.7",
+    "@types/node": "^24.19.2",
+    "tsx": "^4.23.15",
+    "vitest": "^5.1.0"
   }
 }

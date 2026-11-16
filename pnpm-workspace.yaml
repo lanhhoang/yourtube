@@ -2,3 +2,6 @@ packages:
   - "apps/*"
 allowBuilds:
   esbuild: true
+peerDependencyRules:
+  allowedVersions:
+    openapi-typescript>typescript: "6"

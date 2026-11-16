@@ -223,3 +223,9 @@ tmp/
 .DS_Store
 # --- Node ---
 node_modules/
+
+# --- Web ---
+!apps/web/src/lib/
+test-results/
+playwright-report/
+.svelte-check/

@@ -1,0 +1,100 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Tokens mirror DESIGN.md. Light values are the defaults; `.dark` overrides them. */
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+
+  --color-bg: #ffffff;
+  --color-surface: #f4f4f5;
+  --color-raised: #e9e9eb;
+  --color-line: #dcdce0;
+  --color-line-strong: #85858d;
+  --color-fg: #0f0f10;
+  --color-muted: #5f5f66;
+  --color-accent: #d90029;
+  --color-accent-fill: #d90029;
+  --color-on-accent: #ffffff;
+  --color-warn: #8a5200;
+  --color-danger: #c4161c;
+  --color-action: #0f0f10;
+  --color-on-action: #ffffff;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-lg: 1.0625rem;
+  --text-xl: 1.375rem;
+
+  --radius-control: 0.5rem;
+  --radius-thumb: 0.5rem;
+  --radius-pill: 999px;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+}
+
+.dark {
+  --color-bg: #0b0b0c;
+  --color-surface: #161618;
+  --color-raised: #1f1f22;
+  --color-line: #2a2a2d;
+  --color-line-strong: #76767d;
+  --color-fg: #f1f1f1;
+  --color-muted: #8d8d8d;
+  --color-accent: #ff0033;
+  --color-accent-fill: #e6002e;
+  --color-on-accent: #ffffff;
+  --color-warn: #f5a524;
+  --color-danger: #ff6b6b;
+  --color-action: #f1f1f1;
+  --color-on-action: #0b0b0c;
+}
+
+@layer base {
+  html {
+    background: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    color-scheme: light;
+    font-feature-settings: "cv11", "ss03";
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    margin: 0;
+    min-width: 960px;
+  }
+  ::selection {
+    background: var(--color-accent-fill);
+    color: var(--color-on-accent);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-fg);
+    outline-offset: 2px;
+  }
+  input,
+  textarea {
+    caret-color: var(--color-accent);
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line-strong) transparent;
+  }
+}
+
+/* Unlayered, so it beats Tailwind utilities without !important. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    transition-duration: 0.01ms;
+    animation-duration: 0.01ms;
+  }
+}

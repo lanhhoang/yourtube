@@ -12,7 +12,18 @@
 # would split schema authority between Docker and the application.
 # ----------------------------------------------------------------------------
 
-FROM node:22-trixie-slim AS node-runtime
+FROM node:24-trixie-slim AS node-runtime
+
+FROM node:24-trixie-slim AS web-build
+RUN corepack enable
+WORKDIR /app
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/server/package.json apps/server/
+COPY apps/web/package.json apps/web/
+RUN pnpm install --frozen-lockfile
+COPY apps/web apps/web
+COPY tsconfig.base.json ./
+RUN pnpm --filter @app/web build
 
 FROM python:3.12-slim-trixie AS runtime
 
@@ -29,7 +40,7 @@ RUN apt-get update \
         libatomic1 \
     && rm -rf /var/lib/apt/lists/*
 
-# yt-dlp's EJS solver requires Node.js 22 or newer. npm is not needed.
+# yt-dlp's EJS solver requires Node.js 22 or newer (24 here). npm is not needed.
 COPY --from=node-runtime /usr/local/bin/node /usr/local/bin/node
 
 # Install uv. Copying the prebuilt binary keeps the image small and
@@ -57,6 +68,8 @@ COPY apps/server/app ./app
 # Production-only install (no dev/test extras). --frozen ensures the
 # lockfile is honoured exactly, so image builds are reproducible.
 RUN uv sync --frozen --no-dev
+
+COPY --from=web-build /app/apps/web/dist /app/apps/web/dist
 
 # Hand the application files off to the non-root user. uv created the
 # project-local .venv under /app/apps/server/.venv which must be readable by
