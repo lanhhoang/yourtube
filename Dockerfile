@@ -34,8 +34,8 @@ COPY --from=node-runtime /usr/local/bin/node /usr/local/bin/node
 
 # Install uv. Copying the prebuilt binary keeps the image small and
 # avoids the cost of pip-installing uv itself. The version pin matches
-# the one used in CI (.github/workflows/quality.yml) for reproducibility.
-COPY --from=ghcr.io/astral-sh/uv:0.7.21 /uv /uvx /usr/local/bin/
+# the latest release at the time of the last dependency bump.
+COPY --from=ghcr.io/astral-sh/uv:0.13.8 /uv /uvx /usr/local/bin/
 
 # Run as a dedicated non-root user. UID 65532 is the "nonroot" UID used
 # by distroless images and avoids colliding with typical host users.
