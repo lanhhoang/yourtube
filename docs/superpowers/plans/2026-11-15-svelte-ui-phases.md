@@ -6,7 +6,7 @@ The parent plan `2026-11-15-svelte-ui.md` is split into six phases, from simples
 
 | # | Phase | Plan | Parent tasks | Usable result |
 | - | ----- | ---- | ------------ | ------------- |
-| 1 | Repo layout | `…-phase-1-repo-layout.md` | 1.1–1.2 | Old app runs from `apps/server` via `pnpm dev` / `pnpm start` / `pnpm check`, same `.env` and data; CI and Docker green |
+| 1 | Repo layout | `…-phase-1-repo-layout.md` | 1.1–1.3 | Old app runs from `apps/server` via `pnpm dev` / `pnpm start` / `pnpm check` on the latest Python dependencies, same `.env` and data; CI and Docker green |
 | 2 | Web app shell and design foundation | `…-phase-2-web-shell.md` | 2.1–2.5 | Svelte shell (top bar, rail, dark/light/system) in the approved design, at `:5173` in dev and `/app` in prod; typed client, drift check, e2e harness |
 | 3 | Library, Queue and Settings | `…-phase-3-library-queue-settings.md` | 3.1–3.6 | Browse/search/download/delete library, live queue with cancel/retry/dismiss and toasts, settings — in the new UI |
 | 4 | Single video with quality cap | `…-phase-4-single-video.md` | 4.1–4.4 | Fetch one video, pick a cap or exact format, add to queue; downloads at the right quality |
@@ -26,7 +26,7 @@ Phase 1 ──► Phase 2 (owner approves PRODUCT.md, then picks visual directio
 
 ## Why this order
 
-- **1 Repo layout** is a pure move: no behaviour change, smallest risk, and every later phase needs the new paths.
+- **1 Repo layout** is a pure move plus a dependency bump: no behaviour change, smallest risk, and every later phase needs the new paths. The bump (Task 1.3) comes after the move so each commit has one cause, and before Phase 2 so the old test suite guards it and the generated API types are built on the shipped versions.
 - **2 Shell** sets up the whole toolchain and the visual direction once, so later phases only add screens.
 - **3 Library/Queue/Settings** are read-mostly screens over existing services; only retry/dismiss are new backend behaviour.
 - **4 Single video** adds the quality cap (migration + yt-dlp format logic) and the first write flow.
@@ -56,4 +56,5 @@ Phase 1 ──► Phase 2 (owner approves PRODUCT.md, then picks visual directio
 | Playlist view: checking 2 at a time, Add disabled until done, badges, header subtitles/Advanced, side-panel override, stop on leave | 5 |
 | Remove Jinja/HTMX/Alpine, old CSS, paged preview, `playlist_page_size` | 6 |
 | critique / audit / polish at 1280 and 1440, both themes | 6 |
+| Python dependencies at latest (owner request, not in spec) | 1 |
 | Tests: JSON API tests replace HTML tests, Vitest logic, Playwright e2e (5 flows), coverage ≥ 50 | 2–6 |
