@@ -13,6 +13,7 @@ from pathlib import Path
 
 import pytest
 
+from app.config import REPO_ROOT
 from app.models import Setting
 from app.services import settings as settings_service
 from app.services.settings import resolve_runtime_settings, set_settings_batch
@@ -83,3 +84,12 @@ def test_resolve_runtime_settings_falls_back_to_env_proxy_and_cookies(
 
     assert resolved.proxy_url == "http://env-proxy:8080"
     assert resolved.cookies_path == env_cookies
+
+
+def test_resolve_runtime_settings_resolves_relative_paths_against_repo_root(db_session) -> None:
+    set_settings_batch(db_session, {"downloads_dir": "tmp/saved", "cookies_path": "./cookies.txt"})
+
+    resolved = resolve_runtime_settings(db_session)
+
+    assert resolved.downloads_dir == REPO_ROOT / "tmp" / "saved"
+    assert resolved.cookies_path == REPO_ROOT / "cookies.txt"

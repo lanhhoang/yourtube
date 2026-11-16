@@ -11,6 +11,9 @@ jobs:
   quality:
     name: ${{ matrix.os }} / Python 3.12
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: apps/server
     strategy:
       fail-fast: true
       matrix:
@@ -24,6 +27,7 @@ jobs:
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
+          cache-dependency-glob: apps/server/uv.lock
 
       - name: Set up Python
         uses: actions/setup-python@v6

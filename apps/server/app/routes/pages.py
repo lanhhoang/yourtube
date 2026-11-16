@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
-from app.config import settings
+from app.config import resolve_repo_path, settings
 from app.db import get_session
 from app.models import Download
 from app.services.diagnostics import collect_runtime_diagnostics
@@ -130,7 +130,7 @@ def download_file(job_id: int, session: Session = Depends(get_session)) -> FileR
         raise HTTPException(status_code=404, detail="Download not found.")
     if row.status != "done" or not row.file_path:
         raise HTTPException(status_code=409, detail="Download is not ready.")
-    path = Path(row.file_path)
+    path = resolve_repo_path(row.file_path)
     if not path.exists():
         raise HTTPException(status_code=404, detail="File is missing.")
     return FileResponse(path)

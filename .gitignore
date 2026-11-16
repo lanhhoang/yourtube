@@ -221,3 +221,5 @@ __marimo__/
 .superpowers/
 tmp/
 .DS_Store
+# --- Node ---
+node_modules/

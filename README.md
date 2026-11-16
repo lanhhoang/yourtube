@@ -28,8 +28,9 @@ Current features:
 
 ```bash
 cp .env.example .env     # adjust paths as needed
-uv sync                  # install dependencies
-uv run uvicorn app.main:app --reload
+pnpm install             # workspace root
+(cd apps/server && uv sync --dev)   # install Python dependencies
+pnpm dev                 # http://127.0.0.1:8000
 ```
 
 Open [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health).
@@ -58,7 +59,7 @@ This maps:
 - `YT_DATA_DIR=/data` inside the container to `$HOME/Downloads/YouTube/data` on the host
 - `YT_DOWNLOADS_DIR=/downloads` inside the container to `$HOME/Downloads/YouTube/downloads` on the host
 
-Use absolute paths or `${HOME}` when setting these variables. Do not put a raw `~/...` path directly into `docker-compose.yml`.
+Use absolute paths or `${HOME}` when setting these variables. Do not put a raw `~/...` path directly into `compose.yaml`.
 
 If you switch to host UID/GID overrides for bind mounts, rebuild and recreate
 the container so the latest image startup command is used:
@@ -69,49 +70,13 @@ YT_UID="$(id -u)" YT_GID="$(id -g)" YT_HOST_DATA_DIR="$HOME/Downloads/YouTube/da
 
 ## Configuration
 
-All settings are loaded from environment variables prefixed with `YT_`
-(see `app/config.py`):
-
-| Variable           | Default                        | Description                         |
-| ------------------ | ------------------------------ | ----------------------------------- |
-| `YT_HOST`          | `127.0.0.1`                    | Bind address                        |
-| `YT_PORT`          | `8000`                         | Bind port                           |
-| `YT_DATA_DIR`      | `./tmp/data`                   | Database and runtime data directory |
-| `YT_DOWNLOADS_DIR` | `./tmp/downloads`              | Completed download output directory |
-| `YT_DATABASE_URL`  | _(derived from `YT_DATA_DIR`)_ | SQLAlchemy database URL             |
-| `YT_LOG_LEVEL`     | `INFO`                         | Logging level                       |
-| `YT_WORKERS`       | `1`                            | Worker thread count                 |
-
-## Project Structure
-
-```
-yourtube/
-├── app/
-│   ├── main.py       — FastAPI app, lifespan, /health endpoint
-│   ├── config.py     — pydantic-settings model
-│   ├── db.py         — Engine, session factory, SQLite pragmas
-│   ├── models.py     — SQLAlchemy ORM models
-│   ├── schemas.py    — Pydantic request/response contracts
-│   ├── routes/       — JSON API and page route handlers
-│   └── services/     — Queue, downloader, library, and settings logic
-├── alembic/
-│   ├── env.py
-│   └── versions/     — Schema migrations
-└── tests/
-    ├── conftest.py   — Migrated DB fixtures
-    ├── test_config.py
-    ├── test_db.py
-    └── test_health.py
-```
+Settings are `YT_*` environment variables, read from `.env` at the repo root. Relative paths resolve against the repo root. See [`apps/server/README.md`](apps/server/README.md) for the full table, commands and project layout.
 
 ## Testing
 
 ```bash
-uv run pytest
+pnpm check               # ruff, ty, pytest with coverage
 ```
-
-Tests use a temporary SQLite database built by Alembic migrations — no manual
-setup required.
 
 ## License
 
