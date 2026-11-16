@@ -1,0 +1,11 @@
+{
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.9.1",
+  "engines": { "node": ">=24.15.0" },
+  "scripts": {
+    "dev": "pnpm --filter @app/server dev",
+    "start": "pnpm --filter @app/server start",
+    "check": "pnpm --filter @app/server check"
+  }
+}

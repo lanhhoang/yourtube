@@ -1,0 +1,10 @@
+{
+  "name": "@app/server",
+  "private": true,
+  "scripts": {
+    "dev": "uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000",
+    "start": "uv run uvicorn app.main:app --host 127.0.0.1 --port 8000",
+    "check": "uv run ruff check . && uv run ruff format --check . && uv run ty check app tests && uv run pytest --cov=app --cov-fail-under=50",
+    "openapi": "uv run python -m app.openapi_export"
+  }
+}

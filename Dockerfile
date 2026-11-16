@@ -43,16 +43,16 @@ RUN groupadd --system --gid 65532 yourtube \
     && useradd --system --uid 65532 --gid yourtube \
         --home-dir /app --shell /usr/sbin/nologin yourtube
 
-WORKDIR /app
-ENV PATH="/app/.venv/bin:${PATH}"
+WORKDIR /app/apps/server
+ENV PATH="/app/apps/server/.venv/bin:${PATH}"
 
 # ---- Dependency layer ----------------------------------------------------
 # Copy the lockfile and project metadata first so dependency installation
 # is cached separately from application code changes.
-COPY pyproject.toml uv.lock ./
-COPY alembic.ini ./
-COPY alembic ./alembic
-COPY app ./app
+COPY apps/server/pyproject.toml apps/server/uv.lock ./
+COPY apps/server/alembic.ini ./
+COPY apps/server/alembic ./alembic
+COPY apps/server/app ./app
 
 # Production-only install (no dev/test extras). --frozen ensures the
 # lockfile is honoured exactly, so image builds are reproducible.
@@ -67,7 +67,7 @@ USER yourtube
 
 EXPOSE 8000
 
-# Boot directly with the uvicorn entrypoint installed in /app/.venv/bin.
+# Boot directly with the uvicorn entrypoint installed in /app/apps/server/.venv/bin.
 # The FastAPI lifespan in app.main runs `alembic upgrade head` before the
 # first request is served, which is why no separate migration command is
 # included here.
