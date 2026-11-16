@@ -218,4 +218,6 @@ __marimo__/
 .streamlit/secrets.toml
 
 # --- Caches & Temp Files ---
+.superpowers/
 tmp/
+.DS_Store

@@ -38,6 +38,9 @@ select = ["E", "F", "I", "N", "W"]
 
 [tool.ruff.format]
 quote-style = "double"
+# Ruff formats Python code blocks inside Markdown by default. The plan docs under
+# docs/superpowers/ hold sketches, not runnable code, so don't format Markdown.
+exclude = ["*.md"]
 
 [tool.ty.environment]
 python-version = "3.12"
