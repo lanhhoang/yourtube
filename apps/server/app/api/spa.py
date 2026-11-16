@@ -19,7 +19,10 @@ def spa(path: str) -> Response:
     if not index.is_file():
         return PlainTextResponse(_NOT_BUILT, status_code=404)
     if path:
-        candidate = (dist / path).resolve()
+        try:
+            candidate = (dist / path).resolve()
+        except ValueError:  # embedded null byte
+            return PlainTextResponse("Not found.", status_code=404)
         if candidate.is_relative_to(dist) and candidate.is_file():
             return FileResponse(candidate)
         if "." in path.rsplit("/", 1)[-1]:

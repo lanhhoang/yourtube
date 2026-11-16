@@ -10,7 +10,6 @@
   let field = $state("");
   let options = $state<FetchOptions>(readFetchOptions(localStorage.getItem(FETCH_OPTIONS_KEY)));
   let menuOpen = $state(false);
-  let input: HTMLTextAreaElement | undefined = $state();
 
   const lines = $derived(Math.min(6, Math.max(1, field.split("\n").length)));
 
@@ -50,7 +49,6 @@
 
   <div class="mx-auto flex w-full max-w-[560px] items-start gap-2">
     <textarea
-      bind:this={input}
       bind:value={field}
       onkeydown={onKeydown}
       rows={lines}

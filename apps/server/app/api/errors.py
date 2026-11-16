@@ -29,7 +29,7 @@ def _body(status_code: int, code: str, message: str) -> JSONResponse:
 
 
 def _is_api(request: Request) -> bool:
-    return request.url.path.startswith("/api/")
+    return request.url.path == "/api" or request.url.path.startswith("/api/")
 
 
 def _validation_message(exc: RequestValidationError) -> str:

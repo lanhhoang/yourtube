@@ -28,6 +28,12 @@ def test_spa_does_not_shadow_old_pages(client, dist):
 def test_spa_blocks_traversal(client, dist):
     assert client.get("/..%2fsecret.txt").status_code == 404
     assert client.get("/assets/..%2f..%2fsecret.txt").status_code == 404
+    assert client.get("//etc/passwd").text == INDEX
+
+
+def test_spa_null_byte_is_not_a_server_error(client, dist):
+    assert client.get("/%00").status_code == 404
+    assert client.get("/a%00b.js").status_code == 404
 
 
 def test_spa_without_dist_returns_404_hint(client_no_dist):

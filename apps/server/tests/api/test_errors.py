@@ -81,3 +81,9 @@ def test_validation_error_body(mini):
 
 def test_non_api_paths_keep_defaults(mini):
     assert mini.get("/old").json() == {"detail": "Old."}
+
+
+def test_bare_api_path_returns_error_body(client, dist):
+    r = client.get("/api")
+    assert r.status_code == 404
+    assert r.json()["error"]["code"] == "not_found"
