@@ -7,11 +7,13 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from app.api import jobs
 from app.api.errors import ApiError
 
 api_router = APIRouter(prefix="/api")
 
 # Feature routers are included here, above the catch-all.
+api_router.include_router(jobs.router)
 
 
 @api_router.api_route(

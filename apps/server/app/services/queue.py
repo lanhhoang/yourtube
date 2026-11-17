@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import Select, func, select, update
+from sqlalchemy import Select, delete, func, select, update
 from sqlalchemy.orm import Session
 
 from app.models import Download
@@ -230,3 +230,45 @@ def get_recent_completed_jobs(session: Session, limit: int = 20) -> list[Downloa
     )
     rows = list(session.execute(stmt).scalars())
     return list(reversed(rows))
+
+
+def get_failed_jobs(session: Session) -> list[Download]:
+    """Return ``error`` rows, newest first."""
+    stmt = (
+        select(Download)
+        .where(Download.status == "error")
+        .order_by(Download.finished_at.desc().nulls_last(), Download.id.desc())
+    )
+    return list(session.execute(stmt).scalars())
+
+
+def retry_job(session: Session, job_id: int) -> bool:
+    """Requeue a failed job (same row, so URL and format choices are kept).
+
+    Only ``error`` rows change; any other state returns ``False``.
+    """
+    stmt = (
+        update(Download)
+        .where(Download.id == job_id, Download.status == "error")
+        .values(
+            status="queued",
+            progress=0.0,
+            error_code=None,
+            error_message=None,
+            cancel_requested=False,
+            claimed_at=None,
+            finished_at=None,
+        )
+    )
+    result = session.execute(stmt)
+    session.commit()
+    return bool(result.rowcount)
+
+
+def dismiss_job(session: Session, job_id: int) -> bool:
+    """Delete a failed job's row. Only ``error`` rows are removed."""
+    result = session.execute(
+        delete(Download).where(Download.id == job_id, Download.status == "error")
+    )
+    session.commit()
+    return bool(result.rowcount)
