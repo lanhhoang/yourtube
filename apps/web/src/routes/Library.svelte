@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from "svelte";
   import Chips from "../components/Chips.svelte";
   import JobCard from "../components/JobCard.svelte";
   import { api, call } from "../lib/api.ts";
@@ -46,7 +47,7 @@
   let prevActive: JobOut[] = [];
   $effect(() => {
     const next = queue?.active ?? [];
-    if (leftActive(prevActive, next)) void load(q);
+    if (leftActive(prevActive, next)) untrack(() => void load(q));
     prevActive = next;
   });
 
