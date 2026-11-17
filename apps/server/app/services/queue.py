@@ -47,9 +47,8 @@ def is_cancel_requested(session: Session, job_id: int) -> bool:
     return bool(session.execute(stmt).scalar_one_or_none())
 
 
-def enqueue_download(session: Session, payload: DownloadCreate) -> Download:
-    """Insert a new row in ``queued`` state and return it."""
-    row = Download(
+def _row_from_payload(payload: DownloadCreate) -> Download:
+    return Download(
         url=payload.url,
         title=payload.title,
         uploader=payload.uploader,
@@ -60,12 +59,24 @@ def enqueue_download(session: Session, payload: DownloadCreate) -> Download:
         output_template=payload.output_template,
         audio_bitrate=payload.audio_bitrate,
         subtitles=payload.subtitles,
+        quality_cap=payload.quality_cap,
         status="queued",
     )
-    session.add(row)
+
+
+def enqueue_download(session: Session, payload: DownloadCreate) -> Download:
+    """Insert a new row in ``queued`` state and return it."""
+    return enqueue_downloads(session, [payload])[0]
+
+
+def enqueue_downloads(session: Session, payloads: list[DownloadCreate]) -> list[Download]:
+    """Insert one ``queued`` row per payload in a single transaction."""
+    rows = [_row_from_payload(p) for p in payloads]
+    session.add_all(rows)
     session.commit()
-    session.refresh(row)
-    return row
+    for row in rows:
+        session.refresh(row)
+    return rows
 
 
 def claim_next(session: Session) -> int | None:

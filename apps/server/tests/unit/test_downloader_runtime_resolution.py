@@ -176,3 +176,24 @@ def test_write_transcript_sidecar_overwrites_existing_txt_file(tmp_path: Path) -
 
     assert written == transcript_path
     assert transcript_path.read_text(encoding="utf-8") == "First line\n"
+
+
+def test_extract_flat_info_passes_noplaylist(monkeypatch) -> None:
+    from unittest.mock import MagicMock
+
+    from app.services.downloader import extract_flat_info, extract_info
+
+    for fn in (extract_flat_info, extract_info):
+        seen: dict = {}
+
+        def factory(opts, seen=seen):
+            seen.update(opts)
+            ydl = MagicMock()
+            ydl.__enter__.return_value = ydl
+            return ydl
+
+        monkeypatch.setattr("yt_dlp.YoutubeDL", factory)
+        fn("https://e.test/v")
+        assert "noplaylist" not in seen
+        fn("https://e.test/v", noplaylist=True)
+        assert seen["noplaylist"] is True

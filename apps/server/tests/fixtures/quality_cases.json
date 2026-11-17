@@ -1,0 +1,10 @@
+[
+  {"name": "landscape 1080 cap 1080", "formats": [{"width": 1920, "height": 1080, "kind": "video"}, {"width": null, "height": null, "kind": "audio"}], "cap": "1080", "best_short_side": 1080, "below_cap": false},
+  {"name": "vertical 1080x1920 cap 1080", "formats": [{"width": 1080, "height": 1920, "kind": "video"}], "cap": "1080", "best_short_side": 1080, "below_cap": false},
+  {"name": "only 720 cap 1080", "formats": [{"width": 1280, "height": 720, "kind": "video"}], "cap": "1080", "best_short_side": 720, "below_cap": true},
+  {"name": "2160 cap 1440", "formats": [{"width": 3840, "height": 2160, "kind": "video"}, {"width": 1920, "height": 1080, "kind": "video"}], "cap": "1440", "best_short_side": 2160, "below_cap": false},
+  {"name": "audio only", "formats": [{"width": null, "height": null, "kind": "audio"}], "cap": "1080", "best_short_side": null, "below_cap": false},
+  {"name": "cap best with 720", "formats": [{"width": 1280, "height": 720, "kind": "video"}], "cap": "best", "best_short_side": 720, "below_cap": false},
+  {"name": "cap audio with 720", "formats": [{"width": 1280, "height": 720, "kind": "video"}], "cap": "audio", "best_short_side": 720, "below_cap": false},
+  {"name": "muxed 640x360 cap 480", "formats": [{"width": 640, "height": 360, "kind": "muxed"}], "cap": "480", "best_short_side": 360, "below_cap": true}
+]

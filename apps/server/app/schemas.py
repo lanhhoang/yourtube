@@ -6,13 +6,18 @@ ORM instances from ``app.models`` must never be returned directly to clients.
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
+from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 if TYPE_CHECKING:
     from app.models import Download
+
+
+type QualityCap = Literal["best", "2160", "1440", "1080", "720", "480", "audio"]
 
 
 class DownloadCreate(BaseModel):
@@ -27,7 +32,13 @@ class DownloadCreate(BaseModel):
     audio_format_id: str | None = None
     output_template: str | None = None
     audio_bitrate: str | None = None
+    quality_cap: QualityCap | None = None
     subtitles: bool = False
+
+    @field_validator("audio_bitrate")
+    @classmethod
+    def _check_audio_bitrate(cls, value: str | None) -> str | None:
+        return (value or "").strip() or None
 
 
 type StreamKind = Literal["video", "audio", "muxed"]
@@ -69,6 +80,7 @@ class JobOut(BaseModel):
     thumbnail: str | None
     status: JobStatus
     progress: float
+    quality_cap: QualityCap | None
     error_code: str | None
     error_message: str | None
     media_kind: MediaKind
@@ -80,8 +92,10 @@ class JobOut(BaseModel):
 
     @classmethod
     def from_row(cls, row: Download) -> JobOut:
-        audio_only = (row.audio_format_id and not row.video_format_id) or (
-            row.status == "done" and row.resolution_height is None
+        audio_only = (
+            (row.audio_format_id and not row.video_format_id)
+            or (row.quality_cap == "audio" and not row.video_format_id)
+            or (row.status == "done" and row.resolution_height is None)
         )
         return cls.model_validate(
             {
@@ -93,6 +107,7 @@ class JobOut(BaseModel):
                 "thumbnail": row.thumbnail,
                 "status": row.status,
                 "progress": row.progress,
+                "quality_cap": row.quality_cap,
                 "error_code": row.error_code,
                 "error_message": row.error_message,
                 "media_kind": "audio" if audio_only else "video",
@@ -103,6 +118,95 @@ class JobOut(BaseModel):
                 "finished_at": row.finished_at,
             }
         )
+
+
+class JobCreate(DownloadCreate):
+    """One job in an enqueue request; the template must stay inside the downloads folder."""
+
+    @field_validator("audio_bitrate")
+    @classmethod
+    def _check_strict_bitrate(cls, value: str | None) -> str | None:
+        # Only the JSON API is strict; the old HTML routes build DownloadCreate unguarded.
+        if value is not None and not re.fullmatch(r"\d+[kK]?", value):
+            raise ValueError("Audio bitrate must be a number such as 192 or 192K.")
+        return value
+
+    @field_validator("output_template")
+    @classmethod
+    def _check_output_template(cls, value: str | None) -> str | None:
+        from app.services.downloader import resolve_output_template
+
+        if value is None or not value.strip():
+            return None
+        if Path(value).is_absolute():
+            raise ValueError("Output template must be relative to the downloads folder.")
+        resolve_output_template(value, "/tmp")
+        return value
+
+
+class EnqueueRequest(BaseModel):
+    jobs: list[JobCreate] = Field(min_length=1, max_length=500)
+
+
+class EnqueueResult(BaseModel):
+    created: list[JobOut]
+
+
+class StreamRow(BaseModel):
+    format_id: str
+    ext: str
+    resolution: str | None
+    height: int | None
+    width: int | None
+    vcodec: str | None
+    acodec: str | None
+    abr: float | None
+    audio_channels: int | None
+    container: str | None
+
+
+class StreamPicker(BaseModel):
+    video_streams: list[StreamRow]
+    audio_streams: list[StreamRow]
+    has_muxed_streams: bool
+    expected_container_by_pair: dict[str, str]
+
+
+class VideoDetails(BaseModel):
+    url: str
+    title: str
+    uploader: str | None
+    duration: int | None
+    thumbnail: str | None
+    picker: StreamPicker
+    best_short_side: int | None
+    playlist_url: str | None
+
+
+class SourceEntry(BaseModel):
+    index: int
+    url: str
+    title: str | None
+    uploader: str | None
+    duration: int | None
+    thumbnail: str | None
+    error_code: str | None = None
+    error_message: str | None = None
+    details: VideoDetails | None = None
+
+
+class SourcesRequest(BaseModel):
+    urls: str = Field(min_length=1)
+    use_proxy: bool = False
+    use_cookies: bool = False
+
+
+class SourcesResult(BaseModel):
+    kind: Literal["video", "list"]
+    title: str | None
+    video: VideoDetails | None
+    entries: list[SourceEntry]
+    skipped: int
 
 
 class QueueOut(BaseModel):

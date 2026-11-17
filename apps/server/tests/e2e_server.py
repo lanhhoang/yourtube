@@ -43,8 +43,43 @@ def _run_download(
     return DownloadResult(str(path), 4, "mp4", 1080)
 
 
-downloader.extract_info = _not_stubbed
-downloader.extract_flat_info = _not_stubbed
+_VIDEO_URLS = {"https://e2e.test/video", "https://e2e.test/watch?v=e2e&list=PLe2e"}
+
+
+def _video_info(url: str) -> dict[str, Any]:
+    def fmt(fid: str, w: int | None, h: int | None, v: str, a: str, ext: str) -> dict[str, Any]:
+        return {
+            "format_id": fid,
+            "ext": ext,
+            "width": w,
+            "height": h,
+            "vcodec": v,
+            "acodec": a,
+            "abr": 128 if v == "none" else None,
+        }
+
+    return {
+        "id": "e2e",
+        "title": "E2E Video",
+        "uploader": "E2E",
+        "duration": 61,
+        "webpage_url": "https://e2e.test/video",
+        "formats": [
+            fmt("v1080", 1920, 1080, "avc1.640028", "none", "mp4"),
+            fmt("v720", 1280, 720, "avc1.64001f", "none", "mp4"),
+            fmt("a1", None, None, "none", "mp4a.40.2", "m4a"),
+        ],
+    }
+
+
+def _stub_info(url: str, **_kwargs: Any) -> dict[str, Any]:
+    if url in _VIDEO_URLS:
+        return _video_info(url)
+    return _not_stubbed(url)
+
+
+downloader.extract_info = _stub_info
+downloader.extract_flat_info = _stub_info
 job_runner.run_download = _run_download
 
 from app.main import app  # noqa: E402

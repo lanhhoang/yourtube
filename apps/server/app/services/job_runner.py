@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 from app.db import SessionLocal
 from app.models import Download
+from app.schemas import QualityCap
 from app.services.downloader import DownloadCancelled, YtdlpProgress, run_download
 from app.services.error_mapper import friendly_ytdlp_error
 from app.services.queue import is_cancel_requested, release_job, update_progress
@@ -33,6 +35,7 @@ def run_claimed_job(job_id: int) -> None:
         job_output_template = job.output_template
         job_audio_bitrate = job.audio_bitrate
         job_subtitles = job.subtitles
+        job_quality_cap = cast("QualityCap | None", job.quality_cap)
 
     progress = YtdlpProgress(
         cancel_requested=lambda: _cancel_requested(job_id),
@@ -51,6 +54,7 @@ def run_claimed_job(job_id: int) -> None:
             cookies_file=str(runtime.cookies_path) if runtime.cookies_path else None,
             subtitles=job_subtitles,
             progress_hook=progress,
+            quality_cap=job_quality_cap,
         )
     except DownloadCancelled:
         with SessionLocal() as session:

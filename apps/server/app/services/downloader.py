@@ -15,7 +15,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, TypedDict
 
-from app.schemas import FormatInfo, StreamKind
+from app.schemas import FormatInfo, QualityCap, StreamKind
+from app.services.quality import cap_format_options, short_side
 
 
 class DownloadCancelled(Exception):  # noqa: N818 - name fixed by plan contract
@@ -49,6 +50,7 @@ class StreamPickerRow(TypedDict):
     ext: str
     resolution: str | None
     height: int | None
+    width: int | None
     vcodec: str | None
     acodec: str | None
     abr: float | None
@@ -198,6 +200,7 @@ def build_ytdlp_options(
     subtitles: bool = False,
     progress_hooks: list[ProgressHook] | None = None,
     js_runtime: str = "node",
+    format_sort: list[str] | None = None,
 ) -> dict[str, Any]:
     """Build a consistent ``yt_dlp`` options dict for info lookup and downloads.
 
@@ -227,6 +230,8 @@ def build_ytdlp_options(
         options["outtmpl"] = _output_template(output_template, output_dir)
     if format_selector:
         options["format"] = format_selector
+    if format_sort:
+        options["format_sort"] = format_sort
     if proxy:
         options["proxy"] = proxy
     if cookies_file:
@@ -245,6 +250,7 @@ def extract_info(
     *,
     proxy: str | None = None,
     cookies_file: str | None = None,
+    noplaylist: bool = False,
 ) -> dict:
     """Call ``yt_dlp.YoutubeDL.extract_info`` for ``url`` and return the dict.
 
@@ -260,6 +266,8 @@ def extract_info(
         proxy=proxy,
         cookies_file=cookies_file,
     )
+    if noplaylist:
+        ydl_opts["noplaylist"] = True
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         return ydl.extract_info(url, download=False)
 
@@ -269,6 +277,7 @@ def extract_flat_info(
     *,
     proxy: str | None = None,
     cookies_file: str | None = None,
+    noplaylist: bool = False,
 ) -> dict:
     """Return yt-dlp metadata with playlist entries flattened."""
     import yt_dlp  # local import to keep module import cheap
@@ -280,6 +289,8 @@ def extract_flat_info(
         cookies_file=cookies_file,
     )
     ydl_opts["extract_flat"] = True
+    if noplaylist:
+        ydl_opts["noplaylist"] = True
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         return ydl.extract_info(url, download=False)
 
@@ -378,6 +389,7 @@ def build_stream_picker_payload(formats: list[FormatInfo]) -> StreamPickerPayloa
             "ext": item.ext,
             "resolution": item.resolution,
             "height": item.height,
+            "width": item.width,
             "vcodec": item.vcodec,
             "acodec": item.acodec,
             "abr": item.abr,
@@ -440,6 +452,31 @@ def resolve_output_template(template: str | None, output_dir: str | Path) -> str
     return str(base_dir / candidate)
 
 
+class _OutputGuard:
+    """yt-dlp ``match_filter`` that refuses a final filename outside ``output_dir``.
+
+    The literal check in ``resolve_output_template`` cannot see ``..`` produced by
+    yt-dlp's own template syntax (``%(nope|..)s``), so the rendered path is checked
+    once the info dict is complete. ``ydl`` is set after the ``YoutubeDL`` is built.
+    """
+
+    def __init__(self, output_dir: str) -> None:
+        self.root = os.path.abspath(output_dir)
+        self.ydl: Any = None
+
+    def __call__(self, info: dict, *, incomplete: bool = False) -> None:
+        if incomplete or self.ydl is None:
+            return None
+        target = os.path.abspath(self.ydl.prepare_filename(info))
+        if os.path.commonpath([self.root, target]) != self.root:
+            raise ValueError("output template must stay within the downloads folder")
+        return None
+
+
+def output_dir_guard(output_dir: str) -> _OutputGuard:
+    return _OutputGuard(output_dir)
+
+
 def render_transcript_text(subtitle_text: str) -> str:
     """Convert SRT-formatted subtitles to a plain-text transcript.
 
@@ -498,8 +535,7 @@ def _extract_file_metadata(
     the info dict and may be ``None`` when not reported.
     """
     media_format = _safe_str(info.get("ext"))
-    height_raw = info.get("height")
-    resolution_height = _safe_int(height_raw)
+    resolution_height = short_side(_safe_int(info.get("width")), _safe_int(info.get("height")))
     file_size: int | None = None
     if output_path:
         try:
@@ -522,6 +558,7 @@ def run_download(
     cookies_file: str | None = None,
     subtitles: bool = False,
     progress_hook: YtdlpProgress | None = None,
+    quality_cap: QualityCap | None = None,
 ) -> DownloadResult:
     """Run yt-dlp and return the output path plus file metadata.
 
@@ -530,7 +567,11 @@ def run_download(
     """
     import yt_dlp  # local import to keep module import cheap
 
-    fmt = _format_selector(video_format_id, audio_format_id, audio_bitrate=audio_bitrate)
+    format_sort: list[str] | None = None
+    if video_format_id or audio_format_id:
+        fmt = _format_selector(video_format_id, audio_format_id, audio_bitrate=audio_bitrate)
+    else:
+        fmt, format_sort = cap_format_options(quality_cap, audio_bitrate)
     ydl_opts = build_ytdlp_options(
         skip_download=False,
         output_dir=output_dir,
@@ -539,7 +580,13 @@ def run_download(
         proxy=proxy,
         cookies_file=cookies_file,
         subtitles=subtitles,
+        format_sort=format_sort,
     )
+    guard: _OutputGuard | None = None
+    if not (output_template and Path(output_template).is_absolute()):
+        # Absolute templates stay allowed for the old UI; everything else must stay inside.
+        guard = output_dir_guard(output_dir)
+        ydl_opts["match_filter"] = guard
     captured_path: dict[str, str | None] = {"path": None}
 
     def _wrapped(d: dict[str, Any]) -> None:
@@ -553,6 +600,8 @@ def run_download(
     Path(output_dir).mkdir(parents=True, exist_ok=True)
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        if guard is not None:
+            guard.ydl = ydl
         info = ydl.extract_info(url, download=True)
 
     if subtitles:

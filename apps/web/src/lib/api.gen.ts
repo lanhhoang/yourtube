@@ -17,6 +17,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/downloads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Enqueue */
+        post: operations["enqueue_api_downloads_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/downloads/{job_id}/cancel": {
         parameters: {
             query?: never;
@@ -171,6 +188,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sources */
+        post: operations["sources_api_sources_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -213,10 +247,50 @@ export interface components {
             /** Workers Enabled */
             workers_enabled: boolean;
         };
+        /** EnqueueRequest */
+        EnqueueRequest: {
+            /** Jobs */
+            jobs: components["schemas"]["JobCreate"][];
+        };
+        /** EnqueueResult */
+        EnqueueResult: {
+            /** Created */
+            created: components["schemas"]["JobOut"][];
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * JobCreate
+         * @description One job in an enqueue request; the template must stay inside the downloads folder.
+         */
+        JobCreate: {
+            /** Audio Bitrate */
+            audio_bitrate?: string | null;
+            /** Audio Format Id */
+            audio_format_id?: string | null;
+            /** Duration */
+            duration?: number | null;
+            /** Output Template */
+            output_template?: string | null;
+            quality_cap?: components["schemas"]["QualityCap"] | null;
+            /**
+             * Subtitles
+             * @default false
+             */
+            subtitles: boolean;
+            /** Thumbnail */
+            thumbnail?: string | null;
+            /** Title */
+            title?: string | null;
+            /** Uploader */
+            uploader?: string | null;
+            /** Url */
+            url: string;
+            /** Video Format Id */
+            video_format_id?: string | null;
         };
         /**
          * JobOut
@@ -245,6 +319,7 @@ export interface components {
             media_kind: components["schemas"]["MediaKind"];
             /** Progress */
             progress: number;
+            quality_cap: components["schemas"]["QualityCap"] | null;
             /** Resolution Height */
             resolution_height: number | null;
             status: components["schemas"]["JobStatus"];
@@ -261,6 +336,8 @@ export interface components {
         JobStatus: "queued" | "active" | "done" | "error" | "cancelled";
         /** @enum {string} */
         MediaKind: "video" | "audio";
+        /** @enum {string} */
+        QualityCap: "best" | "2160" | "1440" | "1080" | "720" | "480" | "audio";
         /** QueueOut */
         QueueOut: {
             /** Active */
@@ -301,6 +378,92 @@ export interface components {
             /** Proxy Url */
             proxy_url: string;
         };
+        /** SourceEntry */
+        SourceEntry: {
+            details?: components["schemas"]["VideoDetails"] | null;
+            /** Duration */
+            duration: number | null;
+            /** Error Code */
+            error_code?: string | null;
+            /** Error Message */
+            error_message?: string | null;
+            /** Index */
+            index: number;
+            /** Thumbnail */
+            thumbnail: string | null;
+            /** Title */
+            title: string | null;
+            /** Uploader */
+            uploader: string | null;
+            /** Url */
+            url: string;
+        };
+        /** SourcesRequest */
+        SourcesRequest: {
+            /** Urls */
+            urls: string;
+            /**
+             * Use Cookies
+             * @default false
+             */
+            use_cookies: boolean;
+            /**
+             * Use Proxy
+             * @default false
+             */
+            use_proxy: boolean;
+        };
+        /** SourcesResult */
+        SourcesResult: {
+            /** Entries */
+            entries: components["schemas"]["SourceEntry"][];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "video" | "list";
+            /** Skipped */
+            skipped: number;
+            /** Title */
+            title: string | null;
+            video: components["schemas"]["VideoDetails"] | null;
+        };
+        /** StreamPicker */
+        StreamPicker: {
+            /** Audio Streams */
+            audio_streams: components["schemas"]["StreamRow"][];
+            /** Expected Container By Pair */
+            expected_container_by_pair: {
+                [key: string]: string;
+            };
+            /** Has Muxed Streams */
+            has_muxed_streams: boolean;
+            /** Video Streams */
+            video_streams: components["schemas"]["StreamRow"][];
+        };
+        /** StreamRow */
+        StreamRow: {
+            /** Abr */
+            abr: number | null;
+            /** Acodec */
+            acodec: string | null;
+            /** Audio Channels */
+            audio_channels: number | null;
+            /** Container */
+            container: string | null;
+            /** Ext */
+            ext: string;
+            /** Format Id */
+            format_id: string;
+            /** Height */
+            height: number | null;
+            /** Resolution */
+            resolution: string | null;
+            /** Vcodec */
+            vcodec: string | null;
+            /** Width */
+            width: number | null;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -313,6 +476,24 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** VideoDetails */
+        VideoDetails: {
+            /** Best Short Side */
+            best_short_side: number | null;
+            /** Duration */
+            duration: number | null;
+            picker: components["schemas"]["StreamPicker"];
+            /** Playlist Url */
+            playlist_url: string | null;
+            /** Thumbnail */
+            thumbnail: string | null;
+            /** Title */
+            title: string;
+            /** Uploader */
+            uploader: string | null;
+            /** Url */
+            url: string;
         };
     };
     responses: never;
@@ -339,6 +520,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DiagnosticsOut"];
+                };
+            };
+        };
+    };
+    enqueue_api_downloads_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnqueueRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnqueueResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -612,6 +826,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SettingsOut"];
+                };
+            };
+        };
+    };
+    sources_api_sources_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SourcesRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourcesResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
