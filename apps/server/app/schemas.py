@@ -109,3 +109,24 @@ class QueueOut(BaseModel):
     active: list[JobOut]
     failed: list[JobOut]
     completed: list[JobOut]
+
+
+class SettingsOut(BaseModel):
+    max_concurrent: int
+    proxy_url: str
+    cookies_path: str
+    downloads_dir: str
+
+
+class SettingsIn(BaseModel):
+    max_concurrent: int = Field(ge=1, le=5)
+    proxy_url: str = ""
+    cookies_path: str = ""
+    downloads_dir: str = ""
+
+
+class DiagnosticsOut(BaseModel):
+    level: Literal["ok", "warning"]
+    messages: list[str]
+    js_runtime_ready: bool
+    workers_enabled: bool

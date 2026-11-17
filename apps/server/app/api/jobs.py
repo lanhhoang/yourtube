@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Response
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.api.errors import ApiError
+from app.config import resolve_repo_path
 from app.db import get_session
 from app.models import Download
 from app.schemas import JobOut, QueueOut
@@ -57,3 +59,16 @@ def dismiss(job_id: int, session: Session = Depends(get_session)) -> Response:
     if not dismiss_job(session, job_id):
         raise _not_failed(session, job_id, "dismissed")
     return Response(status_code=204)
+
+
+@router.get("/downloads/{job_id}/file")
+def download_file(job_id: int, session: Session = Depends(get_session)) -> FileResponse:
+    row = session.get(Download, job_id)
+    if row is None:
+        raise ApiError(404, "not_found", "Download not found.")
+    if row.status != "done" or not row.file_path:
+        raise ApiError(409, "not_ready", "Download is not ready.")
+    path = resolve_repo_path(row.file_path)
+    if not path.exists():
+        raise ApiError(404, "file_missing", "File is missing.")
+    return FileResponse(path, filename=path.name)
