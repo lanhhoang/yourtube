@@ -149,6 +149,63 @@ class EnqueueResult(BaseModel):
     created: list[JobOut]
 
 
+class StreamRow(BaseModel):
+    format_id: str
+    ext: str
+    resolution: str | None
+    height: int | None
+    width: int | None
+    vcodec: str | None
+    acodec: str | None
+    abr: float | None
+    audio_channels: int | None
+    container: str | None
+
+
+class StreamPicker(BaseModel):
+    video_streams: list[StreamRow]
+    audio_streams: list[StreamRow]
+    has_muxed_streams: bool
+    expected_container_by_pair: dict[str, str]
+
+
+class VideoDetails(BaseModel):
+    url: str
+    title: str
+    uploader: str | None
+    duration: int | None
+    thumbnail: str | None
+    picker: StreamPicker
+    best_short_side: int | None
+    playlist_url: str | None
+
+
+class SourceEntry(BaseModel):
+    index: int
+    url: str
+    title: str | None
+    uploader: str | None
+    duration: int | None
+    thumbnail: str | None
+    error_code: str | None = None
+    error_message: str | None = None
+    details: VideoDetails | None = None
+
+
+class SourcesRequest(BaseModel):
+    urls: str = Field(min_length=1)
+    use_proxy: bool = False
+    use_cookies: bool = False
+
+
+class SourcesResult(BaseModel):
+    kind: Literal["video", "list"]
+    title: str | None
+    video: VideoDetails | None
+    entries: list[SourceEntry]
+    skipped: int
+
+
 class QueueOut(BaseModel):
     active: list[JobOut]
     failed: list[JobOut]

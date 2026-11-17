@@ -188,6 +188,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sources */
+        post: operations["sources_api_sources_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -361,6 +378,92 @@ export interface components {
             /** Proxy Url */
             proxy_url: string;
         };
+        /** SourceEntry */
+        SourceEntry: {
+            details?: components["schemas"]["VideoDetails"] | null;
+            /** Duration */
+            duration: number | null;
+            /** Error Code */
+            error_code?: string | null;
+            /** Error Message */
+            error_message?: string | null;
+            /** Index */
+            index: number;
+            /** Thumbnail */
+            thumbnail: string | null;
+            /** Title */
+            title: string | null;
+            /** Uploader */
+            uploader: string | null;
+            /** Url */
+            url: string;
+        };
+        /** SourcesRequest */
+        SourcesRequest: {
+            /** Urls */
+            urls: string;
+            /**
+             * Use Cookies
+             * @default false
+             */
+            use_cookies: boolean;
+            /**
+             * Use Proxy
+             * @default false
+             */
+            use_proxy: boolean;
+        };
+        /** SourcesResult */
+        SourcesResult: {
+            /** Entries */
+            entries: components["schemas"]["SourceEntry"][];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "video" | "list";
+            /** Skipped */
+            skipped: number;
+            /** Title */
+            title: string | null;
+            video: components["schemas"]["VideoDetails"] | null;
+        };
+        /** StreamPicker */
+        StreamPicker: {
+            /** Audio Streams */
+            audio_streams: components["schemas"]["StreamRow"][];
+            /** Expected Container By Pair */
+            expected_container_by_pair: {
+                [key: string]: string;
+            };
+            /** Has Muxed Streams */
+            has_muxed_streams: boolean;
+            /** Video Streams */
+            video_streams: components["schemas"]["StreamRow"][];
+        };
+        /** StreamRow */
+        StreamRow: {
+            /** Abr */
+            abr: number | null;
+            /** Acodec */
+            acodec: string | null;
+            /** Audio Channels */
+            audio_channels: number | null;
+            /** Container */
+            container: string | null;
+            /** Ext */
+            ext: string;
+            /** Format Id */
+            format_id: string;
+            /** Height */
+            height: number | null;
+            /** Resolution */
+            resolution: string | null;
+            /** Vcodec */
+            vcodec: string | null;
+            /** Width */
+            width: number | null;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -373,6 +476,24 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** VideoDetails */
+        VideoDetails: {
+            /** Best Short Side */
+            best_short_side: number | null;
+            /** Duration */
+            duration: number | null;
+            picker: components["schemas"]["StreamPicker"];
+            /** Playlist Url */
+            playlist_url: string | null;
+            /** Thumbnail */
+            thumbnail: string | null;
+            /** Title */
+            title: string;
+            /** Uploader */
+            uploader: string | null;
+            /** Url */
+            url: string;
         };
     };
     responses: never;
@@ -705,6 +826,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SettingsOut"];
+                };
+            };
+        };
+    };
+    sources_api_sources_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SourcesRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourcesResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

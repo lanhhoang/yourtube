@@ -5,7 +5,7 @@ from itertools import zip_longest
 from starlette.datastructures import FormData, UploadFile
 
 from app.schemas import DownloadCreate
-from app.services.batch_preview import parse_source_urls
+from app.services.sources import parse_source_urls
 from app.services.stream_selection import selection_from_form, selection_values_from_form
 
 

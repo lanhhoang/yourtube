@@ -7,12 +7,13 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.api import jobs, library, settings
+from app.api import fetch, jobs, library, settings
 from app.api.errors import ApiError
 
 api_router = APIRouter(prefix="/api")
 
 # Feature routers are included here, above the catch-all.
+api_router.include_router(fetch.router)
 api_router.include_router(jobs.router)
 api_router.include_router(library.router)
 api_router.include_router(settings.router)

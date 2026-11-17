@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-import re
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from typing import cast
-from urllib.parse import urlparse
 
 from app.services.downloader import (
     StreamPickerPayload,
@@ -12,6 +10,7 @@ from app.services.downloader import (
     normalize_formats,
 )
 from app.services.error_mapper import friendly_ytdlp_error
+from app.services.sources import entry_url, parse_source_urls
 
 
 def _empty_picker_payload() -> StreamPickerPayload:
@@ -58,33 +57,6 @@ class _ExpandedEntry:
     error_message: str | None = None
 
 
-def parse_source_urls(raw: str, *, dedupe: bool = True) -> list[str]:
-    seen: set[str] = set()
-    urls: list[str] = []
-    for part in re.split(r"\s+|,\s*(?=https?://)", raw):
-        url = part.strip()
-        if not url or not url.startswith("http"):
-            continue
-        if dedupe and url in seen:
-            continue
-        seen.add(url)
-        urls.append(url)
-    return urls
-
-
-def _entry_url(entry: dict[str, object]) -> str | None:
-    for key in ("webpage_url", "url"):
-        value = entry.get(key)
-        if isinstance(value, str):
-            parsed = urlparse(value)
-            if parsed.scheme in {"http", "https"} and parsed.netloc:
-                return value
-    entry_id = entry.get("id")
-    if isinstance(entry_id, str) and entry_id:
-        return f"https://www.youtube.com/watch?v={entry_id}"
-    return None
-
-
 def _invalid_entry(source_url: str, position: int) -> _ExpandedEntry:
     label = f"Playlist entry {position}"
     return _ExpandedEntry(
@@ -121,14 +93,14 @@ def expand_playlist_entries(
             expanded.append(_invalid_entry(url, position))
             continue
         entry_data = cast(dict[str, object], entry)
-        entry_url = _entry_url(entry_data)
-        if entry_url is None:
+        resolved_url = entry_url(entry_data)
+        if resolved_url is None:
             expanded.append(_invalid_entry(url, position))
             continue
         title = entry_data.get("title")
         expanded.append(
             _ExpandedEntry(
-                source_url=entry_url,
+                source_url=resolved_url,
                 title=title if isinstance(title, str) else None,
             )
         )

@@ -50,6 +50,7 @@ class StreamPickerRow(TypedDict):
     ext: str
     resolution: str | None
     height: int | None
+    width: int | None
     vcodec: str | None
     acodec: str | None
     abr: float | None
@@ -249,6 +250,7 @@ def extract_info(
     *,
     proxy: str | None = None,
     cookies_file: str | None = None,
+    noplaylist: bool = False,
 ) -> dict:
     """Call ``yt_dlp.YoutubeDL.extract_info`` for ``url`` and return the dict.
 
@@ -264,6 +266,8 @@ def extract_info(
         proxy=proxy,
         cookies_file=cookies_file,
     )
+    if noplaylist:
+        ydl_opts["noplaylist"] = True
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         return ydl.extract_info(url, download=False)
 
@@ -273,6 +277,7 @@ def extract_flat_info(
     *,
     proxy: str | None = None,
     cookies_file: str | None = None,
+    noplaylist: bool = False,
 ) -> dict:
     """Return yt-dlp metadata with playlist entries flattened."""
     import yt_dlp  # local import to keep module import cheap
@@ -284,6 +289,8 @@ def extract_flat_info(
         cookies_file=cookies_file,
     )
     ydl_opts["extract_flat"] = True
+    if noplaylist:
+        ydl_opts["noplaylist"] = True
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         return ydl.extract_info(url, download=False)
 
@@ -382,6 +389,7 @@ def build_stream_picker_payload(formats: list[FormatInfo]) -> StreamPickerPayloa
             "ext": item.ext,
             "resolution": item.resolution,
             "height": item.height,
+            "width": item.width,
             "vcodec": item.vcodec,
             "acodec": item.acodec,
             "abr": item.abr,
