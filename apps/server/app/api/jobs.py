@@ -10,10 +10,11 @@ from app.api.errors import ApiError
 from app.config import resolve_repo_path
 from app.db import get_session
 from app.models import Download
-from app.schemas import JobOut, QueueOut
+from app.schemas import EnqueueRequest, EnqueueResult, JobOut, QueueOut
 from app.services.queue import (
     cancel_job,
     dismiss_job,
+    enqueue_downloads,
     get_active_jobs,
     get_failed_jobs,
     get_recent_completed_jobs,
@@ -30,6 +31,12 @@ def get_queue(session: Session = Depends(get_session)) -> QueueOut:
         failed=[JobOut.from_row(r) for r in get_failed_jobs(session)],
         completed=[JobOut.from_row(r) for r in get_recent_completed_jobs(session, limit=20)],
     )
+
+
+@router.post("/downloads", status_code=201)
+def enqueue(body: EnqueueRequest, session: Session = Depends(get_session)) -> EnqueueResult:
+    rows = enqueue_downloads(session, list(body.jobs))
+    return EnqueueResult(created=[JobOut.from_row(r) for r in rows])
 
 
 @router.post("/downloads/{job_id}/cancel", status_code=204, response_class=Response)

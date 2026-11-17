@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
+from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, Field, field_validator
@@ -122,6 +123,30 @@ class JobOut(BaseModel):
                 "finished_at": row.finished_at,
             }
         )
+
+
+class JobCreate(DownloadCreate):
+    """One job in an enqueue request; the template must stay inside the downloads folder."""
+
+    @field_validator("output_template")
+    @classmethod
+    def _check_output_template(cls, value: str | None) -> str | None:
+        from app.services.downloader import resolve_output_template
+
+        if value is None or not value.strip():
+            return None
+        if Path(value).is_absolute():
+            raise ValueError("Output template must be relative to the downloads folder.")
+        resolve_output_template(value, "/tmp")
+        return value
+
+
+class EnqueueRequest(BaseModel):
+    jobs: list[JobCreate] = Field(min_length=1, max_length=500)
+
+
+class EnqueueResult(BaseModel):
+    created: list[JobOut]
 
 
 class QueueOut(BaseModel):
