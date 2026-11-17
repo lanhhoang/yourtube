@@ -10,6 +10,7 @@
   import { section } from "./lib/router.ts";
   import { watchSystemTheme } from "./lib/theme.ts";
   import { newCompletions, readSeen, SEEN_KEY } from "./lib/toasts.ts";
+  import Library from "./routes/Library.svelte";
   import Queue from "./routes/Queue.svelte";
 
   const TOAST_MS = 5000;
@@ -66,7 +67,7 @@
       {:else if router.route.name === "fetch"}
         <h1 class="m-0 text-xl font-bold">Fetch</h1>
       {:else}
-        <h1 class="m-0 text-xl font-bold">Library</h1>
+        <Library {queue} />
       {/if}
     </main>
   </div>
