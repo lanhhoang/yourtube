@@ -245,6 +245,7 @@ export interface components {
             media_kind: components["schemas"]["MediaKind"];
             /** Progress */
             progress: number;
+            quality_cap: components["schemas"]["QualityCap"] | null;
             /** Resolution Height */
             resolution_height: number | null;
             status: components["schemas"]["JobStatus"];
@@ -261,6 +262,8 @@ export interface components {
         JobStatus: "queued" | "active" | "done" | "error" | "cancelled";
         /** @enum {string} */
         MediaKind: "video" | "audio";
+        /** @enum {string} */
+        QualityCap: "best" | "2160" | "1440" | "1080" | "720" | "480" | "audio";
         /** QueueOut */
         QueueOut: {
             /** Active */

@@ -282,3 +282,44 @@ def test_run_download_falls_back_to_info_filesize_when_file_missing(tmp_path: Pa
     assert result.media_format == "webm"
     assert result.resolution_height == 720
     assert result.file_size == 4096
+
+
+def test_metadata_uses_short_side(tmp_path: Path) -> None:
+    from app.services.downloader import _extract_file_metadata
+
+    _, _, height = _extract_file_metadata({"ext": "mp4", "width": 1080, "height": 1920}, "")
+    assert height == 1080
+
+
+def _captured_opts(monkeypatch, tmp_path: Path, **kwargs) -> dict:
+    captured: dict = {}
+
+    def factory(opts):
+        captured.update(opts)
+        ydl = MagicMock()
+        ydl.__enter__.return_value = ydl
+        ydl.extract_info.return_value = {"ext": "mp4", "height": 720}
+        return ydl
+
+    monkeypatch.setattr("yt_dlp.YoutubeDL", factory)
+    run_download(url="https://example.com/v", output_dir=str(tmp_path), **kwargs)
+    return captured
+
+
+def test_run_download_exact_ids_win(monkeypatch, tmp_path: Path) -> None:
+    opts = _captured_opts(
+        monkeypatch, tmp_path, video_format_id="137", audio_format_id="140", quality_cap="720"
+    )
+    assert opts["format"] == "137+140"
+    assert "format_sort" not in opts
+
+
+def test_run_download_uses_cap(monkeypatch, tmp_path: Path) -> None:
+    opts = _captured_opts(monkeypatch, tmp_path, quality_cap="720")
+    assert opts["format"] == "bv*+ba/b"
+    assert opts["format_sort"] == ["res:720"]
+
+
+def test_run_download_no_cap_no_bitrate_unchanged(monkeypatch, tmp_path: Path) -> None:
+    opts = _captured_opts(monkeypatch, tmp_path)
+    assert "format" not in opts and "format_sort" not in opts

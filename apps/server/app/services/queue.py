@@ -60,6 +60,7 @@ def enqueue_download(session: Session, payload: DownloadCreate) -> Download:
         output_template=payload.output_template,
         audio_bitrate=payload.audio_bitrate,
         subtitles=payload.subtitles,
+        quality_cap=payload.quality_cap,
         status="queued",
     )
     session.add(row)

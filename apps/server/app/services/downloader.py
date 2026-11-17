@@ -15,7 +15,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, TypedDict
 
-from app.schemas import FormatInfo, StreamKind
+from app.schemas import FormatInfo, QualityCap, StreamKind
+from app.services.quality import cap_format_options, short_side
 
 
 class DownloadCancelled(Exception):  # noqa: N818 - name fixed by plan contract
@@ -198,6 +199,7 @@ def build_ytdlp_options(
     subtitles: bool = False,
     progress_hooks: list[ProgressHook] | None = None,
     js_runtime: str = "node",
+    format_sort: list[str] | None = None,
 ) -> dict[str, Any]:
     """Build a consistent ``yt_dlp`` options dict for info lookup and downloads.
 
@@ -227,6 +229,8 @@ def build_ytdlp_options(
         options["outtmpl"] = _output_template(output_template, output_dir)
     if format_selector:
         options["format"] = format_selector
+    if format_sort:
+        options["format_sort"] = format_sort
     if proxy:
         options["proxy"] = proxy
     if cookies_file:
@@ -498,8 +502,7 @@ def _extract_file_metadata(
     the info dict and may be ``None`` when not reported.
     """
     media_format = _safe_str(info.get("ext"))
-    height_raw = info.get("height")
-    resolution_height = _safe_int(height_raw)
+    resolution_height = short_side(_safe_int(info.get("width")), _safe_int(info.get("height")))
     file_size: int | None = None
     if output_path:
         try:
@@ -522,6 +525,7 @@ def run_download(
     cookies_file: str | None = None,
     subtitles: bool = False,
     progress_hook: YtdlpProgress | None = None,
+    quality_cap: QualityCap | None = None,
 ) -> DownloadResult:
     """Run yt-dlp and return the output path plus file metadata.
 
@@ -530,7 +534,11 @@ def run_download(
     """
     import yt_dlp  # local import to keep module import cheap
 
-    fmt = _format_selector(video_format_id, audio_format_id, audio_bitrate=audio_bitrate)
+    format_sort: list[str] | None = None
+    if video_format_id or audio_format_id:
+        fmt = _format_selector(video_format_id, audio_format_id, audio_bitrate=audio_bitrate)
+    else:
+        fmt, format_sort = cap_format_options(quality_cap, audio_bitrate)
     ydl_opts = build_ytdlp_options(
         skip_download=False,
         output_dir=output_dir,
@@ -539,6 +547,7 @@ def run_download(
         proxy=proxy,
         cookies_file=cookies_file,
         subtitles=subtitles,
+        format_sort=format_sort,
     )
     captured_path: dict[str, str | None] = {"path": None}
 

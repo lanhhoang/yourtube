@@ -38,6 +38,7 @@ class Download(Base):
     audio_format_id: Mapped[str | None] = mapped_column(String, nullable=True)
     output_template: Mapped[str | None] = mapped_column(String, nullable=True)
     audio_bitrate: Mapped[str | None] = mapped_column(String, nullable=True)
+    quality_cap: Mapped[str | None] = mapped_column(String, nullable=True)
     subtitles: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     # Queue and progress

@@ -6,13 +6,17 @@ ORM instances from ``app.models`` must never be returned directly to clients.
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from typing import TYPE_CHECKING, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 if TYPE_CHECKING:
     from app.models import Download
+
+
+type QualityCap = Literal["best", "2160", "1440", "1080", "720", "480", "audio"]
 
 
 class DownloadCreate(BaseModel):
@@ -27,7 +31,18 @@ class DownloadCreate(BaseModel):
     audio_format_id: str | None = None
     output_template: str | None = None
     audio_bitrate: str | None = None
+    quality_cap: QualityCap | None = None
     subtitles: bool = False
+
+    @field_validator("audio_bitrate")
+    @classmethod
+    def _check_audio_bitrate(cls, value: str | None) -> str | None:
+        value = (value or "").strip()
+        if not value:
+            return None
+        if not re.fullmatch(r"\d+[kK]?", value):
+            raise ValueError("Audio bitrate must be a number such as 192 or 192K.")
+        return value
 
 
 type StreamKind = Literal["video", "audio", "muxed"]
@@ -69,6 +84,7 @@ class JobOut(BaseModel):
     thumbnail: str | None
     status: JobStatus
     progress: float
+    quality_cap: QualityCap | None
     error_code: str | None
     error_message: str | None
     media_kind: MediaKind
@@ -80,8 +96,10 @@ class JobOut(BaseModel):
 
     @classmethod
     def from_row(cls, row: Download) -> JobOut:
-        audio_only = (row.audio_format_id and not row.video_format_id) or (
-            row.status == "done" and row.resolution_height is None
+        audio_only = (
+            (row.audio_format_id and not row.video_format_id)
+            or (row.quality_cap == "audio" and not row.video_format_id)
+            or (row.status == "done" and row.resolution_height is None)
         )
         return cls.model_validate(
             {
@@ -93,6 +111,7 @@ class JobOut(BaseModel):
                 "thumbnail": row.thumbnail,
                 "status": row.status,
                 "progress": row.progress,
+                "quality_cap": row.quality_cap,
                 "error_code": row.error_code,
                 "error_message": row.error_message,
                 "media_kind": "audio" if audio_only else "video",

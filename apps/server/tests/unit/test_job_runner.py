@@ -87,3 +87,31 @@ def test_run_claimed_job_maps_failures_to_error_rows(
     db_session_visible.refresh(row)
     assert row.status == "error"
     assert row.error_code == "http_forbidden"
+
+
+def test_job_runner_passes_quality_cap(monkeypatch, db_session_visible, tmp_path: Path) -> None:
+    row = enqueue_download(
+        db_session_visible,
+        DownloadCreate(url="https://example.com/cap", quality_cap="720", audio_bitrate="128"),
+    )
+    db_session_visible.execute(
+        Download.__table__.update().where(Download.id == row.id).values(status="active")
+    )
+    set_settings_batch(db_session_visible, {"downloads_dir": str(tmp_path)})
+    db_session_visible.commit()
+    seen: dict = {}
+
+    def fake_run_download(**kwargs):
+        seen.update(kwargs)
+        return DownloadResult(
+            path=str(tmp_path / "v.mp4"), file_size=1, media_format="mp4", resolution_height=720
+        )
+
+    monkeypatch.setattr("app.services.job_runner.run_download", fake_run_download)
+    run_claimed_job(row.id)
+    assert seen["quality_cap"] == "720"
+
+
+def test_old_enqueue_leaves_cap_null(db_session_visible) -> None:
+    row = enqueue_download(db_session_visible, DownloadCreate(url="https://example.com/old"))
+    assert row.quality_cap is None
