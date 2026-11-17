@@ -2,7 +2,10 @@ import type { JobOut } from "./queue.ts";
 
 export type Chip = "all" | "downloading" | "video" | "audio";
 
-export function libraryItems(done: JobOut[], active: JobOut[], chip: Chip): JobOut[] {
+export function libraryItems(done: JobOut[], allActive: JobOut[], chip: Chip): JobOut[] {
+  // The queue poll can lag the library load, so a just-finished job may be in both.
+  const doneIds = new Set(done.map((j) => j.id));
+  const active = allActive.filter((j) => !doneIds.has(j.id));
   switch (chip) {
     case "all":
       return [...active, ...done];

@@ -6,7 +6,7 @@
   import { messageFor } from "../lib/errors.ts";
   import { latest } from "../lib/latest.ts";
   import { type Chip, libraryItems } from "../lib/library.ts";
-  import { type JobOut, leftActive, type QueueOut } from "../lib/queue.ts";
+  import { type JobOut, leftActive, newlyCompleted, type QueueOut } from "../lib/queue.ts";
 
   let { queue }: { queue: QueueOut | null } = $props();
 
@@ -43,12 +43,19 @@
     return () => clearTimeout(id);
   });
 
-  // A job left the active list: finished jobs move into the library.
+  // Reload when a job leaves the active list, or when a new id shows up in `completed`
+  // (a job that ran entirely between two polls never appears as active).
   let prevActive: JobOut[] = [];
+  let prevCompleted: JobOut[] | null = null;
   $effect(() => {
-    const next = queue?.active ?? [];
-    if (leftActive(prevActive, next)) untrack(() => void load(q));
-    prevActive = next;
+    const active = queue?.active ?? [];
+    const completed = queue?.completed ?? null;
+    const finished =
+      leftActive(prevActive, active) ||
+      (prevCompleted !== null && completed !== null && newlyCompleted(prevCompleted, completed));
+    if (finished) untrack(() => void load(q));
+    prevActive = active;
+    if (completed !== null) prevCompleted = completed;
   });
 
   const searching = $derived(q.trim() !== "");

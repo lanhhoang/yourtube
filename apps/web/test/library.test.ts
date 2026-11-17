@@ -30,3 +30,10 @@ test("formatSize", () => {
   expect(formatSize(5 * 1024 ** 2)).toBe("5.0 MB");
   expect(formatSize(5 * 1024 ** 3)).toBe("5.0 GB");
 });
+
+test("libraryItems drops an active job that is already done", () => {
+  const finished = job(5, { status: "done" });
+  const stale = job(5, { status: "active" });
+  expect(libraryItems([finished], [stale], "all")).toEqual([finished]);
+  expect(libraryItems([finished], [stale], "video")).toEqual([finished]);
+});

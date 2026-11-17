@@ -28,7 +28,9 @@ def update_progress(session: Session, job_id: int, percent: float) -> bool:
     stmt = (
         update(Download)
         .where(Download.id == job_id, Download.status == "active")
-        .values(progress=clamped)
+        # Refresh ``claimed_at`` as a heartbeat so a long but live download
+        # is not reaped by ``detect_stale_jobs`` (and then retried twice).
+        .values(progress=clamped, claimed_at=func.current_timestamp())
     )
     result = session.execute(stmt)
     session.commit()
