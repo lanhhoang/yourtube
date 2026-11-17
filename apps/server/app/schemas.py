@@ -6,9 +6,13 @@ ORM instances from ``app.models`` must never be returned directly to clients.
 
 from __future__ import annotations
 
-from typing import Literal
+from datetime import datetime
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, Field
+
+if TYPE_CHECKING:
+    from app.models import Download
 
 
 class DownloadCreate(BaseModel):
@@ -48,3 +52,81 @@ class FormatInfo(BaseModel):
     tbr: float | None = None
     format_note: str | None = None
     container: str | None = None
+
+
+type JobStatus = Literal["queued", "active", "done", "error", "cancelled"]
+type MediaKind = Literal["video", "audio"]
+
+
+class JobOut(BaseModel):
+    """A download job as the web app sees it."""
+
+    id: int
+    url: str
+    title: str | None
+    uploader: str | None
+    duration: int | None
+    thumbnail: str | None
+    status: JobStatus
+    progress: float
+    error_code: str | None
+    error_message: str | None
+    media_kind: MediaKind
+    file_size: int | None
+    media_format: str | None
+    resolution_height: int | None
+    created_at: datetime
+    finished_at: datetime | None
+
+    @classmethod
+    def from_row(cls, row: Download) -> JobOut:
+        audio_only = (row.audio_format_id and not row.video_format_id) or (
+            row.status == "done" and row.resolution_height is None
+        )
+        return cls.model_validate(
+            {
+                "id": row.id,
+                "url": row.url,
+                "title": row.title,
+                "uploader": row.uploader,
+                "duration": row.duration,
+                "thumbnail": row.thumbnail,
+                "status": row.status,
+                "progress": row.progress,
+                "error_code": row.error_code,
+                "error_message": row.error_message,
+                "media_kind": "audio" if audio_only else "video",
+                "file_size": row.file_size,
+                "media_format": row.media_format,
+                "resolution_height": row.resolution_height,
+                "created_at": row.created_at,
+                "finished_at": row.finished_at,
+            }
+        )
+
+
+class QueueOut(BaseModel):
+    active: list[JobOut]
+    failed: list[JobOut]
+    completed: list[JobOut]
+
+
+class SettingsOut(BaseModel):
+    max_concurrent: int
+    proxy_url: str
+    cookies_path: str
+    downloads_dir: str
+
+
+class SettingsIn(BaseModel):
+    max_concurrent: int = Field(ge=1, le=5)
+    proxy_url: str = ""
+    cookies_path: str = ""
+    downloads_dir: str = ""
+
+
+class DiagnosticsOut(BaseModel):
+    level: Literal["ok", "warning"]
+    messages: list[str]
+    js_runtime_ready: bool
+    workers_enabled: bool
