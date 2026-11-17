@@ -13,6 +13,7 @@ from app.services.error_mapper import friendly_ytdlp_error
 from app.services.quality import best_short_side
 
 MAX_ENTRIES = 500
+_MAX_REDIRECTS = 2
 
 _YT_HOSTS = {"youtube.com", "www.youtube.com", "m.youtube.com", "music.youtube.com", "youtu.be"}
 
@@ -89,6 +90,10 @@ def _thumbnail(info: dict) -> str | None:
     return None
 
 
+def _is_playlist(info: dict) -> bool:
+    return info.get("entries") is not None or info.get("_type") == "playlist"
+
+
 def _entry(index: int, url: str, info: dict, details: VideoDetails | None = None) -> SourceEntry:
     return SourceEntry(
         index=index,
@@ -159,12 +164,24 @@ def list_sources(
     for url in urls:
         try:
             info = extract_flat(url, **kw)
-            if info.get("entries") is not None or info.get("_type") == "playlist":
+            # A redirect (channel root, ``watch?list=`` without ``v``) comes back as a bare
+            # ``url`` result; follow it so we never treat a playlist as one video.
+            current, hops = url, 0
+            while (
+                info.get("_type") in ("url", "url_transparent")
+                and info.get("entries") is None
+                and isinstance(info.get("url"), str)
+                and info["url"] != current
+                and hops < _MAX_REDIRECTS
+            ):
+                current, hops = info["url"], hops + 1
+                info = extract_flat(current, **kw)
+            if not _is_playlist(info) and not info.get("formats"):
+                info = extract_full(current, **kw)
+            if _is_playlist(info):
                 playlist_title = _str_or_none(info.get("title"))
                 collected.extend(_expand(info, url))
                 continue
-            if not info.get("formats"):
-                info = extract_full(url, **kw)
             details = video_details(info, url)
             single_video = details
             collected.append(_entry(0, details.url, info, details))

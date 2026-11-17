@@ -132,10 +132,18 @@ def test_cap_with_bitrate_offline() -> None:
 
 
 def test_audio_bitrate_validator() -> None:
-    assert DownloadCreate(url="https://x", audio_bitrate="192K").audio_bitrate == "192K"
-    assert DownloadCreate(url="https://x", audio_bitrate="").audio_bitrate is None
+    from app.schemas import JobCreate
+
+    assert JobCreate(url="https://x", audio_bitrate="192K").audio_bitrate == "192K"
+    assert JobCreate(url="https://x", audio_bitrate="").audio_bitrate is None
     with pytest.raises(ValidationError):
-        DownloadCreate(url="https://x", audio_bitrate="loud")
+        JobCreate(url="https://x", audio_bitrate="loud")
+
+
+def test_old_ui_payload_accepts_free_form_bitrate() -> None:
+    # The old HTML routes build DownloadCreate without catching errors; they must never 500.
+    assert DownloadCreate(url="https://x", audio_bitrate="192 kbps").audio_bitrate == "192 kbps"
+    assert cap_format_options(None, "192 kbps") == (None, None)
 
 
 def test_media_kind_audio_for_audio_cap() -> None:

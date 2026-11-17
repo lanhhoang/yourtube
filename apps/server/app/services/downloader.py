@@ -452,6 +452,31 @@ def resolve_output_template(template: str | None, output_dir: str | Path) -> str
     return str(base_dir / candidate)
 
 
+class _OutputGuard:
+    """yt-dlp ``match_filter`` that refuses a final filename outside ``output_dir``.
+
+    The literal check in ``resolve_output_template`` cannot see ``..`` produced by
+    yt-dlp's own template syntax (``%(nope|..)s``), so the rendered path is checked
+    once the info dict is complete. ``ydl`` is set after the ``YoutubeDL`` is built.
+    """
+
+    def __init__(self, output_dir: str) -> None:
+        self.root = os.path.abspath(output_dir)
+        self.ydl: Any = None
+
+    def __call__(self, info: dict, *, incomplete: bool = False) -> None:
+        if incomplete or self.ydl is None:
+            return None
+        target = os.path.abspath(self.ydl.prepare_filename(info))
+        if os.path.commonpath([self.root, target]) != self.root:
+            raise ValueError("output template must stay within the downloads folder")
+        return None
+
+
+def output_dir_guard(output_dir: str) -> _OutputGuard:
+    return _OutputGuard(output_dir)
+
+
 def render_transcript_text(subtitle_text: str) -> str:
     """Convert SRT-formatted subtitles to a plain-text transcript.
 
@@ -557,6 +582,11 @@ def run_download(
         subtitles=subtitles,
         format_sort=format_sort,
     )
+    guard: _OutputGuard | None = None
+    if not (output_template and Path(output_template).is_absolute()):
+        # Absolute templates stay allowed for the old UI; everything else must stay inside.
+        guard = output_dir_guard(output_dir)
+        ydl_opts["match_filter"] = guard
     captured_path: dict[str, str | None] = {"path": None}
 
     def _wrapped(d: dict[str, Any]) -> None:
@@ -570,6 +600,8 @@ def run_download(
     Path(output_dir).mkdir(parents=True, exist_ok=True)
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        if guard is not None:
+            guard.ydl = ydl
         info = ydl.extract_info(url, download=True)
 
     if subtitles:

@@ -38,12 +38,7 @@ class DownloadCreate(BaseModel):
     @field_validator("audio_bitrate")
     @classmethod
     def _check_audio_bitrate(cls, value: str | None) -> str | None:
-        value = (value or "").strip()
-        if not value:
-            return None
-        if not re.fullmatch(r"\d+[kK]?", value):
-            raise ValueError("Audio bitrate must be a number such as 192 or 192K.")
-        return value
+        return (value or "").strip() or None
 
 
 type StreamKind = Literal["video", "audio", "muxed"]
@@ -127,6 +122,14 @@ class JobOut(BaseModel):
 
 class JobCreate(DownloadCreate):
     """One job in an enqueue request; the template must stay inside the downloads folder."""
+
+    @field_validator("audio_bitrate")
+    @classmethod
+    def _check_strict_bitrate(cls, value: str | None) -> str | None:
+        # Only the JSON API is strict; the old HTML routes build DownloadCreate unguarded.
+        if value is not None and not re.fullmatch(r"\d+[kK]?", value):
+            raise ValueError("Audio bitrate must be a number such as 192 or 192K.")
+        return value
 
     @field_validator("output_template")
     @classmethod

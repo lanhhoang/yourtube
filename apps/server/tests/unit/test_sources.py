@@ -213,3 +213,34 @@ def test_playlist_url_for_ignores_non_youtube() -> None:
         == "https://www.youtube.com/playlist?list=PL9"
     )
     assert playlist_url_for("https://www.youtube.com/watch?v=abc") is None
+
+
+def test_flat_redirect_is_followed_to_the_video() -> None:
+    redirect = {"_type": "url", "url": "https://e.test/real"}
+    s = Stubs(
+        {
+            "https://e.test/short": redirect,
+            "https://e.test/real": _video_info("https://e.test/real"),
+        }
+    )
+    r = _run("https://e.test/short", s)
+    assert r.kind == "video" and r.video is not None and r.video.url == "https://e.test/real"
+    assert s.full_calls == []
+
+
+def test_flat_redirect_to_playlist_is_a_list() -> None:
+    s = Stubs(
+        {
+            "https://e.test/chan": {"_type": "url", "url": "https://e.test/chan/videos"},
+            "https://e.test/chan/videos": _playlist(3, "c"),
+        }
+    )
+    r = _run("https://e.test/chan", s)
+    assert r.kind == "list" and len(r.entries) == 3
+
+
+def test_full_lookup_that_returns_a_playlist_is_a_list() -> None:
+    # flat gives no entries and no formats, but the full lookup resolves a whole playlist
+    s = Stubs({"id": "x"}, full=_playlist(4, "f"))
+    r = _run("https://e.test/odd", s)
+    assert r.kind == "list" and len(r.entries) == 4
