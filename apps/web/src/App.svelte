@@ -12,6 +12,7 @@
   import { newCompletions, readSeen, SEEN_KEY } from "./lib/toasts.ts";
   import Library from "./routes/Library.svelte";
   import Queue from "./routes/Queue.svelte";
+  import Settings from "./routes/Settings.svelte";
 
   const TOAST_MS = 5000;
 
@@ -63,7 +64,7 @@
       {#if router.route.name === "queue"}
         <Queue {queue} refresh={refreshQueue} />
       {:else if router.route.name === "settings"}
-        <h1 class="m-0 text-xl font-bold">Settings</h1>
+        <Settings />
       {:else if router.route.name === "fetch"}
         <h1 class="m-0 text-xl font-bold">Fetch</h1>
       {:else}
