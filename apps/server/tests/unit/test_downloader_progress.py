@@ -366,10 +366,10 @@ def test_output_guard_blocks_template_that_escapes_via_fallback(tmp_path: Path) 
         run("%(nope|..)s/%(nope|..)s/x.%(ext)s")
 
 
-def test_run_download_guards_relative_templates_only(monkeypatch, tmp_path: Path) -> None:
+def test_run_download_always_guards(monkeypatch, tmp_path: Path) -> None:
     assert "match_filter" in _captured_opts(
         monkeypatch, tmp_path, output_template="a/%(title)s.%(ext)s"
     )
     assert "match_filter" in _captured_opts(monkeypatch, tmp_path)
     abs_t = str(tmp_path / "x.%(ext)s")
-    assert "match_filter" not in _captured_opts(monkeypatch, tmp_path, output_template=abs_t)
+    assert "match_filter" in _captured_opts(monkeypatch, tmp_path, output_template=abs_t)

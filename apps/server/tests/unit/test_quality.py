@@ -140,8 +140,8 @@ def test_audio_bitrate_validator() -> None:
         JobCreate(url="https://x", audio_bitrate="loud")
 
 
-def test_old_ui_payload_accepts_free_form_bitrate() -> None:
-    # The old HTML routes build DownloadCreate without catching errors; they must never 500.
+def test_stored_free_form_bitrate_is_tolerated() -> None:
+    # Rows queued before the strict API may hold free-form bitrates; the worker must not crash.
     assert DownloadCreate(url="https://x", audio_bitrate="192 kbps").audio_bitrate == "192 kbps"
     assert cap_format_options(None, "192 kbps") == (None, None)
 

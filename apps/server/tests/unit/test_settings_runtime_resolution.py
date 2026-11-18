@@ -11,10 +11,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from app.config import REPO_ROOT
-from app.models import Setting
 from app.services import settings as settings_service
 from app.services.settings import resolve_runtime_settings, set_settings_batch
 
@@ -32,7 +29,7 @@ def test_resolve_runtime_settings_turns_blank_values_into_runtime_defaults(db_se
     resolved = resolve_runtime_settings(db_session)
 
     assert resolved.max_concurrent == 1
-    assert resolved.playlist_page_size == 20
+    assert not hasattr(resolved, "playlist_page_size")
     assert resolved.proxy_url is None
     assert resolved.cookies_path is None
 
@@ -45,32 +42,14 @@ def test_resolve_runtime_settings_uses_saved_proxy_and_cookies(db_session, tmp_p
             "proxy_url": "http://proxy.internal:8080",
             "cookies_path": str(cookies_path),
             "max_concurrent": "3",
-            "playlist_page_size": "37",
         },
     )
 
     resolved = resolve_runtime_settings(db_session)
 
     assert resolved.max_concurrent == 3
-    assert resolved.playlist_page_size == 37
     assert resolved.proxy_url == "http://proxy.internal:8080"
     assert resolved.cookies_path == cookies_path
-
-
-@pytest.mark.parametrize(
-    ("stored_value", "expected_page_size"),
-    [("not-an-integer", 20), ("1_0", 20), ("+1", 20), (" 1", 20), ("0", 1), ("51", 50)],
-)
-def test_resolve_runtime_settings_normalizes_invalid_stored_playlist_page_size(
-    db_session, stored_value: str, expected_page_size: int
-) -> None:
-    """Corrupt stored values cannot expose an invalid runtime page size."""
-    db_session.add(Setting(key="playlist_page_size", value=stored_value))
-    db_session.flush()
-
-    resolved = resolve_runtime_settings(db_session)
-
-    assert resolved.playlist_page_size == expected_page_size
 
 
 def test_resolve_runtime_settings_falls_back_to_env_proxy_and_cookies(
