@@ -7,7 +7,7 @@ The parent plan `2026-11-18-phone-pwa-notifications.md` is split into six phases
 | # | Phase | Plan | Parent tasks | Usable result |
 |---|---|---|---|---|
 | 1 | Shell | `…-phase-1-shell.md` | 1, 2 | Player mark next to the wordmark, new play-circle favicon; one rail tile cycles Dark → Light → System |
-| 2 | MP4 downloads | `…-phase-2-mp4.md` | 3 | `best` and numeric caps give `.mp4` (H.264/AAC first, VP9 SDR above 1080p, never HDR) |
+| 2 | MP4 downloads | `…-phase-2-mp4.md` | 3 | `best` and numeric caps give `.mp4` (H.264/AAC first, VP9 SDR above 1080p, never HDR), and the library points at the merged file |
 | 3 | Channel and playlist folders | `…-phase-3-channel-folders.md` | 4, 5, 6 | New downloads land in `<channel>/[<playlist>/]<title>.<ext>`; the existing library moves there once |
 | 4 | Phone access, PWA and player | `…-phase-4-phone-access.md` | 7, 8, 9, 10 | Installable on the iPhone over Tailscale HTTPS; Paste to queue; play and Save finished files |
 | 5 | Phone layout | `…-phase-5-phone-layout.md` | 11–15 | Every screen has an owner-approved phone layout: tab bar, single column, bottom sheet |
