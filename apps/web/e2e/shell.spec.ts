@@ -30,11 +30,26 @@ test("fetch from the top bar opens the fetch route", async ({ page }) => {
 
 test("wordmark shows the player mark", async ({ page }) => {
   await page.goto(`${APP}#/`);
-  const home = page.getByRole("link", { name: "yourtube" });
+  const home = page.getByRole("link", { name: "yourtube", exact: true });
+  await expect(home).toHaveAccessibleName("yourtube");
+  await expect(home.getByRole("img")).toHaveCount(0);
   const mark = home.locator("svg[aria-hidden='true']");
   await expect(mark).toBeVisible();
   const box = await mark.boundingBox();
   expect(box?.height).toBeGreaterThanOrEqual(17);
   expect(box?.height).toBeLessThanOrEqual(22);
   expect(box?.width).toBeGreaterThan(box?.height ?? 0);
+});
+
+test("system theme follows the OS, before and after a reload", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.goto(`${APP}#/settings`);
+  await page.getByText("System", { exact: true }).click();
+  await expect(page.locator("html")).toHaveClass(/dark/);
+  await page.emulateMedia({ colorScheme: "light" });
+  await expect(page.locator("html")).not.toHaveClass(/dark/);
+  await page.reload();
+  await expect(page.locator("html")).not.toHaveClass(/dark/);
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect(page.locator("html")).toHaveClass(/dark/);
 });
