@@ -56,7 +56,11 @@
     </button>
   </div>
 
-  {#if !details}
+  {#if typeof item.check === "object" && !item.check.ok}
+    <p class="m-0 text-sm text-danger">{item.check.message}</p>
+  {:else if item.check === "idle"}
+    <p class="m-0 text-sm text-muted">Select this video to check it.</p>
+  {:else if !details}
     <p class="m-0 text-sm text-muted" role="status">Still checking…</p>
   {:else}
     <fieldset class="m-0 flex gap-1 self-start rounded-pill border-0 bg-raised p-1">

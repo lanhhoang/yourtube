@@ -5,7 +5,10 @@ import type { EntryState, Override } from "../src/lib/playlist.ts";
 
 type Details = components["schemas"]["VideoDetails"];
 
-const details = (best: number | null): Details => ({
+const details = (
+  best: number | null,
+  size: { width: number | null; height: number } = { width: 2560, height: 1440 },
+): Details => ({
   url: "u",
   title: "t",
   uploader: null,
@@ -17,8 +20,8 @@ const details = (best: number | null): Details => ({
         format_id: "v1440",
         ext: "mp4",
         resolution: null,
-        height: 1440,
-        width: 2560,
+        height: size.height,
+        width: size.width,
         vcodec: "a",
         acodec: null,
         abr: null,
@@ -108,4 +111,19 @@ test("unavailable wins", () => {
     label: "Unavailable",
     message: "Video unavailable",
   });
+});
+
+test("custom vertical video uses the short side", () => {
+  const e: EntryState = {
+    ...customEntry({ videoShortSide: 1080 }),
+    check: { ok: true, details: details(1080, { width: 1080, height: 1920 }) },
+  };
+  expect(badgeFor(e, "720")?.label).toBe("1080p · custom");
+});
+test("custom video without a width uses the height", () => {
+  const e: EntryState = {
+    ...customEntry({ videoShortSide: 1440 }),
+    check: { ok: true, details: details(1440, { width: null, height: 1440 }) },
+  };
+  expect(badgeFor(e, "720")?.label).toBe("1440p · custom");
 });
