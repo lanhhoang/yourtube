@@ -43,7 +43,7 @@
 
 <aside
   aria-label="Settings for {title}"
-  class="flex w-[22rem] shrink-0 flex-col gap-4 self-start rounded-control border border-line bg-surface p-4"
+  class="sticky top-0 flex max-h-[calc(100vh-7rem)] w-[22rem] shrink-0 flex-col gap-4 self-start overflow-y-auto rounded-control border border-line bg-surface p-4"
 >
   <div class="flex items-start justify-between gap-3">
     <h2 class="m-0 line-clamp-2 text-lg font-semibold">{title}</h2>
