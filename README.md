@@ -36,14 +36,16 @@ For one process on one port, build the web app and start the server:
 pnpm build && pnpm start            # everything on http://127.0.0.1:8000
 ```
 
-`pnpm dev` and `pnpm start` listen on localhost only. `.env` lives at the repo root.
+`pnpm dev` and `pnpm start` listen on localhost only. `.env` lives at the repo root. Details for each app: [`apps/web/README.md`](apps/web/README.md) and [`apps/server/README.md`](apps/server/README.md).
 
 ## Layout
 
 ```
 apps/server/   FastAPI, yt-dlp, SQLite (see apps/server/README.md)
-apps/web/      Svelte 5 + Vite + Tailwind app (built to apps/web/dist)
+apps/web/      Svelte 5 + Vite + Tailwind app (see apps/web/README.md)
 docs/          specs and plans
+PRODUCT.md     who it is for and what it does
+DESIGN.md      colours, type and layout rules for the web app
 ```
 
 ## Docker
