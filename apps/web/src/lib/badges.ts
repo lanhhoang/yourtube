@@ -35,7 +35,9 @@ export function badgeFor(e: EntryState, cap: QualityCap): Badge | null {
 }
 
 export function hdrBadgeFor(e: EntryState, cap: QualityCap): { label: string } | null {
-  if (e.override || typeof e.check !== "object" || !e.check.ok) return null;
+  const sel = e.override?.selection;
+  if (sel && (sel.videoId !== null || sel.audioId !== null)) return null;
+  if (typeof e.check !== "object" || !e.check.ok) return null;
   const at = hdrAtCap(cap, e.check.details.picker.video_streams);
   if (at.kind === "yes") return { label: "HDR" };
   if (at.kind === "below") return { label: `HDR ≤${at.side}p` };

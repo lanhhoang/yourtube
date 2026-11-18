@@ -63,3 +63,21 @@ test("the HDR note appears only when the cap lands above the HDR size", async ({
   await page.getByRole("combobox", { name: "Quality" }).selectOption("1080");
   await expect(note).toHaveCount(0);
 });
+
+test("an exact format pick disables HDR and hides its note, unpicking restores it", async ({
+  page,
+}) => {
+  await fetchVideo(page, "https://e2e.test/v/lowhdr");
+  const box = page.getByRole("checkbox", { name: "HDR", exact: true });
+  await box.check();
+  await page.getByRole("combobox", { name: "Quality" }).selectOption("best");
+  const note = page.getByText("HDR only up to 1080p. This cap gets SDR.");
+  await expect(note).toBeVisible();
+  await page.getByRole("button", { name: /^2160p/ }).click();
+  await expect(box).toBeDisabled();
+  await expect(note).toHaveCount(0);
+  await page.getByRole("button", { name: /^2160p/ }).click();
+  await expect(box).toBeEnabled();
+  await expect(box).toBeChecked();
+  await expect(note).toBeVisible();
+});

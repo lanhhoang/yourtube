@@ -36,7 +36,8 @@
   const streams = $derived(video.picker.video_streams);
   const noHdr = $derived(hdrSide(streams) === null);
   const hdrOff = $derived(noHdr || cap === "audio");
-  const hdrNote = $derived(hdr && !hdrOff ? hdrAtCap(cap, streams) : null);
+  const hdrDisabled = $derived(hdrOff || exact);
+  const hdrNote = $derived(hdr && !hdrDisabled ? hdrAtCap(cap, streams) : null);
 
   $effect(() => {
     if (hdrOff) hdr = false;
@@ -64,7 +65,7 @@
                 video_format_id: selection.videoId,
                 audio_format_id: selection.audioId,
                 subtitles,
-                hdr: hdr && !hdrOff,
+                hdr: hdr && !hdrDisabled,
                 output_template: template.trim() || null,
                 audio_bitrate: bitrate.trim() || null,
               },
@@ -134,11 +135,11 @@
         ? "opacity-50"
         : ""}"
     >
-      <label class="flex min-h-11 items-center gap-2 text-base {hdrOff ? "text-muted" : ""}">
+      <label class="flex min-h-11 items-center gap-2 text-base {hdrDisabled ? "text-muted" : ""}">
         <input
           type="checkbox"
           bind:checked={hdr}
-          disabled={hdrOff}
+          disabled={hdrDisabled}
           class="size-4 accent-(--color-action)"
         >
         {noHdr ? "HDR (not offered)" : "HDR"}

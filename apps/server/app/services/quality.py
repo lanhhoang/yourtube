@@ -32,7 +32,8 @@ from typing import NamedTuple, get_args
 
 from app.schemas import FormatInfo, QualityCap
 
-MP4_SORT = ["hdr:sdr", "vcodec:h264", "acodec:aac"]
+# Sort keys after ``res`` and the HDR key: H.264 over other codecs, AAC over Opus.
+CODEC_SORT = ["vcodec:h264", "acodec:aac"]
 
 QUALITY_CAPS: tuple[QualityCap, ...] = get_args(QualityCap.__value__)
 
@@ -75,5 +76,4 @@ def cap_format_options(
     if cap == "audio":
         return CapFormat("ba/b", abr or None, None)
     res = "res" if cap is None or cap == "best" else f"res:{cap}"
-    sort = ["hdr" if hdr and k == "hdr:sdr" else k for k in MP4_SORT]
-    return CapFormat("bv*+ba/b", [res, *sort, *abr], "mp4")
+    return CapFormat("bv*+ba/b", [res, "hdr" if hdr else "hdr:sdr", *CODEC_SORT, *abr], "mp4")

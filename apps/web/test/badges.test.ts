@@ -165,7 +165,19 @@ test("hdr badge: yes, below, none", () => {
 test("hdr badge: not for audio, overrides, failures or checking", () => {
   const e = withRows(okEntry(2160), ladder);
   expect(hdrBadgeFor(e, "audio")).toBeNull();
-  expect(hdrBadgeFor({ ...e, override: customEntry({ none: true }).override }, "1440")).toBeNull();
+  expect(
+    hdrBadgeFor({ ...e, override: customEntry({ videoShortSide: 1440 }).override }, "1440"),
+  ).toBeNull();
+  expect(
+    hdrBadgeFor({ ...e, override: customEntry({ audioOnly: true }).override }, "1440"),
+  ).toBeNull();
   expect(hdrBadgeFor(failedEntry("x"), "1440")).toBeNull();
   expect(hdrBadgeFor(checkingEntry(), "1440")).toBeNull();
+});
+
+test("hdr badge: a custom override with no exact ids still follows the cap", () => {
+  const e = withRows(okEntry(2160), ladder);
+  expect(hdrBadgeFor({ ...e, override: customEntry({ none: true }).override }, "1440")).toEqual({
+    label: "HDR",
+  });
 });
