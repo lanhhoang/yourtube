@@ -611,7 +611,11 @@ def run_download(
             except OSError as exc:
                 raise RuntimeError(f"unable to open for writing: {exc}") from exc
 
-    output_path = captured_path["path"] or ""
+    # A merge fires "finished" once per stream and then deletes the parts, so the
+    # hook's last filename is a part file. yt-dlp reports the merged file here.
+    requested = (info or {}).get("requested_downloads") or []
+    merged = next((d["filepath"] for d in reversed(requested) if d.get("filepath")), None)
+    output_path = merged or captured_path["path"] or ""
     file_size, media_format, resolution_height = _extract_file_metadata(info or {}, output_path)
     return DownloadResult(
         path=output_path,
