@@ -23,7 +23,7 @@ YourTube is a self-hosted YouTube downloader with a web UI, a persistent queue a
 - One container, one process, one port (`docker compose up`, or `pnpm dev` / `pnpm start` locally).
 - FastAPI backend with yt-dlp and ffmpeg; a SQLite-backed queue with worker threads; the Svelte app is built and served by FastAPI.
 - Playlists can be large (up to 500 entries per fetch). YouTube has returned 403s for bursts of lookups, so the browser checks at most two videos at a time.
-- The old HTMX UI keeps working at `/` until Phase 6; the new app is at `/app` until then.
+- The Svelte app is the only UI and is served at `/`.
 
 ## Capabilities and Constraints
 
@@ -39,7 +39,7 @@ Name: YourTube. Tagline: "There are many video-sharing platforms, but this one i
 
 ## Evidence on Hand
 
-Approved mockups, local and gitignored: `.superpowers/brainstorm/11221-1794783582/content/direction-v2.html` and `playlist-quality.html`. The existing logo asset is `apps/server/app/static/assets/favicon.svg`. There are no user testimonials or usage data; none should be invented.
+Approved mockups, local and gitignored: `.superpowers/brainstorm/11221-1794783582/content/direction-v2.html` and `playlist-quality.html`. The existing logo asset is `apps/web/public/favicon.svg`. There are no user testimonials or usage data; none should be invented.
 
 ## Product Principles
 

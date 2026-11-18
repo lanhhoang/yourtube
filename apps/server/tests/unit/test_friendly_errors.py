@@ -117,7 +117,10 @@ def test_generic_fallback() -> None:
     """Unrecognised errors fall back to a stable generic code."""
     code, message = friendly_ytdlp_error("Something weird happened that we don't recognise")
     assert code == "ytdlp_error"
-    assert message
+    # Used for lookups as well as downloads, so it must not claim a download failed,
+    # and it must say what to do next.
+    assert "download" not in message.lower()
+    assert "try again" in message.lower()
 
 
 def test_friendly_error_maps_output_template_write_failures() -> None:

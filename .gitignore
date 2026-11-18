@@ -221,6 +221,7 @@ __marimo__/
 .superpowers/
 tmp/
 .DS_Store
+
 # --- Node ---
 node_modules/
 
@@ -229,3 +230,6 @@ node_modules/
 test-results/
 playwright-report/
 .svelte-check/
+
+# impeccable critique/audit working notes
+.impeccable/

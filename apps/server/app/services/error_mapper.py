@@ -71,4 +71,4 @@ def friendly_ytdlp_error(raw: str) -> tuple[str, str]:
     for code, message, pattern in _RULES:
         if pattern.search(raw):
             return code, message
-    return "ytdlp_error", "The download failed for an unknown reason."
+    return "ytdlp_error", "yt-dlp failed for an unknown reason. Check the URL, then try again."
