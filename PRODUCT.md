@@ -28,7 +28,7 @@ YourTube is a self-hosted YouTube downloader with a web UI, a persistent queue a
 ## Capabilities and Constraints
 
 - Single video, playlist and multi-URL fetch from a top-bar field; Library, Queue (with retry and dismiss for failed jobs) and Settings screens.
-- Quality is a per-job cap: `best`, `2160`, `1440`, `1080`, `720`, `480`, `audio`. Default "Up to 1080p". The cap compares the short side of the video. Exact format ids override the cap.
+- Quality is a per-job cap: `best`, `2160`, `1440`, `1080`, `720`, `480`, `audio`. Default "Up to 1080p". The cap compares the short side of the video. Exact format ids override the cap. An opt-in HDR choice keeps HDR where the video offers it at the capped resolution; off by default.
 - Playlists: one cap for all selected videos, per-video override, every selected video checked before "Add to queue" is enabled. A video must never silently download below the chosen quality without being flagged first.
 - Terms: "cap" (quality limit), "Library" (finished downloads), "Queue" (queued, active and failed jobs).
 - Not in scope: in-browser playback, translation, PWA/offline, live push, server-side playlist checking.

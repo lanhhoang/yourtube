@@ -47,7 +47,9 @@ _VIDEO_URLS = {"https://e2e.test/video", "https://e2e.test/watch?v=e2e&list=PLe2
 
 
 def _video_info(url: str) -> dict[str, Any]:
-    def fmt(fid: str, w: int | None, h: int | None, v: str, a: str, ext: str) -> dict[str, Any]:
+    def fmt(
+        fid: str, w: int | None, h: int | None, v: str, a: str, ext: str, dr: str | None = None
+    ) -> dict[str, Any]:
         return {
             "format_id": fid,
             "ext": ext,
@@ -56,19 +58,24 @@ def _video_info(url: str) -> dict[str, Any]:
             "vcodec": v,
             "acodec": a,
             "abr": 128 if v == "none" else None,
+            "dynamic_range": dr,
         }
 
+    formats = [
+        fmt("v1080", 1920, 1080, "avc1.640028", "none", "mp4"),
+        fmt("v720", 1280, 720, "avc1.64001f", "none", "mp4"),
+        fmt("a1", None, None, "none", "mp4a.40.2", "m4a"),
+    ]
+    if url == "https://e2e.test/v/a":
+        hdr10 = "vp09.02.51.10.01.09.16.09.00"
+        formats.append(fmt("v2160hdr", 3840, 2160, hdr10, "none", "webm", "HDR10"))
     return {
         "id": "e2e",
         "title": "E2E Video",
         "uploader": "E2E",
         "duration": 61,
         "webpage_url": "https://e2e.test/video",
-        "formats": [
-            fmt("v1080", 1920, 1080, "avc1.640028", "none", "mp4"),
-            fmt("v720", 1280, 720, "avc1.64001f", "none", "mp4"),
-            fmt("a1", None, None, "none", "mp4a.40.2", "m4a"),
-        ],
+        "formats": formats,
     }
 
 

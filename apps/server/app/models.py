@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import BigInteger, Boolean, DateTime, Float, Integer, String, func
+from sqlalchemy import BigInteger, Boolean, DateTime, Float, Integer, String, false, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -40,6 +40,9 @@ class Download(Base):
     audio_bitrate: Mapped[str | None] = mapped_column(String, nullable=True)
     quality_cap: Mapped[str | None] = mapped_column(String, nullable=True)
     subtitles: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    hdr: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=false()
+    )
 
     # Queue and progress
     status: Mapped[str] = mapped_column(String, nullable=False, default="queued", index=True)

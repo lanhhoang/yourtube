@@ -54,6 +54,7 @@
                 video_format_id: selection.videoId,
                 audio_format_id: selection.audioId,
                 subtitles,
+                hdr: false,
                 output_template: template.trim() || null,
                 audio_bitrate: bitrate.trim() || null,
               },

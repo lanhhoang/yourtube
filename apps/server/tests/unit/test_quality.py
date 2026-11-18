@@ -88,7 +88,9 @@ def _fmt(
     }
 
 
-def _select(formats: list[dict], cap: Any, bitrate: str | None = None) -> tuple[str, str]:
+def _select(
+    formats: list[dict], cap: Any, bitrate: str | None = None, hdr: bool = False
+) -> tuple[str, str]:
     info = {
         "id": "x",
         "title": "t",
@@ -97,7 +99,7 @@ def _select(formats: list[dict], cap: Any, bitrate: str | None = None) -> tuple[
         "webpage_url": "https://x",
         "formats": formats,
     }
-    fmt, sort, merge = cap_format_options(cap, bitrate)
+    fmt, sort, merge = cap_format_options(cap, bitrate, hdr)
     opts: dict[str, Any] = {"quiet": True}
     if fmt:
         opts["format"] = fmt
@@ -202,3 +204,47 @@ def test_media_kind_audio_for_audio_cap() -> None:
     assert kind(quality_cap="audio") == "audio"
     assert kind(quality_cap="audio", video_format_id="137") == "video"
     assert kind(quality_cap="720") == "video"
+
+
+BOTH_SET = [
+    _fmt("315", 3840, 2160, "vp9", "none", "webm", dr="SDR"),
+    _fmt("337", 3840, 2160, "vp09.02.51.10.01.09.16.09.00", "none", "webm", dr="HDR10"),
+    _fmt("701", 3840, 2160, "av01.0.13M.10.0.110.09.16.09.0", "none", "mp4", dr="HDR10"),
+    _fmt("299", 1920, 1080, "avc1.64002a", "none", "mp4", dr="SDR"),
+    _fmt("140", None, None, "none", "mp4a.40.2", "m4a", 129),
+]
+
+LOW_SET = [
+    _fmt("315", 3840, 2160, "vp9", "none", "webm", dr="SDR"),
+    _fmt("699", 1920, 1080, "av01.0.08M.10.0.110.09.16.09.0", "none", "mp4", dr="HDR10"),
+    _fmt("299", 1920, 1080, "avc1.64002a", "none", "mp4", dr="SDR"),
+    _fmt("140", None, None, "none", "mp4a.40.2", "m4a", 129),
+]
+
+
+def test_cap_format_options_hdr() -> None:
+    on = ["hdr", "vcodec:h264", "acodec:aac"]
+    assert cap_format_options("best", hdr=True) == ("bv*+ba/b", ["res", *on], "mp4")
+    assert cap_format_options("1080", "128", hdr=True) == (
+        "bv*+ba/b",
+        ["res:1080", *on, "abr:128"],
+        "mp4",
+    )
+    assert cap_format_options(None, hdr=True) == ("bv*+ba/b", ["res", *on], "mp4")
+    assert cap_format_options("audio", hdr=True) == ("ba/b", None, None)
+    assert cap_format_options("720", hdr=False) == cap_format_options("720")
+
+
+def test_hdr_on_picks_hdr_at_top() -> None:
+    assert _select(HDR_SET, "best", hdr=True) == ("701+140", "mp4")
+    assert _select(BOTH_SET, "best", hdr=True) == ("337+140", "mp4")
+
+
+def test_hdr_on_keeps_sdr_picks_where_no_hdr() -> None:
+    assert _select(HDR_SET, "1440", hdr=True) == ("308+140", "mp4")
+    assert _select(HDR_SET, "1080", hdr=True) == ("299+140", "mp4")
+
+
+def test_hdr_on_resolution_first() -> None:
+    assert _select(LOW_SET, "best", hdr=True) == ("315+140", "mp4")
+    assert _select(LOW_SET, "1440", hdr=True) == ("699+140", "mp4")

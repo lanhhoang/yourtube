@@ -17,7 +17,9 @@ Self-hosted YouTube video downloader with a web UI, persistent queue, and librar
 
 Each job has a quality cap: `best`, `2160`, `1440`, `1080`, `720`, `480` or `audio`. The default is "Up to 1080p". The cap compares the short side of the video, so a vertical 1080×1920 video counts as 1080p. Choosing an exact format overrides the cap.
 
-Capped video is saved as MP4: H.264 + AAC up to 1080p where YouTube offers it, VP9 SDR + AAC above, never HDR. Audio-only and exact format picks are unchanged.
+Capped video is saved as MP4: H.264 + AAC up to 1080p where YouTube offers it, VP9 SDR + AAC above, SDR unless the job asks for HDR. Audio-only and exact format picks are unchanged.
+
+HDR: off by default. When ticked, a video that offers HDR at the resolution your cap picks downloads in HDR (VP9.2 or AV1 + AAC, `.mp4`); otherwise you get the normal SDR file. HDR files play in VLC, IINA and mpv, not in Safari, QuickTime or on iPhone.
 
 ### Playlists
 

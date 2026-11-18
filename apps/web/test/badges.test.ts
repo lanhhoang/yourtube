@@ -27,6 +27,7 @@ const details = (
         abr: null,
         audio_channels: null,
         container: null,
+        dynamic_range: null,
       },
     ],
     audio_streams: [],

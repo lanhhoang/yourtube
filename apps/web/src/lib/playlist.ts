@@ -109,6 +109,7 @@ export function buildJobs(entries: EntryState[], header: Header): JobCreate[] {
       video_format_id: o?.selection.videoId ?? null,
       audio_format_id: o?.selection.audioId ?? null,
       subtitles: o ? o.subtitles : header.subtitles,
+      hdr: false,
       output_template: blank(o ? o.outputTemplate : header.outputTemplate),
       audio_bitrate: blank(o ? o.audioBitrate : header.audioBitrate),
     });

@@ -348,3 +348,12 @@ def test_build_stream_picker_payload_serializes_expected_container_pairs() -> No
     assert payload["expected_container_by_pair"]["137|"] == "mp4"
     assert payload["expected_container_by_pair"]["|140"] == "m4a"
     assert payload["expected_container_by_pair"]["137|140"] == "mp4"
+
+
+def test_normalize_dynamic_range() -> None:
+    raw = {"format_id": "337", "ext": "webm", "vcodec": "vp9.2", "acodec": "none"}
+    hdr = normalize_formats({"formats": [{**raw, "dynamic_range": "HDR10"}]})[0]
+    assert hdr.dynamic_range == "HDR10"
+    assert normalize_formats({"formats": [raw]})[0].dynamic_range is None
+    rows = build_stream_picker_payload([hdr])["video_streams"]
+    assert rows[0]["dynamic_range"] == "HDR10"

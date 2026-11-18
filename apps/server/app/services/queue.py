@@ -60,6 +60,7 @@ def _row_from_payload(payload: DownloadCreate) -> Download:
         audio_bitrate=payload.audio_bitrate,
         subtitles=payload.subtitles,
         quality_cap=payload.quality_cap,
+        hdr=payload.hdr,
         status="queued",
     )
 

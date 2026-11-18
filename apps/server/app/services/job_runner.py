@@ -35,6 +35,7 @@ def run_claimed_job(job_id: int) -> None:
         job_output_template = job.output_template
         job_audio_bitrate = job.audio_bitrate
         job_subtitles = job.subtitles
+        job_hdr = job.hdr
         job_quality_cap = cast("QualityCap | None", job.quality_cap)
 
     progress = YtdlpProgress(
@@ -55,6 +56,7 @@ def run_claimed_job(job_id: int) -> None:
             subtitles=job_subtitles,
             progress_hook=progress,
             quality_cap=job_quality_cap,
+            hdr=job_hdr,
         )
     except DownloadCancelled:
         with SessionLocal() as session:
