@@ -201,6 +201,7 @@ def build_ytdlp_options(
     progress_hooks: list[ProgressHook] | None = None,
     js_runtime: str = "node",
     format_sort: list[str] | None = None,
+    merge_output_format: str | None = None,
 ) -> dict[str, Any]:
     """Build a consistent ``yt_dlp`` options dict for info lookup and downloads.
 
@@ -232,6 +233,8 @@ def build_ytdlp_options(
         options["format"] = format_selector
     if format_sort:
         options["format_sort"] = format_sort
+    if merge_output_format:
+        options["merge_output_format"] = merge_output_format
     if proxy:
         options["proxy"] = proxy
     if cookies_file:
@@ -568,10 +571,11 @@ def run_download(
     import yt_dlp  # local import to keep module import cheap
 
     format_sort: list[str] | None = None
+    merge_output_format: str | None = None
     if video_format_id or audio_format_id:
         fmt = _format_selector(video_format_id, audio_format_id, audio_bitrate=audio_bitrate)
     else:
-        fmt, format_sort = cap_format_options(quality_cap, audio_bitrate)
+        fmt, format_sort, merge_output_format = cap_format_options(quality_cap, audio_bitrate)
     ydl_opts = build_ytdlp_options(
         skip_download=False,
         output_dir=output_dir,
@@ -581,6 +585,7 @@ def run_download(
         cookies_file=cookies_file,
         subtitles=subtitles,
         format_sort=format_sort,
+        merge_output_format=merge_output_format,
     )
     guard = output_dir_guard(output_dir)
     ydl_opts["match_filter"] = guard

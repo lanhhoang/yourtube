@@ -54,13 +54,14 @@ def test_bitrate_kbps() -> None:
 
 
 def test_cap_format_options() -> None:
-    assert cap_format_options(None) == (None, None)
-    assert cap_format_options("best") == (None, None)
-    assert cap_format_options("720") == ("bv*+ba/b", ["res:720"])
-    assert cap_format_options("720", "192K") == ("bv*+ba/b", ["res:720", "abr:192"])
-    assert cap_format_options("audio") == ("ba/b", None)
-    assert cap_format_options("audio", "128") == ("ba/b", ["abr:128"])
-    assert cap_format_options(None, "128k") == (None, ["abr:128"])
+    sort = ["hdr:sdr", "vcodec:h264", "acodec:aac"]
+    assert cap_format_options(None) == ("bv*+ba/b", ["res", *sort], "mp4")
+    assert cap_format_options("best") == ("bv*+ba/b", ["res", *sort], "mp4")
+    assert cap_format_options("720") == ("bv*+ba/b", ["res:720", *sort], "mp4")
+    assert cap_format_options("720", "192K") == ("bv*+ba/b", ["res:720", *sort, "abr:192"], "mp4")
+    assert cap_format_options("best", "128k") == ("bv*+ba/b", ["res", *sort, "abr:128"], "mp4")
+    assert cap_format_options("audio") == ("ba/b", None, None)
+    assert cap_format_options("audio", "128") == ("ba/b", ["abr:128"], None)
 
 
 def _fmt(
@@ -71,6 +72,7 @@ def _fmt(
     a: str,
     ext: str = "mp4",
     abr: float | None = None,
+    dr: str | None = None,
 ) -> dict:
     return {
         "format_id": fid,
@@ -82,10 +84,11 @@ def _fmt(
         "acodec": a,
         "abr": abr,
         "protocol": "https",
+        **({"dynamic_range": dr} if dr else {}),
     }
 
 
-def _select(formats: list[dict], cap: Any, bitrate: str | None = None) -> str:
+def _select(formats: list[dict], cap: Any, bitrate: str | None = None) -> tuple[str, str]:
     info = {
         "id": "x",
         "title": "t",
@@ -94,14 +97,17 @@ def _select(formats: list[dict], cap: Any, bitrate: str | None = None) -> str:
         "webpage_url": "https://x",
         "formats": formats,
     }
-    fmt, sort = cap_format_options(cap, bitrate)
+    fmt, sort, merge = cap_format_options(cap, bitrate)
     opts: dict[str, Any] = {"quiet": True}
     if fmt:
         opts["format"] = fmt
     if sort:
         opts["format_sort"] = sort
+    if merge:
+        opts["merge_output_format"] = merge
     with yt_dlp.YoutubeDL(opts) as ydl:
-        return ydl.process_ie_result(info, download=False)["format_id"]
+        picked = ydl.process_ie_result(info, download=False)
+    return picked["format_id"], picked["ext"]
 
 
 A1 = _fmt("a1", None, None, "none", "mp4a", "m4a", 128)
@@ -113,11 +119,11 @@ def test_cap_selects_vertical_1080_offline() -> None:
         _fmt("v1440", 1440, 2560, "avc1", "none"),
         A1,
     ]
-    assert _select(formats, "1080") == "v1080+a1"
+    assert _select(formats, "1080")[0] == "v1080+a1"
 
 
 def test_cap_falls_back_above_when_nothing_below() -> None:
-    assert _select([_fmt("v720", 1280, 720, "avc1", "none"), A1], "480") == "v720+a1"
+    assert _select([_fmt("v720", 1280, 720, "avc1", "none"), A1], "480")[0] == "v720+a1"
 
 
 def test_cap_with_bitrate_offline() -> None:
@@ -128,7 +134,39 @@ def test_cap_with_bitrate_offline() -> None:
         _fmt("a128", None, None, "none", "mp4a", "m4a", 128),
         _fmt("a160", None, None, "none", "opus", "webm", 160),
     ]
-    assert _select(formats, "720", "128") == "v720+a128"
+    assert _select(formats, "720", "128")[0] == "v720+a128"
+
+
+HDR_SET = [
+    _fmt("315", 3840, 2160, "vp9", "none", "webm", dr="SDR"),
+    _fmt("701", 3840, 2160, "av01.0.13M.10.0.110.09.16.09.0", "none", "mp4", dr="HDR10"),
+    _fmt("308", 2560, 1440, "vp9", "none", "webm", dr="SDR"),
+    _fmt("299", 1920, 1080, "avc1.64002a", "none", "mp4", dr="SDR"),
+    _fmt("303", 1920, 1080, "vp9", "none", "webm", dr="SDR"),
+    _fmt("140", None, None, "none", "mp4a.40.2", "m4a", 129),
+    _fmt("251", None, None, "none", "opus", "webm", 133),
+]
+
+
+def test_best_prefers_sdr_and_aac() -> None:
+    assert _select(HDR_SET, "best") == ("315+140", "mp4")
+
+
+def test_1440_takes_vp9_sdr() -> None:
+    assert _select(HDR_SET, "1440") == ("308+140", "mp4")
+
+
+def test_1080_prefers_h264() -> None:
+    assert _select(HDR_SET, "1080") == ("299+140", "mp4")
+
+
+def test_hdr_vp9_loses_to_sdr_av1() -> None:
+    formats = [
+        _fmt("337", 3840, 2160, "vp09.02.51.10.01.09.16.09.00", "none", "webm", dr="HDR10"),
+        _fmt("401", 3840, 2160, "av01.0.12M.08", "none", "mp4", dr="SDR"),
+        _fmt("140", None, None, "none", "mp4a.40.2", "m4a", 129),
+    ]
+    assert _select(formats, "best")[0] == "401+140"
 
 
 def test_audio_bitrate_validator() -> None:
@@ -143,7 +181,12 @@ def test_audio_bitrate_validator() -> None:
 def test_stored_free_form_bitrate_is_tolerated() -> None:
     # Rows queued before the strict API may hold free-form bitrates; the worker must not crash.
     assert DownloadCreate(url="https://x", audio_bitrate="192 kbps").audio_bitrate == "192 kbps"
-    assert cap_format_options(None, "192 kbps") == (None, None)
+    assert cap_format_options(None, "192 kbps")[1] == [
+        "res",
+        "hdr:sdr",
+        "vcodec:h264",
+        "acodec:aac",
+    ]
 
 
 def test_media_kind_audio_for_audio_cap() -> None:

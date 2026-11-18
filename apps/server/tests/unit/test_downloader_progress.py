@@ -326,17 +326,27 @@ def test_run_download_exact_ids_win(monkeypatch, tmp_path: Path) -> None:
     )
     assert opts["format"] == "137+140"
     assert "format_sort" not in opts
+    assert "merge_output_format" not in opts
 
 
 def test_run_download_uses_cap(monkeypatch, tmp_path: Path) -> None:
     opts, _ = _captured_opts(monkeypatch, tmp_path, quality_cap="720")
     assert opts["format"] == "bv*+ba/b"
-    assert opts["format_sort"] == ["res:720"]
+    assert opts["format_sort"] == ["res:720", "hdr:sdr", "vcodec:h264", "acodec:aac"]
+    assert opts["merge_output_format"] == "mp4"
 
 
-def test_run_download_no_cap_no_bitrate_unchanged(monkeypatch, tmp_path: Path) -> None:
+def test_run_download_no_cap_is_best(monkeypatch, tmp_path: Path) -> None:
     opts, _ = _captured_opts(monkeypatch, tmp_path)
-    assert "format" not in opts and "format_sort" not in opts
+    assert opts["format"] == "bv*+ba/b"
+    assert opts["format_sort"] == ["res", "hdr:sdr", "vcodec:h264", "acodec:aac"]
+    assert opts["merge_output_format"] == "mp4"
+
+
+def test_run_download_audio_cap_no_merge(monkeypatch, tmp_path: Path) -> None:
+    opts, _ = _captured_opts(monkeypatch, tmp_path, quality_cap="audio")
+    assert opts["format"] == "ba/b"
+    assert "merge_output_format" not in opts
 
 
 def test_run_download_path_is_merged_file(monkeypatch, tmp_path: Path) -> None:
