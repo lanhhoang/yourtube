@@ -30,6 +30,11 @@ _RULES: list[tuple[str, str, re.Pattern[str]]] = [
         ),
     ),
     (
+        "unavailable",
+        "This video is unavailable.",
+        re.compile(r"video unavailable|has been removed|no longer available", re.IGNORECASE),
+    ),
+    (
         "http_forbidden",
         "The server returned a 403 Forbidden response.",
         re.compile(r"\b403\b|forbidden", re.IGNORECASE),

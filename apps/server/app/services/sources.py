@@ -145,6 +145,23 @@ def _expand(info: dict, source_url: str) -> list[SourceEntry]:
     return out
 
 
+class NotAVideoError(ValueError):
+    """The URL resolved to a playlist where a single video was expected."""
+
+
+def lookup_video(
+    url: str,
+    *,
+    extract_full: Callable[..., dict],
+    proxy: str | None,
+    cookies_file: str | None,
+) -> VideoDetails:
+    info = extract_full(url, noplaylist=True, proxy=proxy, cookies_file=cookies_file)
+    if _is_playlist(info):
+        raise NotAVideoError("This URL is a playlist, not a single video.")
+    return video_details(info, url)
+
+
 def list_sources(
     raw: str,
     *,

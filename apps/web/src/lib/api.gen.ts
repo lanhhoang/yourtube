@@ -136,6 +136,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Lookup */
+        post: operations["lookup_api_lookup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/queue": {
         parameters: {
             query?: never;
@@ -334,6 +351,21 @@ export interface components {
         };
         /** @enum {string} */
         JobStatus: "queued" | "active" | "done" | "error" | "cancelled";
+        /** LookupRequest */
+        LookupRequest: {
+            /** Url */
+            url: string;
+            /**
+             * Use Cookies
+             * @default false
+             */
+            use_cookies: boolean;
+            /**
+             * Use Proxy
+             * @default false
+             */
+            use_proxy: boolean;
+        };
         /** @enum {string} */
         MediaKind: "video" | "audio";
         /** @enum {string} */
@@ -725,6 +757,39 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    lookup_api_lookup_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LookupRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VideoDetails"];
+                };
             };
             /** @description Validation Error */
             422: {

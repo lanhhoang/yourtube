@@ -3,6 +3,7 @@
   import QualitySelect from "../components/QualitySelect.svelte";
   import { api, call } from "../lib/api.ts";
   import type { components } from "../lib/api.gen.ts";
+  import { formatDuration } from "../lib/duration.ts";
   import { messageFor } from "../lib/errors.ts";
   import { expectedContainer, hasExact, type Selection } from "../lib/format-picker.ts";
   import { DEFAULT_CAP, type QualityCap } from "../lib/quality.ts";
@@ -32,13 +33,6 @@
   const exact = $derived(hasExact(selection));
   const container = $derived(expectedContainer(video.picker, selection));
   const minutes = $derived(video.duration === null ? "" : formatDuration(video.duration));
-
-  function formatDuration(total: number): string {
-    const h = Math.floor(total / 3600);
-    const m = Math.floor((total % 3600) / 60);
-    const s = String(total % 60).padStart(2, "0");
-    return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`;
-  }
 
   async function add() {
     if (adding) return;

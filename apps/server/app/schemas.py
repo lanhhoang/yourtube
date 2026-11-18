@@ -201,6 +201,12 @@ class SourcesRequest(BaseModel):
     use_cookies: bool = False
 
 
+class LookupRequest(BaseModel):
+    url: str = Field(min_length=1)
+    use_proxy: bool = False
+    use_cookies: bool = False
+
+
 class SourcesResult(BaseModel):
     kind: Literal["video", "list"]
     title: str | None
