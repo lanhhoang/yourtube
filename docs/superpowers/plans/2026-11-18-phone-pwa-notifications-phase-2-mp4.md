@@ -22,7 +22,7 @@
 - Stack stays: FastAPI + yt-dlp + SQLite (Alembic) + worker threads; Svelte 5 + Vite + Tailwind 4; one process, one port. The Docker image ships everything.
 - `DESIGN.md` is the visual contract. Red is the only accent. WCAG AA in both themes. Status is never shown by colour alone.
 - Nothing loads from a CDN at runtime.
-- Streams are copied and remuxed, never transcoded. No HDR output.
+- Streams are copied and remuxed, never transcoded. No HDR output unless the job asks for HDR.
 - Never silently download below the chosen cap (existing principle, unchanged).
 - Never break or lose existing library files. A failed move leaves the file and its row as they were.
 - A 500-video playlist must not send 500 pushes: jobs in a batch send no per-job push and no per-job toast.
@@ -64,7 +64,7 @@
   - `cap_format_options(cap: QualityCap | None, audio_bitrate: str | None = None) -> CapFormat`
   - `MP4_SORT = ["hdr:sdr", "vcodec:h264", "acodec:aac"]`
   - `build_ytdlp_options(..., merge_output_format: str | None = None)`: sets `options["merge_output_format"]` when given.
-  - `run_download` result `path`: the last `requested_downloads[*].filepath` from the returned info, falling back to the last `finished` hook filename when `requested_downloads` is missing or has no `filepath`. (Phase 3's fake `YoutubeDL` reports the path only through the hook, so the fallback must stay.)
+  - `run_download` result `path`: the last `requested_downloads[*].filepath` from the returned info, falling back to the last `finished` hook filename when `requested_downloads` is missing or has no `filepath`. (Phase 4's fake `YoutubeDL` reports the path only through the hook, so the fallback must stay.)
 - `run_download` passes `merge_output_format` from `CapFormat`. Exact format ids keep the current path (`_format_selector`, no merge format, no sort).
 
 #### Part A: record the merged file's path

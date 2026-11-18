@@ -4,11 +4,11 @@
 
 **Goal:** Capped downloads land as MP4 in `<channel>/<playlist>/<title>.mp4` folders, and YourTube installs on the iPhone as a PWA with a phone layout, a player, and push notifications for finished, failed and playlist downloads.
 
-**Architecture:** Server changes stay in the existing service modules. `quality.py` gains the MP4 sort. A new `library_paths.py` holds the slug and path rules, and a new `library_layout.py` holds the one-off move. A new `push.py` handles VAPID and sending; the worker calls it after `release_job`. The web app gains `vite-plugin-pwa` (injectManifest with a custom `src/sw.ts`), a `#/watch/<id>` route, a phone layout below 768 px, and push/toast helpers in `src/lib`. Work ships in six phases, simplest first. Each phase is usable on its own (see the phase index).
+**Architecture:** Server changes stay in the existing service modules. `quality.py` gains the MP4 sort and the opt-in HDR sort. A new `library_paths.py` holds the slug and path rules, and a new `library_layout.py` holds the one-off move. A new `push.py` handles VAPID and sending; the worker calls it after `release_job`. The web app gains `vite-plugin-pwa` (injectManifest with a custom `src/sw.ts`), a `#/watch/<id>` route, a phone layout below 768 px, and push/toast helpers in `src/lib`. Work ships in seven phases, simplest first. Each phase is usable on its own (see the phase index).
 
 **Tech Stack:** FastAPI, yt-dlp 2026.10.26, SQLAlchemy + Alembic (SQLite), Python 3.12 via `uv`, pytest. Svelte 5 runes, Vite 8, Tailwind 4, openapi-fetch, Vitest, Playwright. New: `anyascii` 0.3.x (transliteration), `pywebpush` 2.5.x (pulls `py-vapid`), `vite-plugin-pwa` ^2.0.0 with `workbox-precaching` / `workbox-routing` ^7.4. Icons are generated once with `pnpm dlx @vite-pwa/assets-generator`, which is not a dependency.
 
-**Spec:** `docs/superpowers/specs/2026-11-18-phone-pwa-notifications-design.md`
+**Spec:** `docs/superpowers/specs/2026-11-18-phone-pwa-notifications-design.md`, plus `docs/superpowers/specs/2026-11-18-hdr-option-design.md` (Phase 3)
 
 **Phase index:** `docs/superpowers/plans/2026-11-18-phone-pwa-notifications-phases.md`
 
@@ -18,7 +18,7 @@
 - Stack stays: FastAPI + yt-dlp + SQLite (Alembic) + worker threads; Svelte 5 + Vite + Tailwind 4; one process, one port. The Docker image ships everything.
 - `DESIGN.md` is the visual contract. Red is the only accent. WCAG AA in both themes. Status is never shown by colour alone.
 - Nothing loads from a CDN at runtime.
-- Streams are copied and remuxed, never transcoded. No HDR output.
+- Streams are copied and remuxed, never transcoded. No HDR output unless the job asks for HDR.
 - Never silently download below the chosen cap (existing principle, unchanged).
 - Never break or lose existing library files. A failed move leaves the file and its row as they were.
 - A 500-video playlist must not send 500 pushes: jobs in a batch send no per-job push and no per-job toast.
@@ -30,11 +30,11 @@
 
 ## Review Focus
 
-1. **The last two jobs of a batch finish at the same moment on two workers.** Exactly one summary push must go out, never zero and never two. Task 16 owns the test.
-2. **The startup move meets a missing file, an existing target, a file outside the downloads folder, sidecars, or a crash halfway.** Missing and outside files are skipped. Collisions get a suffix. Sidecars move with the video. A rerun after a crash finishes the job without touching files that already moved. Task 6 owns the tests.
-3. **Titles and channel names with `%`, `/`, `..`, emoji only, non-Latin script, or 300 characters.** The path stays inside the downloads folder. `%` never reaches yt-dlp as template syntax. Every segment is a non-empty ASCII slug of at most 80 characters. Tasks 4 and 5 own the tests.
-4. **A push endpoint is dead (`410`), slow, or unreachable.** The job still ends `done`/`error`. The worker moves on within the timeout. A dead subscription is deleted. Task 18 owns the test.
-5. **iPhone playback of a large file.** The file endpoint answers `Range` requests with `206`. Save uses the share sheet only for files of 500 MB or less, and the download link above that. Task 8 owns the tests.
+1. **The last two jobs of a batch finish at the same moment on two workers.** Exactly one summary push must go out, never zero and never two. Task 18 owns the test.
+2. **The startup move meets a missing file, an existing target, a file outside the downloads folder, sidecars, or a crash halfway.** Missing and outside files are skipped. Collisions get a suffix. Sidecars move with the video. A rerun after a crash finishes the job without touching files that already moved. Task 8 owns the tests.
+3. **Titles and channel names with `%`, `/`, `..`, emoji only, non-Latin script, or 300 characters.** The path stays inside the downloads folder. `%` never reaches yt-dlp as template syntax. Every segment is a non-empty ASCII slug of at most 80 characters. Tasks 6 and 7 own the tests.
+4. **A push endpoint is dead (`410`), slow, or unreachable.** The job still ends `done`/`error`. The worker moves on within the timeout. A dead subscription is deleted. Task 20 owns the test.
+5. **iPhone playback of a large file.** The file endpoint answers `Range` requests with `206`. Save uses the share sheet only for files of 500 MB or less, and the download link above that. Task 10 owns the tests.
 
 ---
 
@@ -48,7 +48,7 @@ apps/server/
   app/config.py                          (modify: vapid_* settings)
   app/models.py                          (modify: playlist_*, batch_*, PushSubscription)
   app/schemas.py                         (modify: JobCreate/JobOut/SourcesResult/QueueOut, push schemas)
-  app/services/quality.py                (modify: CapFormat, MP4 sort)
+  app/services/quality.py                (modify: CapFormat, MP4 sort, hdr)
   app/services/downloader.py             (modify: merge_output_format, default layout)
   app/services/library_paths.py          slugify, PlaylistFolder, default_stem, video_id_from_url
   app/services/library_layout.py         migrate_library_layout (one-off move)
@@ -59,6 +59,7 @@ apps/server/
   app/api/jobs.py                        (modify: GET /downloads/{id}, ?inline, cancel notifies)
   app/api/push.py                        /api/push/key, /api/push/subscriptions
   app/main.py                            (modify: run the move in lifespan)
+  alembic/versions/20261118110000_add_hdr.py
   alembic/versions/20261118120000_add_playlist_folder.py
   alembic/versions/20261118130000_add_batches_and_push.py
   tests/... (new tests named in each task)
@@ -94,7 +95,7 @@ docs: README.md, PRODUCT.md, DESIGN.md, .env.example
 
 The owner supplied two new marks (2026-11-18). Their cleaned markup is below, so you don't need the gitignored originals in `tmp/`.
 - **Top-bar mark:** a red rounded screen with a white play triangle and a pale scrub bar. It's wide, about 1.44:1. Source: `tmp/icon.svg`.
-- **Favicon:** a two-tone red play-circle with a white triangle. Source: `tmp/favicon.svg`. It replaces the old SVG Repo play-circle, and Phase 4 generates the PWA icons from it.
+- **Favicon:** a two-tone red play-circle with a white triangle. Source: `tmp/favicon.svg`. It replaces the old SVG Repo play-circle, and Phase 5 generates the PWA icons from it.
 
 Both marks keep their own fixed colours in both themes. They don't use the `accent` token.
 
@@ -106,8 +107,8 @@ Both marks keep their own fixed colours in both themes. They don't use the `acce
 - Test: `apps/web/e2e/shell.spec.ts`
 
 **Interfaces:**
-- Produces: `LogoMark.svelte`, with prop `size?: number` (height in px, default 20). Width is `Math.round(size * 90 / 62.583)`, which is 29 at 20 px. It has `aria-hidden="true"` and `focusable="false"`, and its colours are fixed in both themes. Phase 5 (phone top bar, mark only) reuses it.
-- Produces: `public/favicon.svg`. Phase 4 builds `public/icon.svg` and the PWA PNGs from this mark.
+- Produces: `LogoMark.svelte`, with prop `size?: number` (height in px, default 20). Width is `Math.round(size * 90 / 62.583)`, which is 29 at 20 px. It has `aria-hidden="true"` and `focusable="false"`, and its colours are fixed in both themes. Phase 6 (phone top bar, mark only) reuses it.
+- Produces: `public/favicon.svg`. Phase 5 builds `public/icon.svg` and the PWA PNGs from this mark.
 
 `LogoMark.svelte` body (the viewBox is cropped to the screen shape, so there's no empty band above or below):
 
@@ -266,7 +267,7 @@ Expected: all pass.
   - `cap_format_options(cap: QualityCap | None, audio_bitrate: str | None = None) -> CapFormat`
   - `MP4_SORT = ["hdr:sdr", "vcodec:h264", "acodec:aac"]`
   - `build_ytdlp_options(..., merge_output_format: str | None = None)`: sets `options["merge_output_format"]` when given.
-  - `run_download` result `path`: the last `requested_downloads[*].filepath` from the returned info, falling back to the last `finished` hook filename when `requested_downloads` is missing or has no `filepath`. (Phase 3's fake `YoutubeDL` reports the path only through the hook, so the fallback must stay.)
+  - `run_download` result `path`: the last `requested_downloads[*].filepath` from the returned info, falling back to the last `finished` hook filename when `requested_downloads` is missing or has no `filepath`. (Phase 4's fake `YoutubeDL` reports the path only through the hook, so the fallback must stay.)
 - `run_download` passes `merge_output_format` from `CapFormat`. Exact format ids keep the current path (`_format_selector`, no merge format, no sort).
 
 #### Part A: record the merged file's path
@@ -395,9 +396,160 @@ Expected: `path` ends in `.mp4` with no `.fNNN`, and `ls` shows that same file. 
 
 ---
 
-## Phase 3: Channel and playlist folders
+## Phase 3: HDR option
 
-### Task 4: Slug and path rules
+### Task 4: HDR on the job, in the sort and in the lookup (server)
+
+**Files:**
+- Create: `apps/server/alembic/versions/20261118110000_add_hdr.py` (`down_revision = "20261115120000"`; non-null boolean `hdr`, `server_default=sa.false()`)
+- Modify: `apps/server/app/models.py` (`Download.hdr`), `apps/server/app/schemas.py` (`DownloadCreate.hdr`, `JobOut.hdr`, `FormatInfo.dynamic_range`, `StreamRow.dynamic_range`), `apps/server/app/services/queue.py` (`_row_from_payload`)
+- Modify: `apps/server/app/services/quality.py` (`cap_format_options`, docstring), `apps/server/app/services/downloader.py` (`normalize_formats`, `StreamPickerRow`, `_row` in `build_stream_picker_payload`, `run_download`), `apps/server/app/services/job_runner.py`
+- Modify: `apps/server/tests/e2e_server.py` (`_video_info`'s `fmt` takes an optional `dr`; add a 2160p HDR10 stream `v2160hdr` only for URL `https://e2e.test/v/a`, and nothing else changes)
+- Modify: `apps/web/src/lib/api.gen.ts` (typegen)
+- Modify: `README.md` ("Quality caps": the HDR paragraph from spec §7)
+- Test: `tests/unit/test_quality.py`, `tests/unit/test_downloader_progress.py`, `tests/unit/test_downloader_format.py`, `tests/unit/test_job_runner.py`, `tests/api/test_enqueue_api.py`, `tests/test_db.py`
+
+**Interfaces:**
+- Consumes (Phase 2): `CapFormat`, `MP4_SORT = ["hdr:sdr", "vcodec:h264", "acodec:aac"]`, `cap_format_options(cap, audio_bitrate=None) -> CapFormat`, `build_ytdlp_options(..., merge_output_format=None)`.
+- Produces:
+  - `cap_format_options(cap: QualityCap | None, audio_bitrate: str | None = None, hdr: bool = False) -> CapFormat`. For video caps with `hdr=True`, the sort is `MP4_SORT` with `"hdr"` in place of `"hdr:sdr"`. `audio` ignores `hdr`.
+  - `run_download(..., hdr: bool = False)`. It is passed only to `cap_format_options` and ignored on the exact-ids branch.
+  - `Download.hdr: Mapped[bool]` (non-null, default false). `DownloadCreate.hdr: bool = False`. `JobOut.hdr: bool`.
+  - `FormatInfo.dynamic_range: str | None = None`, plus the picker row field `dynamic_range: str | None`, read through `_safe_str(raw.get("dynamic_range"))`.
+
+- [ ] **Step 1: Write the failing quality tests** in `tests/unit/test_quality.py`. The `_select` helper gains `hdr: bool = False` and passes it to `cap_format_options`. Add `BOTH_SET` and `LOW_SET` from "Verified facts", built with `_fmt(..., dr=...)`.
+
+```python
+def test_cap_format_options_hdr() -> None:
+    on = ["hdr", "vcodec:h264", "acodec:aac"]
+    assert cap_format_options("best", hdr=True) == ("bv*+ba/b", ["res", *on], "mp4")
+    assert cap_format_options("1080", "128", hdr=True) == ("bv*+ba/b", ["res:1080", *on, "abr:128"], "mp4")
+    assert cap_format_options(None, hdr=True) == ("bv*+ba/b", ["res", *on], "mp4")
+    assert cap_format_options("audio", hdr=True) == ("ba/b", None, None)
+    assert cap_format_options("720", hdr=False) == cap_format_options("720")
+
+def test_hdr_on_picks_hdr_at_top() -> None:
+    assert _select(HDR_SET, "best", hdr=True) == ("701+140", "mp4")
+    assert _select(BOTH_SET, "best", hdr=True) == ("337+140", "mp4")
+
+def test_hdr_on_keeps_sdr_picks_where_no_hdr() -> None:
+    assert _select(HDR_SET, "1440", hdr=True) == ("308+140", "mp4")
+    assert _select(HDR_SET, "1080", hdr=True) == ("299+140", "mp4")
+
+def test_hdr_on_resolution_first() -> None:
+    assert _select(LOW_SET, "best", hdr=True) == ("315+140", "mp4")
+    assert _select(LOW_SET, "1440", hdr=True) == ("699+140", "mp4")
+```
+
+- [ ] **Step 2: Write the failing plumbing tests**
+  - `test_downloader_progress.py`: `test_run_download_hdr_sort`: `quality_cap="best", hdr=True` → `format_sort == ["res", "hdr", "vcodec:h264", "acodec:aac"]`. `test_run_download_exact_ids_ignore_hdr`: `video_format_id="137", audio_format_id="140", hdr=True` → `"format_sort" not in opts and "merge_output_format" not in opts`.
+  - `test_downloader_format.py`: `normalize_formats` on a raw format with `"dynamic_range": "HDR10"` gives `dynamic_range == "HDR10"`, a missing key gives `None`, and `build_stream_picker_payload` rows carry it.
+  - `test_job_runner.py`: copy `test_job_runner_passes_quality_cap` as `test_job_runner_passes_hdr` with `DownloadCreate(..., quality_cap="best", hdr=True)` → `seen["hdr"] is True`. In the existing test, assert `seen["hdr"] is False`.
+  - `test_enqueue_api.py`: `test_enqueue_hdr_roundtrip`: posting `{"url": U, "quality_cap": "best", "hdr": True}` gives `created[0]["hdr"] is True`. `test_enqueue_hdr_defaults_false`: no `hdr` key gives `False`.
+  - `tests/test_db.py`: `test_downloads_has_hdr_column`. Rewrite `test_migration_downgrade_and_upgrade` so it targets revisions by id rather than `-1` (later phases add revisions on top): upgrade to `head` and assert `hdr` is in the columns; downgrade to `"20261115120000"` and assert `hdr` is gone and `quality_cap` is still there; upgrade to `head` again and assert `hdr` is back.
+
+- [ ] **Step 3: Run them and see them fail**
+
+Run: `cd apps/server && uv run pytest tests/unit/test_quality.py tests/unit/test_downloader_progress.py tests/unit/test_downloader_format.py tests/unit/test_job_runner.py tests/api/test_enqueue_api.py tests/test_db.py -q`
+Expected: FAIL (`unexpected keyword argument 'hdr'`, missing column/field).
+
+- [ ] **Step 4: Implement** to the interfaces above: the migration, model, schemas, `_row_from_payload`, `normalize_formats` + picker row, `cap_format_options`, `run_download`, and `job_runner` (read `job.hdr` with the other fields and pass `hdr=`). Update the `quality.py` docstring: `hdr` on means `"hdr"` in place of `"hdr:sdr"`, `res` first means resolution wins, and VP9.2 beats AV1 HDR because of `vcodec:h264` (accepted; see spec Approaches).
+
+- [ ] **Step 5: Run the server suite**
+
+Run: `cd apps/server && uv run pytest -q`
+Expected: PASS.
+
+- [ ] **Step 6: Typegen, README, check, commit**
+
+Run: `pnpm typegen && pnpm check`. README "Quality caps" gains: "HDR: off by default. When ticked, a video that offers HDR at the resolution your cap picks downloads in HDR (VP9.2 or AV1 + AAC, `.mp4`); otherwise you get the normal SDR file. HDR files play in VLC, IINA and mpv, not in Safari, QuickTime or on iPhone."
+Commit: `feat(server): opt-in HDR per job, resolution first`
+
+### Task 5: HDR checkbox, note and badge (web)
+
+**Files:**
+- Modify: `apps/web/src/lib/quality.ts`, `apps/web/src/lib/playlist.ts` (`Header.hdr`, `buildJobs`), `apps/web/src/lib/badges.ts` (`hdrBadgeFor`)
+- Modify: `apps/web/src/routes/VideoView.svelte`, `apps/web/src/routes/ListView.svelte`, `apps/web/src/components/EntryCard.svelte` (render the second badge), `apps/web/src/components/FormatPicker.svelte` (an `HDR` tag in `detail()` for HDR rows)
+- Test: `apps/web/test/quality.test.ts`, `apps/web/test/badges.test.ts`, `apps/web/test/playlist.test.ts`, `apps/web/e2e/video.spec.ts`, `apps/web/e2e/playlist.spec.ts`
+
+**Interfaces:**
+- Consumes: `StreamRow.dynamic_range`, `JobCreate.hdr` (Task 4, via `api.gen.ts`).
+- Produces (`quality.ts`; `Row = components["schemas"]["StreamRow"]`):
+  - `isHdr(row: Row): boolean`: `dynamic_range` is set and is not `"SDR"`.
+  - `hdrSide(rows: Row[]): number | null`: the largest short side among HDR rows.
+  - `cappedSide(cap: QualityCap, rows: Row[]): number | null`: the server's `res[:N]` rule. `best` gives the largest side. N gives the largest side ≤ N, else the smallest side above N. `audio` or no rows gives `null`.
+  - `hdrAtCap(cap: QualityCap, rows: Row[]): { kind: "none" } | { kind: "yes" } | { kind: "below"; side: number }`.
+  - `badges.ts`: `hdrBadgeFor(e: EntryState, cap: QualityCap): { label: string } | null`.
+  - `playlist.ts`: `Header.hdr: boolean`. `buildJobs` sets `hdr: header.hdr` on every job.
+
+- [ ] **Step 1: Write the failing helper tests** in `quality.test.ts`. Use a `row(w, h, dr?)` builder.
+
+```ts
+const S = [row(3840, 2160, "SDR"), row(1920, 1080, "SDR"), row(1920, 1080, "HDR10")];
+test("cappedSide follows res:N", () => {
+  expect(cappedSide("best", S)).toBe(2160);
+  expect(cappedSide("1440", S)).toBe(1080);
+  expect(cappedSide("480", S)).toBe(1080);
+  expect(cappedSide("audio", S)).toBeNull();
+});
+test("hdrAtCap", () => {
+  expect(hdrAtCap("best", S)).toEqual({ kind: "below", side: 1080 });
+  expect(hdrAtCap("1440", S)).toEqual({ kind: "yes" });
+  expect(hdrAtCap("1080", S)).toEqual({ kind: "yes" });
+  expect(hdrAtCap("audio", S)).toEqual({ kind: "none" });
+  expect(hdrAtCap("best", [row(1920, 1080, "SDR")])).toEqual({ kind: "none" });
+  expect(hdrAtCap("720", [row(1280, 720, "SDR"), row(3840, 2160, "HDR10")])).toEqual({ kind: "none" });
+  expect(hdrAtCap("best", [row(1080, 1920, "HLG")])).toEqual({ kind: "yes" }); // vertical: short side
+  expect(hdrAtCap("best", [])).toEqual({ kind: "none" }); // muxed-only
+});
+```
+
+- [ ] **Step 2: Write the failing badge and job tests**
+  - `badges.test.ts`: `hdrBadgeFor` returns `{ label: "HDR" }` for `"yes"`, `{ label: "HDR ≤1080p" }` for `"below"`, and `null` for: no HDR, cap `audio`, an entry with an override, a failed check, and `"checking"`.
+  - `playlist.test.ts`: add `hdr: false` to the shared `header`. A new test: `buildJobs(entries, { ...header, hdr: true })` puts `hdr: true` on every job, including the one with an override.
+
+- [ ] **Step 3: Run them and see them fail**
+
+Run: `pnpm vitest run apps/web/test/quality.test.ts apps/web/test/badges.test.ts apps/web/test/playlist.test.ts`
+Expected: FAIL (missing exports / `hdr` not on jobs).
+
+- [ ] **Step 4: Implement the helpers, `hdrBadgeFor` and `buildJobs`** to the interfaces above.
+
+- [ ] **Step 5: Implement the UI** (spec §5, §6; exact copy below):
+  - `VideoView`: below `QualitySelect`, add `<label>` + checkbox `HDR`, with the row at least 44 px tall. Disabled when `hdrSide(video.picker.video_streams) === null` (label text `HDR (not offered)`) or `cap === "audio"` (label `HDR`). An `$effect` clears `hdr` when it becomes disabled; it does not restore it. When an exact format is picked, the checkbox dims with Quality (same `opacity-50` as `QualitySelect`'s `dimmed`). When `hdr` is ticked and `hdrAtCap` is `"below"`, a `text-sm text-muted` note reads `HDR only up to {side}p. This cap gets SDR.` The job body sends `hdr` (`false` while disabled).
+  - `ListView`: a checkbox `HDR where available` next to Subtitles, disabled when `cap === "audio"` (and cleared then). `header` gets `hdr`.
+  - `EntryCard`: render `hdrBadgeFor(item, cap)` next to the existing badge, in the neutral tone (the existing non-danger badge tone in `EntryCard`'s `tone` map).
+  - `FormatPicker`: `detail()` appends `HDR` when `isHdr(r)` (e.g. `av01 · mp4 · HDR`).
+
+- [ ] **Step 6: Write the e2e tests.** The Task 4 stub gives `https://e2e.test/v/a` a 2160p HDR10 stream; `/video` and `/v/b` have none.
+  - `video.spec.ts` "HDR is disabled when the video has no HDR": fetch `https://e2e.test/video` → `getByRole("checkbox", { name: "HDR (not offered)" })` is disabled.
+  - `video.spec.ts` "HDR can be ticked on an HDR video": fetch `https://e2e.test/v/a` → `getByRole("checkbox", { name: "HDR" })` is enabled. Tick it and add to queue. Check the request body: capture the POST with `page.waitForRequest` and assert `jobs[0].hdr === true`.
+  - `playlist.spec.ts` "HDR badge follows the cap": after checks finish, select cap `best`. Video A's card shows `HDR` (exact text) and Video B's doesn't. Switch back to `1080`: Video A shows no HDR badge, because its HDR exists only above the capped side (`"none"`, spec §4).
+
+- [ ] **Step 7: Run everything**
+
+Run: `pnpm check && pnpm e2e`
+Expected: PASS.
+
+- [ ] **Step 8: Commit** `feat(web): HDR checkbox, note and per-video HDR badge`
+
+- [ ] **Step 9: Check by hand in Docker** (ffmpeg is in the image only):
+
+```bash
+docker build -t yourtube . && mkdir -p /tmp/ythdr && rm -rf /tmp/ythdr/*
+docker run --rm -v /tmp/ythdr:/out --entrypoint sh yourtube -c 'cd /app/apps/server && python -c "
+from app.services.downloader import run_download
+print(run_download(url=\"https://www.youtube.com/watch?v=LXb3EKWsInQ\", output_dir=\"/out\", quality_cap=\"best\", hdr=True))
+" && ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,color_transfer -of csv=p=0 /out/*.mp4'
+```
+
+Expected: the path ends in `.mp4`. ffprobe prints `vp9` or `av1` with `smpte2084` (PQ) or `arib-std-b67` (HLG). It's a ~2 GB download; run it once.
+
+---
+
+## Phase 4: Channel and playlist folders
+
+### Task 6: Slug and path rules
 
 **Files:**
 - Create: `apps/server/app/services/library_paths.py`
@@ -483,10 +635,10 @@ Expected: FAIL, module not found.
 
 - [ ] **Step 5: Commit** `feat(server): slug and default path rules for channel folders`
 
-### Task 5: Downloads use the channel/playlist layout
+### Task 7: Downloads use the channel/playlist layout
 
 **Files:**
-- Create: `apps/server/alembic/versions/20261118120000_add_playlist_folder.py` (nullable `playlist_title`, `playlist_channel`, `playlist_id` on `downloads`)
+- Create: `apps/server/alembic/versions/20261118120000_add_playlist_folder.py` (`down_revision = "20261118110000"`, Phase 3's HDR revision; nullable `playlist_title`, `playlist_channel`, `playlist_id` on `downloads`)
 - Modify: `apps/server/app/models.py`, `apps/server/app/schemas.py` (`DownloadCreate`, `SourcesResult`), `apps/server/app/services/queue.py` (`_row_from_payload`)
 - Modify: `apps/server/app/services/sources.py` (`list_sources` fills `playlist_channel` = flat info `channel` then `uploader`, and `playlist_id` = flat info `id`, only when one URL is a playlist)
 - Modify: `apps/server/app/services/downloader.py` (`run_download` gains `playlist`)
@@ -497,7 +649,7 @@ Expected: FAIL, module not found.
 - Test: `tests/unit/test_downloader_layout.py`, `tests/unit/test_sources.py`, `tests/api/test_enqueue_api.py`, `tests/unit/test_job_runner.py`, `apps/web/test/playlist.test.ts`
 
 **Interfaces:**
-- Consumes: `PlaylistFolder`, `default_stem` (Task 4).
+- Consumes: `PlaylistFolder`, `default_stem` (Task 6).
 - Produces:
   - `DownloadCreate.playlist_title / playlist_channel / playlist_id: str | None = None` (so `JobCreate` has them too). Same nullable columns on `Download`.
   - `SourcesResult.playlist_channel: str | None`, `SourcesResult.playlist_id: str | None` (`None` for videos and multi-URL fetches, like `title`).
@@ -558,7 +710,7 @@ Expected: PASS.
 
 - [ ] **Step 7: Commit** `feat: download into channel and playlist folders`
 
-### Task 6: One-off move of existing files
+### Task 8: One-off move of existing files
 
 **Files:**
 - Create: `apps/server/app/services/library_layout.py`
@@ -567,7 +719,7 @@ Expected: PASS.
 - Test: `apps/server/tests/unit/test_library_layout.py`, `apps/server/tests/integration/test_startup_recovery.py`
 
 **Interfaces:**
-- Consumes: `slugify`, `first_slug`, `video_id_from_url` (Task 4).
+- Consumes: `slugify`, `first_slug`, `video_id_from_url` (Task 6).
 - Produces:
   - `LAYOUT_KEY = "library_layout"`, `LAYOUT_VERSION = "v2"`
   - `@dataclass class LayoutSummary: moved: int = 0; skipped: int = 0; failed: int = 0`
@@ -603,9 +755,9 @@ Expected: FAIL.
 
 ---
 
-## Phase 4: Phone access, PWA and player
+## Phase 5: Phone access, PWA and player
 
-### Task 7: Bind address and Tailscale access
+### Task 9: Bind address and Tailscale access
 
 **Files:**
 - Create: `apps/server/app/__main__.py`
@@ -646,7 +798,7 @@ Expected: first FAIL, then PASS.
 
 - [ ] **Step 5: Commit** `feat: configurable bind address and Tailscale docs`
 
-### Task 8: Player and Save
+### Task 10: Player and Save
 
 **Files:**
 - Modify: `apps/server/app/api/jobs.py` (`GET /api/downloads/{job_id}` → `JobOut`; `inline: bool = False` on the file route)
@@ -713,7 +865,7 @@ test("saveMode", () => {
 
 - [ ] **Step 6: Commit** `feat: in-app player with Save`
 
-### Task 9: Installable PWA
+### Task 11: Installable PWA
 
 **Files:**
 - Modify: `apps/web/package.json` (`vite-plugin-pwa` ^2.0.0, `workbox-precaching` and `workbox-routing` ^7.4.1)
@@ -732,7 +884,7 @@ test("saveMode", () => {
     - `theme_color` and `background_color` `#0b0b0c`
     - icons 64/192/512 plus maskable 512
     - `share_target: { action: "/", method: "GET", params: { url: "share", text: "text", title: "title" } }`
-  - `sw.ts`: `precacheAndRoute(self.__WB_MANIFEST)`, plus `NavigationRoute(createHandlerBoundToURL("index.html"), { denylist: [/^\/api\//, /^\/health/] })`. Push handlers come in Task 19.
+  - `sw.ts`: `precacheAndRoute(self.__WB_MANIFEST)`, plus `NavigationRoute(createHandlerBoundToURL("index.html"), { denylist: [/^\/api\//, /^\/health/] })`. Push handlers come in Task 21.
   - `sharedUrl(search: string): string | null`: the first `http(s)` URL found in the `share`, then `text`, then `title` params (`text` may hold words around the URL).
   - `main.ts`: when `sharedUrl(location.search)` returns a URL, `history.replaceState(null, "", "/" + href({ name: "fetch", urls: url }))` before mounting.
   - `index.html`:
@@ -766,7 +918,7 @@ test("sharedUrl", () => {
 
 - [ ] **Step 6: Commit** `feat(web): installable PWA with share target`
 
-### Task 10: Paste button on phones
+### Task 12: Paste button on phones
 
 **Files:**
 - Modify: `apps/web/src/components/TopBar.svelte`
@@ -808,23 +960,23 @@ Also add a desktop test in `shell.spec.ts`: no "Paste" button at 1440 px.
 
 ---
 
-## Phase 5: Phone layout
+## Phase 6: Phone layout
 
-### Task 11: Phone mockups and owner approval (hard stop)
+### Task 13: Phone mockups and owner approval (hard stop)
 
 **Files:**
 - Create: `docs/design/phone-mockups.html` (static, self-contained, no CDN, uses `DESIGN.md` tokens)
 - Create: `docs/superpowers/specs/2026-11-18-phone-layout-mockups.md` (one section per screen: what changes and why, plus the owner's decision)
 
 **Interfaces:**
-- Produces: approved mockups at 390×844 for the shell (top bar, bottom tab bar, toasts at the top), Library list, Queue, Fetch video view with the override bottom sheet, playlist picker, Settings (theme control and the future notification toggle) and Watch. Tasks 12–15 build to them.
+- Produces: approved mockups at 390×844 for the shell (top bar, bottom tab bar, toasts at the top), Library list, Queue, Fetch video view with the override bottom sheet, playlist picker, Settings (theme control and the future notification toggle) and Watch. Tasks 14–17 build to them.
 
 - [ ] **Step 1: Load the Impeccable skill (shape) with `DESIGN.md` and `PRODUCT.md` as context.** Draft the mockups, then check them against the taste-skill anti-slop rules.
 - [ ] **Step 2: Render every screen in both themes** (a Playwright screenshot or a browser) and look at each one.
 - [ ] **Step 3: Show the owner the screenshots and the notes. STOP until the owner approves.** Record the approval and any requested changes in the mockups doc.
 - [ ] **Step 4: Commit** `docs: approved phone layout mockups`
 
-### Task 12: Phone shell
+### Task 14: Phone shell
 
 **Files:**
 - Create: `apps/web/src/components/TabBar.svelte`
@@ -844,7 +996,7 @@ Also add a desktop test in `shell.spec.ts`: no "Paste" button at 1440 px.
 - [ ] **Step 2: Run them and see them fail**, then build to the approved mockup.
 - [ ] **Step 3: Run `pnpm check && pnpm e2e`** (desktop specs must still pass at 1440 px). **Commit** `feat(web): phone shell with bottom tab bar`
 
-### Task 13: Phone Library, Queue, Settings and Watch
+### Task 15: Phone Library, Queue, Settings and Watch
 
 **Files:**
 - Modify: `apps/web/src/routes/Library.svelte` (single-column list below md: thumbnail left, title/meta right, tap opens `#/watch/<id>`), `apps/web/src/components/JobCard.svelte` (a list variant, or responsive classes), `apps/web/src/routes/Queue.svelte` (single column, actions 44 px), `apps/web/src/routes/Settings.svelte` (stacked form), `apps/web/src/routes/Watch.svelte` (full-width player, actions in thumb reach)
@@ -858,7 +1010,7 @@ Also add a desktop test in `shell.spec.ts`: no "Paste" button at 1440 px.
 - [ ] **Step 2: Run them and see them fail**, then build to the mockups.
 - [ ] **Step 3: Run `pnpm check && pnpm e2e`. Commit** `feat(web): phone layout for library, queue, settings and player`
 
-### Task 14: Phone Fetch views and override bottom sheet
+### Task 16: Phone Fetch views and override bottom sheet
 
 **Files:**
 - Create: `apps/web/src/components/BottomSheet.svelte`
@@ -874,7 +1026,7 @@ Also add a desktop test in `shell.spec.ts`: no "Paste" button at 1440 px.
 - [ ] **Step 2: Run them and see them fail**, then build to the mockups.
 - [ ] **Step 3: Run `pnpm check && pnpm e2e`. Commit** `feat(web): phone fetch views with bottom-sheet overrides`
 
-### Task 15: Critique and polish pass
+### Task 17: Critique and polish pass
 
 **Files:** whichever phone views the critique flags. Also `DESIGN.md` if a rule changes.
 
@@ -885,9 +1037,9 @@ Also add a desktop test in `shell.spec.ts`: no "Paste" button at 1440 px.
 
 ---
 
-## Phase 6: Notifications
+## Phase 7: Notifications
 
-### Task 16: Batches and the one-summary guarantee
+### Task 18: Batches and the one-summary guarantee
 
 **Files:**
 - Create: `apps/server/alembic/versions/20261118130000_add_batches_and_push.py` (`downloads.batch_id` nullable string with an index, `downloads.batch_notified` boolean default false, and table `push_subscriptions(id, endpoint unique not null, p256dh, auth, user_agent, created_at)`)
@@ -914,7 +1066,7 @@ Also add a desktop test in `shell.spec.ts`: no "Paste" button at 1440 px.
 - [ ] **Step 2: Run them and see them fail**, then implement the migration, the model and the queue functions.
 - [ ] **Step 3: Run `pnpm typegen && pnpm check`. Commit** `feat(server): download batches with a single settled summary`
 
-### Task 17: VAPID keys and the subscriptions API
+### Task 19: VAPID keys and the subscriptions API
 
 **Files:**
 - Modify: `apps/server/pyproject.toml` (`uv add pywebpush`)
@@ -939,14 +1091,14 @@ Also add a desktop test in `shell.spec.ts`: no "Paste" button at 1440 px.
 - [ ] **Step 2: Run them and see them fail**, then implement. Document `YT_VAPID_PRIVATE_KEY`, `YT_VAPID_PUBLIC_KEY` and `YT_VAPID_SUBJECT` in `.env.example`.
 - [ ] **Step 3: Run `pnpm typegen && pnpm check`. Commit** `feat(server): VAPID keys and push subscription API`
 
-### Task 18: Send pushes when jobs settle
+### Task 20: Send pushes when jobs settle
 
 **Files:**
 - Modify: `apps/server/app/services/push.py`, `apps/server/app/services/job_runner.py`, `apps/server/app/api/jobs.py` (cancel)
 - Test: `apps/server/tests/unit/test_push_send.py`, `apps/server/tests/unit/test_job_runner.py`
 
 **Interfaces:**
-- Consumes: `claim_batch_summary`, `BatchSummary` (Task 16), `load_vapid_keys`, `list_subscriptions`, `delete_subscription` (Task 17).
+- Consumes: `claim_batch_summary`, `BatchSummary` (Task 18), `load_vapid_keys`, `list_subscriptions`, `delete_subscription` (Task 19).
 - Produces:
   - `@dataclass(frozen=True) class PushMessage: title: str; body: str; tag: str; url: str`. It is sent as JSON `{"title","body","tag","url"}`.
   - `job_message(row: Download) -> PushMessage | None`:
@@ -967,7 +1119,7 @@ Also add a desktop test in `shell.spec.ts`: no "Paste" button at 1440 px.
 - [ ] **Step 2: Run them and see them fail**, then implement.
 - [ ] **Step 3: Run `pnpm check`. Commit** `feat(server): web push for finished, failed and settled batches`
 
-### Task 19: Notifications on this device
+### Task 21: Notifications on this device
 
 **Files:**
 - Modify: `apps/web/src/sw.ts` (`push` and `notificationclick` handlers)
@@ -977,7 +1129,7 @@ Also add a desktop test in `shell.spec.ts`: no "Paste" button at 1440 px.
 - Test: `apps/web/test/push.test.ts`, `apps/web/e2e/notifications.spec.ts`
 
 **Interfaces:**
-- Consumes: `/api/push/key`, `/api/push/subscriptions` (Task 17), the `PushMessage` JSON (Task 18).
+- Consumes: `/api/push/key`, `/api/push/subscriptions` (Task 19), the `PushMessage` JSON (Task 20).
 - Produces:
   - `urlBase64ToUint8Array(s: string): Uint8Array`
   - `pushSupport(env: { hasPushManager: boolean; isIOS: boolean; standalone: boolean; permission: NotificationPermission | "unsupported" }): "ready" | "install-first" | "blocked" | "unsupported"`. iOS and not standalone → `"install-first"`. No PushManager → `"unsupported"`. Permission `"denied"` → `"blocked"`.
@@ -992,7 +1144,7 @@ Also add a desktop test in `shell.spec.ts`: no "Paste" button at 1440 px.
 - [ ] **Step 3: Implement, run `pnpm check && pnpm e2e`. Commit** `feat(web): turn on notifications per device`
 - [ ] **Step 4: Manual check on the owner's iPhone over Tailscale:** install, turn on, queue a short video, lock the phone, get the push, tap it, and land on the player. Record the result in the PR description.
 
-### Task 20: Toast variants for failed jobs and batches
+### Task 22: Toast variants for failed jobs and batches
 
 **Files:**
 - Modify: `apps/server/app/schemas.py` (`QueueOut.batches: list[BatchOut]`, where `BatchOut` mirrors `BatchSummary`), `apps/server/app/api/jobs.py` (`get_queue` fills it from `recent_batch_summaries`), `api.gen.ts`
@@ -1002,7 +1154,7 @@ Also add a desktop test in `shell.spec.ts`: no "Paste" button at 1440 px.
 - Test: `tests/api/test_queue_api.py`, `apps/web/test/toasts.test.ts`, `apps/web/e2e/queue.spec.ts`
 
 **Interfaces:**
-- Consumes: `recent_batch_summaries` (Task 16), `JobOut.batch_id`, `batch_message` copy (Task 18). Toasts reuse the same words as pushes.
+- Consumes: `recent_batch_summaries` (Task 18), `JobOut.batch_id`, `batch_message` copy (Task 20). Toasts reuse the same words as pushes.
 - Produces:
   - `type ToastKind = "done" | "failed" | "batch"`; `type Toast = { key: string; kind: ToastKind; title: string; body: string }`
   - `newEvents(seen: Set<string>, queue: QueueOut, silent: boolean): { toasts: Toast[]; seen: Set<string> }`. Keys are `done:<id>` (completed, `batch_id` null), `failed:<id>` (failed, `batch_id` null) and `batch:<uuid>` (`queue.batches`). Batch jobs never toast on their own. Copy: done `"Downloaded"` / title; failed `"Download failed"` / `"<title>: <error_message>"`; batch name / summary body.
@@ -1015,7 +1167,7 @@ Also add a desktop test in `shell.spec.ts`: no "Paste" button at 1440 px.
 - [ ] **Step 2: Run them and see them fail**, then implement and run `pnpm typegen`.
 - [ ] **Step 3: Run `pnpm check && pnpm e2e`. Commit** `feat: toasts for failed downloads and settled batches`
 
-### Task 21: Product and design docs close-out
+### Task 23: Product and design docs close-out
 
 **Files:** `PRODUCT.md`, `DESIGN.md`, `README.md`
 
@@ -1032,24 +1184,25 @@ Also add a desktop test in `shell.spec.ts`: no "Paste" button at 1440 px.
 | Spec item | Task |
 |---|---|
 | Goal 1 / §1 MP4 format selection | 3 |
-| Goal 2 / §2 slug rule, fallbacks, 80 chars | 4 |
-| §2 playlist fields, sources `playlist_channel`, worker path, collisions, sidecars, custom template wins | 5 |
-| §2 one-off move | 6 |
-| Goal 3 / §3 logo | 1 (icons from the favicon: 9) |
-| Goal 4 / §4 theme tile | 2 (phone: Settings only, 12) |
-| Goal 5 / §5 network | 7 |
-| Goal 6 / §6 PWA, share target, Paste, Shortcut docs | 9, 10 |
-| Goal 6 / §7 phone layout, mockups hard stop | 11–15 |
-| Goal 8 / §8 player, `inline`, Range, Save, unplayable message | 8 |
-| Goal 7 / §9 batches, single summary, retry | 16 |
-| §9 VAPID, subscriptions, API, table | 17 |
-| §9 delivery, 404/410, failures never fail the job | 18 |
-| §9 Settings toggle, iOS hint, SW handlers | 19 |
-| §9 toast variants | 20 |
-| §10 docs | 1, 2, 3, 5, 7, 8, 9, 10, 12, 19, 20, 21 |
+| HDR option spec (`2026-11-18-hdr-option-design.md`) | 4, 5 |
+| Goal 2 / §2 slug rule, fallbacks, 80 chars | 6 |
+| §2 playlist fields, sources `playlist_channel`, worker path, collisions, sidecars, custom template wins | 7 |
+| §2 one-off move | 8 |
+| Goal 3 / §3 logo | 1 (icons from the favicon: 11) |
+| Goal 4 / §4 theme tile | 2 (phone: Settings only, 14) |
+| Goal 5 / §5 network | 9 |
+| Goal 6 / §6 PWA, share target, Paste, Shortcut docs | 11, 12 |
+| Goal 6 / §7 phone layout, mockups hard stop | 13–17 |
+| Goal 8 / §8 player, `inline`, Range, Save, unplayable message | 10 |
+| Goal 7 / §9 batches, single summary, retry | 18 |
+| §9 VAPID, subscriptions, API, table | 19 |
+| §9 delivery, 404/410, failures never fail the job | 20 |
+| §9 Settings toggle, iOS hint, SW handlers | 21 |
+| §9 toast variants | 22 |
+| §10 docs | 1, 2, 3, 4, 7, 9, 10, 11, 12, 14, 21, 22, 23 |
 
 **Plan decisions beyond the spec** (each follows from a spec rule):
-- The spec's `playlist_id` fallback needs the id, so `playlist_id` travels with `playlist_title` and `playlist_channel` (Task 5).
-- The rows moved at startup don't store a video id, so the title and collision fallbacks parse it from the row URL, then fall back to the row id (Task 6).
-- A queued job cancelled from the UI can be the last of a batch, so the cancel API also checks for a settled batch (Task 18).
-- Batch toasts need server data that survives the 20-row completed list, so `QueueOut` gains `batches` (Task 20).
+- The spec's `playlist_id` fallback needs the id, so `playlist_id` travels with `playlist_title` and `playlist_channel` (Task 7).
+- The rows moved at startup don't store a video id, so the title and collision fallbacks parse it from the row URL, then fall back to the row id (Task 8).
+- A queued job cancelled from the UI can be the last of a batch, so the cancel API also checks for a settled batch (Task 20).
+- Batch toasts need server data that survives the 20-row completed list, so `QueueOut` gains `batches` (Task 22).

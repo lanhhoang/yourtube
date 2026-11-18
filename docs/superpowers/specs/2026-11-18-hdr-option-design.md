@@ -121,7 +121,7 @@ Quality
 
 ### 8. Where it goes in the phases
 
-A new phase file, `plans/2026-11-18-hdr-option.md`, to run right after Phase 2 and before Phase 3. Its Alembic revision sorts before Phase 3's `20261118120000` (e.g. `20261118110000_add_hdr.py`). Phase 3's revision must then revise it. That plan names no `down_revision` today, so the builder sets it at that point. The phase index gets a row.
+Phase 3 of the phone PWA plan: `plans/2026-11-18-phone-pwa-notifications-phase-3-hdr.md` (parent plan Tasks 4 and 5). Channel folders and the later phases moved down one number. Its Alembic revision `20261118110000_add_hdr.py` sorts before the channel-folders revision `20261118120000`, which now revises it.
 
 ## Left to the builder
 

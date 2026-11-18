@@ -24,7 +24,7 @@
 - Stack stays: FastAPI + yt-dlp + SQLite (Alembic) + worker threads; Svelte 5 + Vite + Tailwind 4; one process, one port. The Docker image ships everything.
 - `DESIGN.md` is the visual contract. Red is the only accent. WCAG AA in both themes. Status is never shown by colour alone.
 - Nothing loads from a CDN at runtime.
-- Streams are copied and remuxed, never transcoded. No HDR output.
+- Streams are copied and remuxed, never transcoded. No HDR output unless the job asks for HDR.
 - Never silently download below the chosen cap (existing principle, unchanged).
 - Never break or lose existing library files. A failed move leaves the file and its row as they were.
 - A 500-video playlist must not send 500 pushes: jobs in a batch send no per-job push and no per-job toast.
@@ -44,7 +44,7 @@
 
 The owner supplied two new marks (2026-11-18). Their cleaned markup is below, so you don't need the gitignored originals in `tmp/`.
 - **Top-bar mark:** a red rounded screen with a white play triangle and a pale scrub bar. It's wide, about 1.44:1. Source: `tmp/icon.svg`.
-- **Favicon:** a two-tone red play-circle with a white triangle. Source: `tmp/favicon.svg`. It replaces the old SVG Repo play-circle, and Phase 4 generates the PWA icons from it.
+- **Favicon:** a two-tone red play-circle with a white triangle. Source: `tmp/favicon.svg`. It replaces the old SVG Repo play-circle, and Phase 5 generates the PWA icons from it.
 
 Both marks keep their own fixed colours in both themes. They don't use the `accent` token.
 
@@ -56,8 +56,8 @@ Both marks keep their own fixed colours in both themes. They don't use the `acce
 - Test: `apps/web/e2e/shell.spec.ts`
 
 **Interfaces:**
-- Produces: `LogoMark.svelte`, with prop `size?: number` (height in px, default 20). Width is `Math.round(size * 90 / 62.583)`, which is 29 at 20 px. It has `aria-hidden="true"` and `focusable="false"`, and its colours are fixed in both themes. Phase 5 (phone top bar, mark only) reuses it.
-- Produces: `public/favicon.svg`. Phase 4 builds `public/icon.svg` and the PWA PNGs from this mark.
+- Produces: `LogoMark.svelte`, with prop `size?: number` (height in px, default 20). Width is `Math.round(size * 90 / 62.583)`, which is 29 at 20 px. It has `aria-hidden="true"` and `focusable="false"`, and its colours are fixed in both themes. Phase 6 (phone top bar, mark only) reuses it.
+- Produces: `public/favicon.svg`. Phase 5 builds `public/icon.svg` and the PWA PNGs from this mark.
 
 `LogoMark.svelte` body (the viewBox is cropped to the screen shape, so there's no empty band above or below):
 

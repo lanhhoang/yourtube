@@ -1,10 +1,10 @@
-# Phase 4: Phone access, PWA and player Implementation Plan
+# Phase 5: Phone access, PWA and player Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Reach YourTube from the iPhone over Tailscale HTTPS, install it as a PWA, paste links in, and play or save finished files in the app.
 
-**Usable result:** On the iPhone: open the Tailscale URL, Add to Home Screen, paste a link with the Paste button, queue it, then open the finished file in the player and Save it to Files. Screens still use the desktop layout, scaled down; Phase 5 adds the phone layout.
+**Usable result:** On the iPhone: open the Tailscale URL, Add to Home Screen, paste a link with the Paste button, queue it, then open the finished file in the player and Save it to Files. Screens still use the desktop layout, scaled down; Phase 6 adds the phone layout.
 
 **Architecture:** Server: an `app/__main__.py` entry honours `YT_HOST`/`YT_PORT`, plus `GET /api/downloads/{id}` and an `inline` flag on the file route. Web: a `#/watch/<id>` route with `Watch.svelte`, `vite-plugin-pwa` in injectManifest mode with `src/sw.ts` (app-shell precache only), a `share_target` handled in `main.ts`, and a phone-only Paste button.
 
@@ -12,9 +12,9 @@
 
 **Spec:** `docs/superpowers/specs/2026-11-18-phone-pwa-notifications-design.md` (§5 Network access, §6 PWA, §8 Player and Save, §10 Docs (PRODUCT/README parts))
 
-**Parent plan:** `docs/superpowers/plans/2026-11-18-phone-pwa-notifications.md`, Tasks 7, 8, 9, 10. The tasks below are copied from it verbatim; the parent plan wins if they ever differ. Phase index: `docs/superpowers/plans/2026-11-18-phone-pwa-notifications-phases.md`.
+**Parent plan:** `docs/superpowers/plans/2026-11-18-phone-pwa-notifications.md`, Tasks 9, 10, 11, 12. The tasks below are copied from it verbatim; the parent plan wins if they ever differ. Phase index: `docs/superpowers/plans/2026-11-18-phone-pwa-notifications-phases.md`.
 
-**Prerequisites:** Phase 1 merged (the new play-circle `public/favicon.svg` is the icon source). Phase 3 merged, so the README already has "Library layout" and the e2e seeded file sits at `e2e/seeded-video.mp4`.
+**Prerequisites:** Phase 1 merged (the new play-circle `public/favicon.svg` is the icon source). Phase 4 merged, so the README already has "Library layout" and the e2e seeded file sits at `e2e/seeded-video.mp4`.
 
 ## Global Constraints
 
@@ -22,7 +22,7 @@
 - Stack stays: FastAPI + yt-dlp + SQLite (Alembic) + worker threads; Svelte 5 + Vite + Tailwind 4; one process, one port. The Docker image ships everything.
 - `DESIGN.md` is the visual contract. Red is the only accent. WCAG AA in both themes. Status is never shown by colour alone.
 - Nothing loads from a CDN at runtime.
-- Streams are copied and remuxed, never transcoded. No HDR output.
+- Streams are copied and remuxed, never transcoded. No HDR output unless the job asks for HDR.
 - Never silently download below the chosen cap (existing principle, unchanged).
 - Never break or lose existing library files. A failed move leaves the file and its row as they were.
 - A 500-video playlist must not send 500 pushes: jobs in a batch send no per-job push and no per-job toast.
@@ -34,12 +34,12 @@
 
 ## Review Focus
 
-1. **iPhone playback of a large file.** The file endpoint answers `Range` requests with `206`. Save uses the share sheet only for files of 500 MB or less, and the download link above that. Task 8 owns the tests.
-2. The service worker must never answer `/api/` or `/health` with `index.html` (Task 9's e2e checks `/api/queue`). `?share=` must leave the URL once handled, so a reload doesn't re-fetch (Task 9).
+1. **iPhone playback of a large file.** The file endpoint answers `Range` requests with `206`. Save uses the share sheet only for files of 500 MB or less, and the download link above that. Task 10 owns the tests.
+2. The service worker must never answer `/api/` or `/health` with `index.html` (Task 11's e2e checks `/api/queue`). `?share=` must leave the URL once handled, so a reload doesn't re-fetch (Task 11).
 
 ---
 
-### Task 7: Bind address and Tailscale access
+### Task 9: Bind address and Tailscale access
 
 **Files:**
 - Create: `apps/server/app/__main__.py`
@@ -80,7 +80,7 @@ Expected: first FAIL, then PASS.
 
 - [ ] **Step 5: Commit** `feat: configurable bind address and Tailscale docs`
 
-### Task 8: Player and Save
+### Task 10: Player and Save
 
 **Files:**
 - Modify: `apps/server/app/api/jobs.py` (`GET /api/downloads/{job_id}` → `JobOut`; `inline: bool = False` on the file route)
@@ -147,7 +147,7 @@ test("saveMode", () => {
 
 - [ ] **Step 6: Commit** `feat: in-app player with Save`
 
-### Task 9: Installable PWA
+### Task 11: Installable PWA
 
 **Files:**
 - Modify: `apps/web/package.json` (`vite-plugin-pwa` ^2.0.0, `workbox-precaching` and `workbox-routing` ^7.4.1)
@@ -166,7 +166,7 @@ test("saveMode", () => {
     - `theme_color` and `background_color` `#0b0b0c`
     - icons 64/192/512 plus maskable 512
     - `share_target: { action: "/", method: "GET", params: { url: "share", text: "text", title: "title" } }`
-  - `sw.ts`: `precacheAndRoute(self.__WB_MANIFEST)`, plus `NavigationRoute(createHandlerBoundToURL("index.html"), { denylist: [/^\/api\//, /^\/health/] })`. Push handlers come in Task 19.
+  - `sw.ts`: `precacheAndRoute(self.__WB_MANIFEST)`, plus `NavigationRoute(createHandlerBoundToURL("index.html"), { denylist: [/^\/api\//, /^\/health/] })`. Push handlers come in Task 21.
   - `sharedUrl(search: string): string | null`: the first `http(s)` URL found in the `share`, then `text`, then `title` params (`text` may hold words around the URL).
   - `main.ts`: when `sharedUrl(location.search)` returns a URL, `history.replaceState(null, "", "/" + href({ name: "fetch", urls: url }))` before mounting.
   - `index.html`:
@@ -200,7 +200,7 @@ test("sharedUrl", () => {
 
 - [ ] **Step 6: Commit** `feat(web): installable PWA with share target`
 
-### Task 10: Paste button on phones
+### Task 12: Paste button on phones
 
 **Files:**
 - Modify: `apps/web/src/components/TopBar.svelte`

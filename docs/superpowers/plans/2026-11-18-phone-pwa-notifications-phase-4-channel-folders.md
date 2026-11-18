@@ -1,4 +1,4 @@
-# Phase 3: Channel and playlist folders Implementation Plan
+# Phase 4: Channel and playlist folders Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -12,9 +12,9 @@
 
 **Spec:** `docs/superpowers/specs/2026-11-18-phone-pwa-notifications-design.md` (§2 Channel and playlist folders)
 
-**Parent plan:** `docs/superpowers/plans/2026-11-18-phone-pwa-notifications.md`, Tasks 4, 5, 6. The tasks below are copied from it verbatim; the parent plan wins if they ever differ. Phase index: `docs/superpowers/plans/2026-11-18-phone-pwa-notifications-phases.md`.
+**Parent plan:** `docs/superpowers/plans/2026-11-18-phone-pwa-notifications.md`, Tasks 6, 7, 8. The tasks below are copied from it verbatim; the parent plan wins if they ever differ. Phase index: `docs/superpowers/plans/2026-11-18-phone-pwa-notifications-phases.md`.
 
-**Prerequisites:** Phase 2 merged (Task 3 changed `run_download` and `build_ytdlp_options`; this phase builds on that signature).
+**Prerequisites:** Phase 2 merged (Task 3 changed `run_download` and `build_ytdlp_options`; this phase builds on that signature). Phase 3 merged (its HDR revision is this phase's `down_revision`, and `run_download` already takes `hdr`).
 
 ## Global Constraints
 
@@ -22,7 +22,7 @@
 - Stack stays: FastAPI + yt-dlp + SQLite (Alembic) + worker threads; Svelte 5 + Vite + Tailwind 4; one process, one port. The Docker image ships everything.
 - `DESIGN.md` is the visual contract. Red is the only accent. WCAG AA in both themes. Status is never shown by colour alone.
 - Nothing loads from a CDN at runtime.
-- Streams are copied and remuxed, never transcoded. No HDR output.
+- Streams are copied and remuxed, never transcoded. No HDR output unless the job asks for HDR.
 - Never silently download below the chosen cap (existing principle, unchanged).
 - Never break or lose existing library files. A failed move leaves the file and its row as they were.
 - A 500-video playlist must not send 500 pushes: jobs in a batch send no per-job push and no per-job toast.
@@ -34,12 +34,12 @@
 
 ## Review Focus
 
-1. **The startup move meets a missing file, an existing target, a file outside the downloads folder, sidecars, or a crash halfway.** Missing and outside files are skipped. Collisions get a suffix. Sidecars move with the video. A rerun after a crash finishes the job without touching files that already moved. Task 6 owns the tests.
-2. **Titles and channel names with `%`, `/`, `..`, emoji only, non-Latin script, or 300 characters.** The path stays inside the downloads folder. `%` never reaches yt-dlp as template syntax. Every segment is a non-empty ASCII slug of at most 80 characters. Tasks 4 and 5 own the tests.
+1. **The startup move meets a missing file, an existing target, a file outside the downloads folder, sidecars, or a crash halfway.** Missing and outside files are skipped. Collisions get a suffix. Sidecars move with the video. A rerun after a crash finishes the job without touching files that already moved. Task 8 owns the tests.
+2. **Titles and channel names with `%`, `/`, `..`, emoji only, non-Latin script, or 300 characters.** The path stays inside the downloads folder. `%` never reaches yt-dlp as template syntax. Every segment is a non-empty ASCII slug of at most 80 characters. Tasks 6 and 7 own the tests.
 
 ---
 
-### Task 4: Slug and path rules
+### Task 6: Slug and path rules
 
 **Files:**
 - Create: `apps/server/app/services/library_paths.py`
@@ -125,10 +125,10 @@ Expected: FAIL, module not found.
 
 - [ ] **Step 5: Commit** `feat(server): slug and default path rules for channel folders`
 
-### Task 5: Downloads use the channel/playlist layout
+### Task 7: Downloads use the channel/playlist layout
 
 **Files:**
-- Create: `apps/server/alembic/versions/20261118120000_add_playlist_folder.py` (nullable `playlist_title`, `playlist_channel`, `playlist_id` on `downloads`)
+- Create: `apps/server/alembic/versions/20261118120000_add_playlist_folder.py` (`down_revision = "20261118110000"`, Phase 3's HDR revision; nullable `playlist_title`, `playlist_channel`, `playlist_id` on `downloads`)
 - Modify: `apps/server/app/models.py`, `apps/server/app/schemas.py` (`DownloadCreate`, `SourcesResult`), `apps/server/app/services/queue.py` (`_row_from_payload`)
 - Modify: `apps/server/app/services/sources.py` (`list_sources` fills `playlist_channel` = flat info `channel` then `uploader`, and `playlist_id` = flat info `id`, only when one URL is a playlist)
 - Modify: `apps/server/app/services/downloader.py` (`run_download` gains `playlist`)
@@ -139,7 +139,7 @@ Expected: FAIL, module not found.
 - Test: `tests/unit/test_downloader_layout.py`, `tests/unit/test_sources.py`, `tests/api/test_enqueue_api.py`, `tests/unit/test_job_runner.py`, `apps/web/test/playlist.test.ts`
 
 **Interfaces:**
-- Consumes: `PlaylistFolder`, `default_stem` (Task 4).
+- Consumes: `PlaylistFolder`, `default_stem` (Task 6).
 - Produces:
   - `DownloadCreate.playlist_title / playlist_channel / playlist_id: str | None = None` (so `JobCreate` has them too). Same nullable columns on `Download`.
   - `SourcesResult.playlist_channel: str | None`, `SourcesResult.playlist_id: str | None` (`None` for videos and multi-URL fetches, like `title`).
@@ -200,7 +200,7 @@ Expected: PASS.
 
 - [ ] **Step 7: Commit** `feat: download into channel and playlist folders`
 
-### Task 6: One-off move of existing files
+### Task 8: One-off move of existing files
 
 **Files:**
 - Create: `apps/server/app/services/library_layout.py`
@@ -209,7 +209,7 @@ Expected: PASS.
 - Test: `apps/server/tests/unit/test_library_layout.py`, `apps/server/tests/integration/test_startup_recovery.py`
 
 **Interfaces:**
-- Consumes: `slugify`, `first_slug`, `video_id_from_url` (Task 4).
+- Consumes: `slugify`, `first_slug`, `video_id_from_url` (Task 6).
 - Produces:
   - `LAYOUT_KEY = "library_layout"`, `LAYOUT_VERSION = "v2"`
   - `@dataclass class LayoutSummary: moved: int = 0; skipped: int = 0; failed: int = 0`
