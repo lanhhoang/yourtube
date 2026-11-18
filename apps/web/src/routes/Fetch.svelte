@@ -4,6 +4,7 @@
   import { messageFor } from "../lib/errors.ts";
   import { FETCH_OPTIONS_KEY, readFetchOptions } from "../lib/fetch-options.ts";
   import { latest } from "../lib/latest.ts";
+  import ListView from "./ListView.svelte";
   import VideoView from "./VideoView.svelte";
 
   type SourcesResult = components["schemas"]["SourcesResult"];
@@ -60,7 +61,7 @@
     <VideoView video={result.video} />
   {/key}
 {:else if result}
-  <p class="m-0">
-    Playlists open in the classic UI for now. <a class="text-fg" href="/">Open the classic UI</a>
-  </p>
+  {#key result}
+    <ListView {result} />
+  {/key}
 {/if}

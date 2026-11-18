@@ -72,14 +72,38 @@ def _video_info(url: str) -> dict[str, Any]:
     }
 
 
-def _stub_info(url: str, **_kwargs: Any) -> dict[str, Any]:
+def _stub_flat(url: str, **_kwargs: Any) -> dict[str, Any]:
+    if url == "https://e2e.test/playlist":
+        return {
+            "_type": "playlist",
+            "title": "E2E Playlist",
+            "entries": [
+                {"url": f"https://e2e.test/v/{name}", "title": f"Video {name.title()}"}
+                for name in ("a", "b", "gone")
+            ],
+        }
+    return _stub_full(url)
+
+
+def _stub_full(url: str, **_kwargs: Any) -> dict[str, Any]:
     if url in _VIDEO_URLS:
         return _video_info(url)
+    if url.startswith("https://e2e.test/v/"):
+        time.sleep(1.0)  # long enough for the test to see "Checking"
+        name = url.rsplit("/", 1)[-1]
+        if name == "gone":
+            raise RuntimeError("Video unavailable")
+        info = _video_info(url)
+        info["webpage_url"] = url
+        info["title"] = f"Video {name.title()}"
+        if name == "b":
+            info["formats"] = [f for f in info["formats"] if f["format_id"] != "v1080"]
+        return info
     return _not_stubbed(url)
 
 
-downloader.extract_info = _stub_info
-downloader.extract_flat_info = _stub_info
+downloader.extract_info = _stub_full
+downloader.extract_flat_info = _stub_flat
 job_runner.run_download = _run_download
 
 from app.main import app  # noqa: E402
