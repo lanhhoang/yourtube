@@ -20,9 +20,20 @@ def test_spa_missing_file_with_extension_404(client, dist):
     assert client.get("/assets/b.js").status_code == 404
 
 
-def test_spa_does_not_shadow_old_pages(client, dist):
-    r = client.get("/queue")
-    assert "<html" in r.text and r.text != INDEX
+def test_root_serves_index(client, dist):
+    assert client.get("/").text == INDEX
+
+
+def test_old_page_paths_serve_index(client, dist):
+    for path in ("/queue", "/library", "/settings"):
+        assert client.get(path).text == INDEX
+
+
+def test_old_file_route_serves_index(client, dist):
+    r = client.get("/downloads/1/file")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("text/html")
+    assert r.text == INDEX
 
 
 def test_spa_blocks_traversal(client, dist):
@@ -40,7 +51,7 @@ def test_spa_without_dist_returns_404_hint(client_no_dist):
     r = client_no_dist.get("/app")
     assert r.status_code == 404 and "pnpm build" in r.text
     assert client_no_dist.get("/health").status_code == 200
-    assert "<html" in client_no_dist.get("/queue").text
+    assert client_no_dist.get("/").status_code == 404
 
 
 def test_openapi_export_prints_schema(capsys):

@@ -48,11 +48,6 @@ def test_unknown_api_path_returns_error_body(client):
     assert r.json() == {"error": {"code": "not_found", "message": "No such API endpoint."}}
 
 
-def test_old_routes_keep_default_errors(client):
-    r = client.get("/downloads/999999/file")
-    assert r.status_code == 404 and "error" not in r.json()
-
-
 def test_api_error_body(mini):
     r = mini.get("/api/busy")
     assert r.status_code == 409

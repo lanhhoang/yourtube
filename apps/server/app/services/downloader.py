@@ -44,7 +44,7 @@ ProgressHook = Callable[[dict[str, Any]], None]
 
 
 class StreamPickerRow(TypedDict):
-    """Serialized stream row consumed by the Alpine picker."""
+    """Serialized stream row consumed by the web stream picker."""
 
     format_id: str
     ext: str
@@ -59,7 +59,7 @@ class StreamPickerRow(TypedDict):
 
 
 class StreamPickerPayload(TypedDict):
-    """Browser payload for the Alpine stream picker."""
+    """Browser payload for the web stream picker."""
 
     video_streams: list[StreamPickerRow]
     audio_streams: list[StreamPickerRow]
@@ -370,7 +370,7 @@ def infer_expected_container(video: FormatInfo | None, audio: FormatInfo | None)
 
 
 def build_stream_picker_payload(formats: list[FormatInfo]) -> StreamPickerPayload:
-    """Shape normalized formats into a browser payload for the Alpine picker.
+    """Shape normalized formats into a browser payload for the stream picker.
 
     Splits the stream tables by ``stream_kind`` (``video`` vs. ``audio``),
     records whether the source exposes any ``muxed`` combined streams so
@@ -438,8 +438,8 @@ def resolve_output_template(template: str | None, output_dir: str | Path) -> str
     A ``None`` template falls back to ``<output_dir>/%(title)s.%(ext)s``.
     Relative templates are joined to ``output_dir`` so a UI-supplied
     template never escapes the configured downloads directory. Absolute
-    templates are returned untouched so advanced users can target a
-    fully-qualified path.
+    templates are returned untouched here; ``run_download``'s output guard
+    still refuses any final path outside the downloads folder.
     """
     base_dir = Path(output_dir)
     if not template:
@@ -582,11 +582,8 @@ def run_download(
         subtitles=subtitles,
         format_sort=format_sort,
     )
-    guard: _OutputGuard | None = None
-    if not (output_template and Path(output_template).is_absolute()):
-        # Absolute templates stay allowed for the old UI; everything else must stay inside.
-        guard = output_dir_guard(output_dir)
-        ydl_opts["match_filter"] = guard
+    guard = output_dir_guard(output_dir)
+    ydl_opts["match_filter"] = guard
     captured_path: dict[str, str | None] = {"path": None}
 
     def _wrapped(d: dict[str, Any]) -> None:
@@ -600,8 +597,7 @@ def run_download(
     Path(output_dir).mkdir(parents=True, exist_ok=True)
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        if guard is not None:
-            guard.ydl = ydl
+        guard.ydl = ydl
         info = ydl.extract_info(url, download=True)
 
     if subtitles:

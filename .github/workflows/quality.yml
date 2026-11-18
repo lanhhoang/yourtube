@@ -48,7 +48,6 @@ jobs:
         run: uv sync --dev --frozen
 
       - name: Run all checks
-        # Server coverage threshold is low for now; increase to 80 after Phase 4
         run: pnpm check
 
       - name: Install Chromium

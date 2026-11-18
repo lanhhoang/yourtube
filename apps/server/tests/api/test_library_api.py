@@ -104,3 +104,16 @@ def test_file_route_missing_file_404(
     r = client.get(f"/api/downloads/{job}/file")
     assert r.status_code == 404
     assert r.json()["error"]["code"] == "file_missing"
+
+
+def test_file_route_resolves_relative_path_against_repo_root(
+    client: TestClient, db_session_visible: Session, tmp_path: Path, monkeypatch
+) -> None:
+    """Older rows store ``file_path`` relative to the repo root."""
+    (tmp_path / "tmp" / "downloads").mkdir(parents=True)
+    (tmp_path / "tmp" / "downloads" / "rel.mp4").write_bytes(b"rel")
+    monkeypatch.setattr("app.config.REPO_ROOT", tmp_path)
+    job = _add(db_session_visible, file_path="tmp/downloads/rel.mp4")
+    r = client.get(f"/api/downloads/{job}/file")
+    assert r.status_code == 200
+    assert r.content == b"rel"

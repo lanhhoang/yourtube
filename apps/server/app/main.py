@@ -19,7 +19,6 @@ from pathlib import Path
 from alembic.config import Config as AlembicConfig
 from fastapi import FastAPI, HTTPException
 from sqlalchemy import text
-from starlette.staticfiles import StaticFiles
 
 from alembic import command
 from app.api import api_router
@@ -27,7 +26,6 @@ from app.api.errors import install_error_handlers
 from app.api.spa import spa_router
 from app.config import settings
 from app.db import SessionLocal, engine
-from app.routes.pages import router as pages_router
 from app.services.job_runner import run_claimed_job
 from app.services.queue import claim_next, detect_stale_jobs, requeue_active_on_startup
 from app.services.settings import resolve_runtime_settings
@@ -165,10 +163,8 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="YourTube", lifespan=lifespan)
-app.mount("/static", StaticFiles(directory=PROJECT_ROOT / "app" / "static"), name="static")
 install_error_handlers(app)
 app.include_router(api_router)
-app.include_router(pages_router)
 
 
 @app.get("/health")

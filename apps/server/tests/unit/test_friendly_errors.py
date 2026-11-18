@@ -117,7 +117,10 @@ def test_generic_fallback() -> None:
     """Unrecognised errors fall back to a stable generic code."""
     code, message = friendly_ytdlp_error("Something weird happened that we don't recognise")
     assert code == "ytdlp_error"
-    assert message
+    # Used for lookups as well as downloads, so it must not claim a download failed,
+    # and it must say what to do next.
+    assert "download" not in message.lower()
+    assert "try again" in message.lower()
 
 
 def test_friendly_error_maps_output_template_write_failures() -> None:
@@ -134,3 +137,17 @@ def test_friendly_error_keeps_generic_permission_denied_for_non_template_errors(
 
     assert code == "permission_denied"
     assert message
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "output template must stay within the downloads folder",
+        "output template must stay within the configured downloads directory",
+    ],
+)
+def test_friendly_error_maps_output_guard_refusals(raw: str) -> None:
+    """A refused output path must say so, not blame the URL: retrying cannot fix it."""
+    code, message = friendly_ytdlp_error(raw)
+    assert code == "output_outside_downloads"
+    assert "dismiss" in message.lower()

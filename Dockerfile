@@ -3,8 +3,9 @@
 # ----------------------------------------------------------------------------
 # YourTube runtime image
 #
-# Single-stage build: keeps the Dockerfile easy to read and matches the
-# project's "one process, one image" deployment model.
+# Multi-stage build: `web-build` compiles the Svelte app, and the `runtime`
+# stage ships it with the Python server, matching the project's
+# "one process, one image" deployment model.
 #
 # Migration ownership lives in the FastAPI lifespan (see app.main), so the
 # container intentionally starts uvicorn directly. There is no

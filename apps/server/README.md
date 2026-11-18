@@ -1,6 +1,6 @@
 # yourtube server
 
-FastAPI backend for yourtube: lifespan-managed Alembic migrations, a SQLite-backed queue and library, worker-thread downloads with yt-dlp, and the current Jinja/HTMX UI.
+FastAPI backend for yourtube: lifespan-managed Alembic migrations, a SQLite-backed queue and library, worker-thread downloads with yt-dlp, a JSON API under `/api`, and the built Svelte app from `apps/web/dist`.
 
 Run everything from the repo root with `pnpm` (see the [root README](../../README.md)), or from this directory with `uv`.
 
@@ -18,20 +18,19 @@ First-time setup: `uv sync --dev` in this directory.
 
 All settings are environment variables prefixed with `YT_`, read from the process environment and from `.env` at the **repo root** (see `app/config.py`). Relative paths resolve against the repo root, not the working directory, so `./tmp/data` always means `<repo>/tmp/data`. An empty value means "use the default".
 
-| Variable            | Default                        | Description                                       |
-| ------------------- | ------------------------------ | ------------------------------------------------- |
-| `YT_HOST`           | `127.0.0.1`                    | Bind address                                      |
-| `YT_PORT`           | `8000`                         | Bind port                                         |
-| `YT_DATA_DIR`       | `./tmp/data`                   | Database and runtime data directory               |
-| `YT_DOWNLOADS_DIR`  | `./tmp/downloads`              | Completed download output directory               |
-| `YT_COOKIES_PATH`   | _(unset)_                      | Cookies file passed to yt-dlp                     |
-| `YT_PROXY_URL`      | _(unset)_                      | Proxy passed to yt-dlp                            |
-| `YT_DATABASE_URL`   | _(derived from `YT_DATA_DIR`)_ | SQLAlchemy URL; relative `sqlite:///` paths resolve against the repo root |
-| `YT_WEB_DIST_DIR`   | `apps/web/dist`                | Built web app directory (unused until Phase 2)    |
-| `YT_LOG_LEVEL`      | `INFO`                         | Logging level                                     |
-| `YT_WORKERS`        | `1`                            | Worker thread count                               |
+| Variable           | Default                        | Description                                                               |
+| ------------------ | ------------------------------ | ------------------------------------------------------------------------- |
+| `YT_DATA_DIR`      | `./tmp/data`                   | Database and runtime data directory                                       |
+| `YT_DOWNLOADS_DIR` | `./tmp/downloads`              | Completed download output directory                                       |
+| `YT_COOKIES_PATH`  | _(unset)_                      | Cookies file passed to yt-dlp                                             |
+| `YT_PROXY_URL`     | _(unset)_                      | Proxy passed to yt-dlp                                                    |
+| `YT_DATABASE_URL`  | _(derived from `YT_DATA_DIR`)_ | SQLAlchemy URL; relative `sqlite:///` paths resolve against the repo root |
+| `YT_WEB_DIST_DIR`  | `apps/web/dist`                | Built web app directory                                                   |
+| `YT_LOG_LEVEL`     | `INFO`                         | Logging level                                                             |
 
-Downloads folder, cookies path and proxy can also be changed on the Settings page; saved relative paths resolve against the repo root too.
+Downloads folder, cookies path and proxy can also be changed on the Settings page; saved relative paths resolve against the repo root too. The number of download threads is "Max concurrent downloads" on the Settings page.
+
+The bind address and port are uvicorn flags, not settings: `127.0.0.1:8000` in `package.json`, `0.0.0.0:8000` in the Dockerfile. `config.py` still declares `YT_HOST`, `YT_PORT` and `YT_WORKERS`, but nothing reads them.
 
 ## Layout
 
@@ -43,15 +42,13 @@ apps/server/
 │   ├── db.py         — Engine, session factory, SQLite pragmas
 │   ├── models.py     — SQLAlchemy ORM models
 │   ├── schemas.py    — Pydantic request/response contracts
-│   ├── routes/       — Page route handlers
-│   ├── services/     — Queue, downloader, library, and settings logic
-│   ├── templates/    — Jinja templates
-│   └── static/       — CSS, vendored HTMX and Alpine
+│   ├── api/          — JSON routes under /api, SPA serving, error bodies
+│   └── services/     — Queue, downloader, library, and settings logic
 ├── alembic/          — Schema migrations (env.py, versions/)
 ├── alembic.ini
 ├── pyproject.toml    — Dependencies and ruff / ty / pytest config
 ├── uv.lock
-└── tests/            — unit/ and integration/, plus conftest.py with migrated DB fixtures
+└── tests/            — api/, unit/ and integration/, plus conftest.py with migrated DB fixtures
 ```
 
 ## Testing

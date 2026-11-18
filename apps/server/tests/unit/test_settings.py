@@ -22,7 +22,6 @@ from app.services.settings import (
 # this to restore defaults.
 DEFAULT_CATALOG: dict[str, str] = {
     "max_concurrent": "1",
-    "playlist_page_size": "20",
     "proxy_url": "",
     "cookies_path": "",
     "downloads_dir": "",
@@ -67,18 +66,9 @@ def test_max_concurrent_accepts_valid_values(db_session: Session, value: str) ->
     assert get_setting(db_session, "max_concurrent") == value
 
 
-@pytest.mark.parametrize("value", ["0", "51", "abc", "1.5", "-1", "+1", " 1", "1_0"])
-def test_playlist_page_size_rejects_invalid_values(db_session: Session, value: str) -> None:
-    """Invalid ``playlist_page_size`` values raise ``ValueError``."""
-    with pytest.raises(ValueError):
-        set_setting(db_session, "playlist_page_size", value)
-
-
-@pytest.mark.parametrize("value", ["1", "50"])
-def test_playlist_page_size_accepts_boundary_values(db_session: Session, value: str) -> None:
-    """Boundary ``playlist_page_size`` values are persisted unchanged."""
-    set_setting(db_session, "playlist_page_size", value)
-    assert get_setting(db_session, "playlist_page_size") == value
+def test_playlist_page_size_not_in_catalog(db_session: Session) -> None:
+    """The retired paging setting is no longer part of the catalog."""
+    assert "playlist_page_size" not in get_all_settings(db_session)
 
 
 def test_set_settings_batch_updates_multiple_keys_atomically(db_session: Session) -> None:
@@ -91,8 +81,9 @@ def test_set_settings_batch_updates_multiple_keys_atomically(db_session: Session
 def test_set_settings_batch_validates_each_value(db_session: Session) -> None:
     """If any value in the batch is invalid, none are persisted."""
     with pytest.raises(ValueError):
-        set_settings_batch(db_session, {"max_concurrent": "2", "playlist_page_size": "51"})
+        set_settings_batch(db_session, {"proxy_url": "http://p:1", "max_concurrent": "9"})
     # After the failed batch, the previously-stored value (or default) is preserved.
+    assert get_setting(db_session, "proxy_url") == ""
     assert get_setting(db_session, "max_concurrent") == "1"
 
 
