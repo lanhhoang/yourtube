@@ -126,7 +126,7 @@ test("buildJobs", () => {
   expect(jobs).toEqual([
     expect.objectContaining({
       url: "https://e/canon",
-      title: "D",
+      title: "E0",
       uploader: "U",
       duration: 5,
       thumbnail: "t0",
@@ -145,4 +145,14 @@ test("buildJobs", () => {
       quality_cap: "1080",
     }),
   ]);
+});
+
+test("buildJobs keeps the title shown on the card", () => {
+  const named = {
+    ...ok(),
+    check: { ok: true as const, details: details({ title: "https://e/canon" }) },
+  };
+  const unnamed = { ...named, entry: { ...base, title: null } };
+  const jobs = buildJobs([named, unnamed], header);
+  expect(jobs.map((j) => j.title)).toEqual(["E0", "https://e/canon"]);
 });

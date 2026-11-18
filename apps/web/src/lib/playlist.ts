@@ -100,7 +100,8 @@ export function buildJobs(entries: EntryState[], header: Header): JobCreate[] {
     const o = e.override;
     jobs.push({
       url: d.url,
-      title: d.title ?? e.entry.title,
+      // Match the card: the server fills a missing title with the URL.
+      title: e.entry.title ?? d.title,
       uploader: d.uploader ?? e.entry.uploader,
       duration: d.duration ?? e.entry.duration,
       thumbnail: d.thumbnail ?? e.entry.thumbnail,
