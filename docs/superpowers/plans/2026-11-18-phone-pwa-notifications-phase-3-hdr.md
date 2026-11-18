@@ -54,7 +54,7 @@ Sort `[res[:N], "hdr", "vcodec:h264", "acodec:aac"]` with `format="bv*+ba/b"`, `
 - Modify: `apps/server/app/services/quality.py` (`cap_format_options`, docstring), `apps/server/app/services/downloader.py` (`normalize_formats`, `StreamPickerRow`, `_row` in `build_stream_picker_payload`, `run_download`), `apps/server/app/services/job_runner.py`
 - Modify: `apps/server/tests/e2e_server.py` (`_video_info`'s `fmt` takes an optional `dr`; add a 2160p HDR10 stream `v2160hdr` only for URL `https://e2e.test/v/a`, and nothing else changes)
 - Modify: `apps/web/src/lib/api.gen.ts` (typegen)
-- Modify: `README.md` ("Quality caps": the HDR paragraph from spec §7)
+- Modify: `README.md` ("Quality caps": the HDR paragraph from spec §7), `PRODUCT.md`, `docs/superpowers/specs/2026-11-18-phone-pwa-notifications-design.md` (non-goal line)
 - Test: `tests/unit/test_quality.py`, `tests/unit/test_downloader_progress.py`, `tests/unit/test_downloader_format.py`, `tests/unit/test_job_runner.py`, `tests/api/test_enqueue_api.py`, `tests/test_db.py`
 
 **Interfaces:**
@@ -111,6 +111,7 @@ Expected: PASS.
 - [ ] **Step 6: Typegen, README, check, commit**
 
 Run: `pnpm typegen && pnpm check`. README "Quality caps" gains: "HDR: off by default. When ticked, a video that offers HDR at the resolution your cap picks downloads in HDR (VP9.2 or AV1 + AAC, `.mp4`); otherwise you get the normal SDR file. HDR files play in VLC, IINA and mpv, not in Safari, QuickTime or on iPhone."
+Also: in `docs/superpowers/specs/2026-11-18-phone-pwa-notifications-design.md`, change the non-goal `- HDR output.` to `- HDR output unless the job asks for it (see 2026-11-18-hdr-option-design.md).` In `PRODUCT.md`, append to the "Quality is a per-job cap" line: ` An opt-in HDR choice keeps HDR where the video offers it at the capped resolution; off by default.`
 Commit: `feat(server): opt-in HDR per job, resolution first`
 
 ### Task 5: HDR checkbox, note and badge (web)
