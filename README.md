@@ -17,6 +17,8 @@ Self-hosted YouTube video downloader with a web UI, persistent queue, and librar
 
 Each job has a quality cap: `best`, `2160`, `1440`, `1080`, `720`, `480` or `audio`. The default is "Up to 1080p". The cap compares the short side of the video, so a vertical 1080×1920 video counts as 1080p. Choosing an exact format overrides the cap.
 
+Capped video is saved as MP4: H.264 + AAC up to 1080p where YouTube offers it, VP9 SDR + AAC above, never HDR. Audio-only and exact format picks are unchanged.
+
 ### Playlists
 
 A playlist fetch lists up to 500 entries. The browser checks each selected video against the cap, two lookups at a time, and flags any video that would download below it ("720p max") or is unavailable. "Add to queue" waits until every selected video has been checked. Leaving the page stops checking.

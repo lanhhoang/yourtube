@@ -1,4 +1,4 @@
-# Phase 5: Phone layout Implementation Plan
+# Phase 6: Phone layout Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -6,15 +6,15 @@
 
 **Usable result:** On the iPhone, the installed app has a bottom tab bar, a single-column library and queue, a stacked fetch flow with bottom-sheet overrides, and a stacked Settings page, with no sideways scrolling and 44 px targets.
 
-**Architecture:** Web only. Mockups come first (Task 11 is a hard stop for owner approval). Then a `TabBar` replaces the rail below `md`, views get responsive classes, and `BottomSheet` wraps the override panel on phones. Desktop layouts are unchanged at ≥ 768 px.
+**Architecture:** Web only. Mockups come first (Task 13 is a hard stop for owner approval). Then a `TabBar` replaces the rail below `md`, views get responsive classes, and `BottomSheet` wraps the override panel on phones. Desktop layouts are unchanged at ≥ 768 px.
 
 **Tech Stack:** Svelte 5, Tailwind 4, Playwright (390×844 viewport with touch). Impeccable skill (shape, critique, polish) and taste-skill anti-slop checks. No new dependencies.
 
 **Spec:** `docs/superpowers/specs/2026-11-18-phone-pwa-notifications-design.md` (§7 Phone layout, §4 (phone: theme in Settings only), §10 (DESIGN.md phone section))
 
-**Parent plan:** `docs/superpowers/plans/2026-11-18-phone-pwa-notifications.md`, Tasks 11, 12, 13, 14, 15. The tasks below are copied from it verbatim; the parent plan wins if they ever differ. Phase index: `docs/superpowers/plans/2026-11-18-phone-pwa-notifications-phases.md`.
+**Parent plan:** `docs/superpowers/plans/2026-11-18-phone-pwa-notifications.md`, Tasks 13, 14, 15, 16, 17. The tasks below are copied from it verbatim; the parent plan wins if they ever differ. Phase index: `docs/superpowers/plans/2026-11-18-phone-pwa-notifications-phases.md`.
 
-**Prerequisites:** Phase 4 merged (`Watch.svelte`, the Paste button, `e2e/phone.spec.ts` and the PWA meta with `viewport-fit=cover` exist).
+**Prerequisites:** Phase 5 merged (`Watch.svelte`, the Paste button, `e2e/phone.spec.ts` and the PWA meta with `viewport-fit=cover` exist).
 
 ## Global Constraints
 
@@ -22,7 +22,7 @@
 - Stack stays: FastAPI + yt-dlp + SQLite (Alembic) + worker threads; Svelte 5 + Vite + Tailwind 4; one process, one port. The Docker image ships everything.
 - `DESIGN.md` is the visual contract. Red is the only accent. WCAG AA in both themes. Status is never shown by colour alone.
 - Nothing loads from a CDN at runtime.
-- Streams are copied and remuxed, never transcoded. No HDR output.
+- Streams are copied and remuxed, never transcoded. No HDR output unless the job asks for HDR.
 - Never silently download below the chosen cap (existing principle, unchanged).
 - Never break or lose existing library files. A failed move leaves the file and its row as they were.
 - A 500-video playlist must not send 500 pushes: jobs in a batch send no per-job push and no per-job toast.
@@ -34,25 +34,25 @@
 
 ## Review Focus
 
-1. Every phone screen has a no-horizontal-overflow e2e check (Tasks 12–14). Desktop e2e at 1440 px must still pass after each task. Safe areas: the tab bar and bottom sheet pad `safe-area-inset-bottom`, and toasts sit below `safe-area-inset-top` (Task 12).
+1. Every phone screen has a no-horizontal-overflow e2e check (Tasks 14–16). Desktop e2e at 1440 px must still pass after each task. Safe areas: the tab bar and bottom sheet pad `safe-area-inset-bottom`, and toasts sit below `safe-area-inset-top` (Task 14).
 
 ---
 
-### Task 11: Phone mockups and owner approval (hard stop)
+### Task 13: Phone mockups and owner approval (hard stop)
 
 **Files:**
 - Create: `docs/design/phone-mockups.html` (static, self-contained, no CDN, uses `DESIGN.md` tokens)
 - Create: `docs/superpowers/specs/2026-11-18-phone-layout-mockups.md` (one section per screen: what changes and why, plus the owner's decision)
 
 **Interfaces:**
-- Produces: approved mockups at 390×844 for the shell (top bar, bottom tab bar, toasts at the top), Library list, Queue, Fetch video view with the override bottom sheet, playlist picker, Settings (theme control and the future notification toggle) and Watch. Tasks 12–15 build to them.
+- Produces: approved mockups at 390×844 for the shell (top bar, bottom tab bar, toasts at the top), Library list, Queue, Fetch video view with the override bottom sheet, playlist picker, Settings (theme control and the future notification toggle) and Watch. Tasks 14–17 build to them.
 
 - [ ] **Step 1: Load the Impeccable skill (shape) with `DESIGN.md` and `PRODUCT.md` as context.** Draft the mockups, then check them against the taste-skill anti-slop rules.
 - [ ] **Step 2: Render every screen in both themes** (a Playwright screenshot or a browser) and look at each one.
 - [ ] **Step 3: Show the owner the screenshots and the notes. STOP until the owner approves.** Record the approval and any requested changes in the mockups doc.
 - [ ] **Step 4: Commit** `docs: approved phone layout mockups`
 
-### Task 12: Phone shell
+### Task 14: Phone shell
 
 **Files:**
 - Create: `apps/web/src/components/TabBar.svelte`
@@ -72,7 +72,7 @@
 - [ ] **Step 2: Run them and see them fail**, then build to the approved mockup.
 - [ ] **Step 3: Run `pnpm check && pnpm e2e`** (desktop specs must still pass at 1440 px). **Commit** `feat(web): phone shell with bottom tab bar`
 
-### Task 13: Phone Library, Queue, Settings and Watch
+### Task 15: Phone Library, Queue, Settings and Watch
 
 **Files:**
 - Modify: `apps/web/src/routes/Library.svelte` (single-column list below md: thumbnail left, title/meta right, tap opens `#/watch/<id>`), `apps/web/src/components/JobCard.svelte` (a list variant, or responsive classes), `apps/web/src/routes/Queue.svelte` (single column, actions 44 px), `apps/web/src/routes/Settings.svelte` (stacked form), `apps/web/src/routes/Watch.svelte` (full-width player, actions in thumb reach)
@@ -86,7 +86,7 @@
 - [ ] **Step 2: Run them and see them fail**, then build to the mockups.
 - [ ] **Step 3: Run `pnpm check && pnpm e2e`. Commit** `feat(web): phone layout for library, queue, settings and player`
 
-### Task 14: Phone Fetch views and override bottom sheet
+### Task 16: Phone Fetch views and override bottom sheet
 
 **Files:**
 - Create: `apps/web/src/components/BottomSheet.svelte`
@@ -102,7 +102,7 @@
 - [ ] **Step 2: Run them and see them fail**, then build to the mockups.
 - [ ] **Step 3: Run `pnpm check && pnpm e2e`. Commit** `feat(web): phone fetch views with bottom-sheet overrides`
 
-### Task 15: Critique and polish pass
+### Task 17: Critique and polish pass
 
 **Files:** whichever phone views the critique flags. Also `DESIGN.md` if a rule changes.
 

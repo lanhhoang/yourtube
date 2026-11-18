@@ -1,4 +1,4 @@
-# Phase 6: Notifications Implementation Plan
+# Phase 7: Notifications Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -12,9 +12,9 @@
 
 **Spec:** `docs/superpowers/specs/2026-11-18-phone-pwa-notifications-design.md` (§9 Notifications, §10 Docs)
 
-**Parent plan:** `docs/superpowers/plans/2026-11-18-phone-pwa-notifications.md`, Tasks 16, 17, 18, 19, 20, 21. The tasks below are copied from it verbatim; the parent plan wins if they ever differ. Phase index: `docs/superpowers/plans/2026-11-18-phone-pwa-notifications-phases.md`.
+**Parent plan:** `docs/superpowers/plans/2026-11-18-phone-pwa-notifications.md`, Tasks 18, 19, 20, 21, 22, 23. The tasks below are copied from it verbatim; the parent plan wins if they ever differ. Phase index: `docs/superpowers/plans/2026-11-18-phone-pwa-notifications-phases.md`.
 
-**Prerequisites:** Phase 4 merged (the service worker `src/sw.ts` exists and the app installs over HTTPS). Phase 3 merged (`playlist_title` names batches). Phase 5 is recommended first so the Settings toggle lands in the phone layout, but it is not required.
+**Prerequisites:** Phase 5 merged (the service worker `src/sw.ts` exists and the app installs over HTTPS). Phase 4 merged (`playlist_title` names batches). Phase 6 is recommended first so the Settings toggle lands in the phone layout, but it is not required.
 
 ## Global Constraints
 
@@ -22,7 +22,7 @@
 - Stack stays: FastAPI + yt-dlp + SQLite (Alembic) + worker threads; Svelte 5 + Vite + Tailwind 4; one process, one port. The Docker image ships everything.
 - `DESIGN.md` is the visual contract. Red is the only accent. WCAG AA in both themes. Status is never shown by colour alone.
 - Nothing loads from a CDN at runtime.
-- Streams are copied and remuxed, never transcoded. No HDR output.
+- Streams are copied and remuxed, never transcoded. No HDR output unless the job asks for HDR.
 - Never silently download below the chosen cap (existing principle, unchanged).
 - Never break or lose existing library files. A failed move leaves the file and its row as they were.
 - A 500-video playlist must not send 500 pushes: jobs in a batch send no per-job push and no per-job toast.
@@ -34,12 +34,12 @@
 
 ## Review Focus
 
-1. **The last two jobs of a batch finish at the same moment on two workers.** Exactly one summary push must go out, never zero and never two. Task 16 owns the test.
-2. **A push endpoint is dead (`410`), slow, or unreachable.** The job still ends `done`/`error`. The worker moves on within the timeout. A dead subscription is deleted. Task 18 owns the test.
+1. **The last two jobs of a batch finish at the same moment on two workers.** Exactly one summary push must go out, never zero and never two. Task 18 owns the test.
+2. **A push endpoint is dead (`410`), slow, or unreachable.** The job still ends `done`/`error`. The worker moves on within the timeout. A dead subscription is deleted. Task 20 owns the test.
 
 ---
 
-### Task 16: Batches and the one-summary guarantee
+### Task 18: Batches and the one-summary guarantee
 
 **Files:**
 - Create: `apps/server/alembic/versions/20261118130000_add_batches_and_push.py` (`downloads.batch_id` nullable string with an index, `downloads.batch_notified` boolean default false, and table `push_subscriptions(id, endpoint unique not null, p256dh, auth, user_agent, created_at)`)
@@ -66,7 +66,7 @@
 - [ ] **Step 2: Run them and see them fail**, then implement the migration, the model and the queue functions.
 - [ ] **Step 3: Run `pnpm typegen && pnpm check`. Commit** `feat(server): download batches with a single settled summary`
 
-### Task 17: VAPID keys and the subscriptions API
+### Task 19: VAPID keys and the subscriptions API
 
 **Files:**
 - Modify: `apps/server/pyproject.toml` (`uv add pywebpush`)
@@ -91,14 +91,14 @@
 - [ ] **Step 2: Run them and see them fail**, then implement. Document `YT_VAPID_PRIVATE_KEY`, `YT_VAPID_PUBLIC_KEY` and `YT_VAPID_SUBJECT` in `.env.example`.
 - [ ] **Step 3: Run `pnpm typegen && pnpm check`. Commit** `feat(server): VAPID keys and push subscription API`
 
-### Task 18: Send pushes when jobs settle
+### Task 20: Send pushes when jobs settle
 
 **Files:**
 - Modify: `apps/server/app/services/push.py`, `apps/server/app/services/job_runner.py`, `apps/server/app/api/jobs.py` (cancel)
 - Test: `apps/server/tests/unit/test_push_send.py`, `apps/server/tests/unit/test_job_runner.py`
 
 **Interfaces:**
-- Consumes: `claim_batch_summary`, `BatchSummary` (Task 16), `load_vapid_keys`, `list_subscriptions`, `delete_subscription` (Task 17).
+- Consumes: `claim_batch_summary`, `BatchSummary` (Task 18), `load_vapid_keys`, `list_subscriptions`, `delete_subscription` (Task 19).
 - Produces:
   - `@dataclass(frozen=True) class PushMessage: title: str; body: str; tag: str; url: str`. It is sent as JSON `{"title","body","tag","url"}`.
   - `job_message(row: Download) -> PushMessage | None`:
@@ -119,7 +119,7 @@
 - [ ] **Step 2: Run them and see them fail**, then implement.
 - [ ] **Step 3: Run `pnpm check`. Commit** `feat(server): web push for finished, failed and settled batches`
 
-### Task 19: Notifications on this device
+### Task 21: Notifications on this device
 
 **Files:**
 - Modify: `apps/web/src/sw.ts` (`push` and `notificationclick` handlers)
@@ -129,7 +129,7 @@
 - Test: `apps/web/test/push.test.ts`, `apps/web/e2e/notifications.spec.ts`
 
 **Interfaces:**
-- Consumes: `/api/push/key`, `/api/push/subscriptions` (Task 17), the `PushMessage` JSON (Task 18).
+- Consumes: `/api/push/key`, `/api/push/subscriptions` (Task 19), the `PushMessage` JSON (Task 20).
 - Produces:
   - `urlBase64ToUint8Array(s: string): Uint8Array`
   - `pushSupport(env: { hasPushManager: boolean; isIOS: boolean; standalone: boolean; permission: NotificationPermission | "unsupported" }): "ready" | "install-first" | "blocked" | "unsupported"`. iOS and not standalone → `"install-first"`. No PushManager → `"unsupported"`. Permission `"denied"` → `"blocked"`.
@@ -144,7 +144,7 @@
 - [ ] **Step 3: Implement, run `pnpm check && pnpm e2e`. Commit** `feat(web): turn on notifications per device`
 - [ ] **Step 4: Manual check on the owner's iPhone over Tailscale:** install, turn on, queue a short video, lock the phone, get the push, tap it, and land on the player. Record the result in the PR description.
 
-### Task 20: Toast variants for failed jobs and batches
+### Task 22: Toast variants for failed jobs and batches
 
 **Files:**
 - Modify: `apps/server/app/schemas.py` (`QueueOut.batches: list[BatchOut]`, where `BatchOut` mirrors `BatchSummary`), `apps/server/app/api/jobs.py` (`get_queue` fills it from `recent_batch_summaries`), `api.gen.ts`
@@ -154,7 +154,7 @@
 - Test: `tests/api/test_queue_api.py`, `apps/web/test/toasts.test.ts`, `apps/web/e2e/queue.spec.ts`
 
 **Interfaces:**
-- Consumes: `recent_batch_summaries` (Task 16), `JobOut.batch_id`, `batch_message` copy (Task 18). Toasts reuse the same words as pushes.
+- Consumes: `recent_batch_summaries` (Task 18), `JobOut.batch_id`, `batch_message` copy (Task 20). Toasts reuse the same words as pushes.
 - Produces:
   - `type ToastKind = "done" | "failed" | "batch"`; `type Toast = { key: string; kind: ToastKind; title: string; body: string }`
   - `newEvents(seen: Set<string>, queue: QueueOut, silent: boolean): { toasts: Toast[]; seen: Set<string> }`. Keys are `done:<id>` (completed, `batch_id` null), `failed:<id>` (failed, `batch_id` null) and `batch:<uuid>` (`queue.batches`). Batch jobs never toast on their own. Copy: done `"Downloaded"` / title; failed `"Download failed"` / `"<title>: <error_message>"`; batch name / summary body.
@@ -167,7 +167,7 @@
 - [ ] **Step 2: Run them and see them fail**, then implement and run `pnpm typegen`.
 - [ ] **Step 3: Run `pnpm check && pnpm e2e`. Commit** `feat: toasts for failed downloads and settled batches`
 
-### Task 21: Product and design docs close-out
+### Task 23: Product and design docs close-out
 
 **Files:** `PRODUCT.md`, `DESIGN.md`, `README.md`
 

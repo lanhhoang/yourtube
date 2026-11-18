@@ -7,7 +7,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.services.downloader import DownloadCancelled, YtdlpProgress, parse_percent, run_download
+from app.services.downloader import (
+    DownloadCancelled,
+    DownloadResult,
+    YtdlpProgress,
+    parse_percent,
+    run_download,
+)
 
 # --- parse_percent tests ---------------------------------------------------
 
@@ -291,38 +297,76 @@ def test_metadata_uses_short_side(tmp_path: Path) -> None:
     assert height == 1080
 
 
-def _captured_opts(monkeypatch, tmp_path: Path, **kwargs) -> dict:
+def _captured_opts(
+    monkeypatch, tmp_path: Path, info: dict | None = None, hook_files=(), **kwargs
+) -> tuple[dict, DownloadResult]:
     captured: dict = {}
 
     def factory(opts):
         captured.update(opts)
         ydl = MagicMock()
         ydl.__enter__.return_value = ydl
-        ydl.extract_info.return_value = {"ext": "mp4", "height": 720}
+
+        def extract(*_a, **_k):
+            for f in hook_files:
+                opts["progress_hooks"][0]({"status": "finished", "filename": f})
+            return info if info is not None else {"ext": "mp4", "height": 720}
+
+        ydl.extract_info.side_effect = extract
         return ydl
 
     monkeypatch.setattr("yt_dlp.YoutubeDL", factory)
-    run_download(url="https://example.com/v", output_dir=str(tmp_path), **kwargs)
-    return captured
+    result = run_download(url="https://example.com/v", output_dir=str(tmp_path), **kwargs)
+    return captured, result
 
 
 def test_run_download_exact_ids_win(monkeypatch, tmp_path: Path) -> None:
-    opts = _captured_opts(
+    opts, _ = _captured_opts(
         monkeypatch, tmp_path, video_format_id="137", audio_format_id="140", quality_cap="720"
     )
     assert opts["format"] == "137+140"
     assert "format_sort" not in opts
+    assert "merge_output_format" not in opts
 
 
 def test_run_download_uses_cap(monkeypatch, tmp_path: Path) -> None:
-    opts = _captured_opts(monkeypatch, tmp_path, quality_cap="720")
+    opts, _ = _captured_opts(monkeypatch, tmp_path, quality_cap="720")
     assert opts["format"] == "bv*+ba/b"
-    assert opts["format_sort"] == ["res:720"]
+    assert opts["format_sort"] == ["res:720", "hdr:sdr", "vcodec:h264", "acodec:aac"]
+    assert opts["merge_output_format"] == "mp4"
 
 
-def test_run_download_no_cap_no_bitrate_unchanged(monkeypatch, tmp_path: Path) -> None:
-    opts = _captured_opts(monkeypatch, tmp_path)
-    assert "format" not in opts and "format_sort" not in opts
+def test_run_download_no_cap_is_best(monkeypatch, tmp_path: Path) -> None:
+    opts, _ = _captured_opts(monkeypatch, tmp_path)
+    assert opts["format"] == "bv*+ba/b"
+    assert opts["format_sort"] == ["res", "hdr:sdr", "vcodec:h264", "acodec:aac"]
+    assert opts["merge_output_format"] == "mp4"
+
+
+def test_run_download_audio_cap_no_merge(monkeypatch, tmp_path: Path) -> None:
+    opts, _ = _captured_opts(monkeypatch, tmp_path, quality_cap="audio")
+    assert opts["format"] == "ba/b"
+    assert "merge_output_format" not in opts
+
+
+def test_run_download_path_is_merged_file(monkeypatch, tmp_path: Path) -> None:
+    merged = tmp_path / "t.mp4"
+    merged.write_bytes(b"x" * 10)
+    _, result = _captured_opts(
+        monkeypatch,
+        tmp_path,
+        info={"ext": "mp4", "requested_downloads": [{"filepath": str(merged)}]},
+        hook_files=[str(tmp_path / "t.f299.mp4"), str(tmp_path / "t.f140.m4a")],
+    )
+    assert result.path == str(merged)
+    assert result.file_size == 10
+
+
+def test_run_download_path_falls_back_to_hook(monkeypatch, tmp_path: Path) -> None:
+    _, result = _captured_opts(
+        monkeypatch, tmp_path, info={"ext": "mp4"}, hook_files=[str(tmp_path / "t.mp4")]
+    )
+    assert result.path == str(tmp_path / "t.mp4")
 
 
 def test_output_guard_blocks_template_that_escapes_via_fallback(tmp_path: Path) -> None:
@@ -367,12 +411,13 @@ def test_output_guard_blocks_template_that_escapes_via_fallback(tmp_path: Path) 
 
 
 def test_run_download_always_guards(monkeypatch, tmp_path: Path) -> None:
-    assert "match_filter" in _captured_opts(
-        monkeypatch, tmp_path, output_template="a/%(title)s.%(ext)s"
+    assert (
+        "match_filter"
+        in _captured_opts(monkeypatch, tmp_path, output_template="a/%(title)s.%(ext)s")[0]
     )
-    assert "match_filter" in _captured_opts(monkeypatch, tmp_path)
+    assert "match_filter" in _captured_opts(monkeypatch, tmp_path)[0]
     abs_t = str(tmp_path / "x.%(ext)s")
-    assert "match_filter" in _captured_opts(monkeypatch, tmp_path, output_template=abs_t)
+    assert "match_filter" in _captured_opts(monkeypatch, tmp_path, output_template=abs_t)[0]
 
 
 def _real_download_through_guard(monkeypatch, tmp_path: Path, output_template: str | None) -> None:
