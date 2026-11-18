@@ -4,9 +4,9 @@ Date: 2026-11-18. Status: draft for owner approval.
 
 ## Intent
 
-YourTube is used at a computer today. The owner wants to use it from their iPhone too: share a link from the YouTube app to queue it, check progress, get notified when downloads finish or fail, and watch or save finished files. They also want files that play anywhere (MP4), a library on disk that is organised by channel and playlist, and two small shell fixes (a logo icon, an icon theme switch).
+YourTube is used at a computer today. The owner wants to use it from their iPhone too: copy a video or playlist link in the YouTube app and paste it into YourTube to queue it, check progress, get notified when downloads finish or fail, and watch or save finished files. They also want files that play anywhere (MP4), a library on disk that is organised by channel and playlist, and two small shell fixes (a logo icon, an icon theme switch).
 
-Success: from the iPhone home-screen app, share a YouTube link, queue it, lock the phone, get a push when it lands, open it in the library and play or save it. On disk, the file sits at `downloads/<channel>/<playlist>/<title>.mp4`.
+Success: copy a YouTube link, open the iPhone home-screen app, paste it and queue it, lock the phone, get a push when it lands, open it in the library and play or save it. On disk, the file sits at `downloads/<channel>/<playlist>/<title>.mp4`.
 
 ## Goals
 
@@ -130,7 +130,8 @@ The red play-circle from `apps/web/public/favicon.svg` replaces the red bar in t
 - Manifest: name "YourTube", short name "YourTube", `display: standalone`, `start_url: "/"`, theme/background colours from `bg` (dark `#0b0b0c`), icons 64/192/512, maskable 512, apple-touch-icon 180, generated from the play-circle.
 - `index.html`: viewport with `viewport-fit=cover`, `theme-color` (light and dark media variants), Apple web-app meta tags, `apple-touch-icon`.
 - Android/desktop: `share_target` (GET) to `/?share=<url>` → app reads it and routes to fetch. Harmless on iOS.
-- iOS share: README documents a Shortcut "Send to YourTube" (Receive URLs from Share Sheet → Open URL `https://<host>/#/fetch/<url-encoded>`). The existing `#/fetch/<urls>` route already handles this; opening it in Safari or the installed app shows the normal fetch view.
+- iOS: the main way in is copy and paste (owner's choice). Copy the link in the YouTube app, open YourTube, paste it into the top-bar field. On phones, while the field is empty, a Paste button sits beside it and calls `navigator.clipboard.readText()` on tap (iOS shows its own "Paste" confirmation); if reading fails, the field gets focus so the owner can long-press and paste. Pasting a URL does not auto-fetch; the owner taps Fetch (my call: keeps the existing behaviour and avoids surprise lookups).
+- Optional extra, docs only: the README describes an iOS Shortcut "Send to YourTube" (Receive URLs from Share Sheet → Open URL `https://<host>/#/fetch/<url-encoded>`), which the existing `#/fetch/<urls>` route already handles. No app code depends on it.
 
 ### 7. Phone layout
 
@@ -166,7 +167,7 @@ Events:
 | Playlist batch settled | "<playlist>: 12 downloaded, 1 failed" | yes (new) |
 
 - Batch: jobs created by one `POST` enqueue request with more than one job share a new nullable `downloads.batch_id` (UUID). When the last job of a batch reaches `done`, `error` or `cancelled`, one summary push is sent. Jobs in a batch send no per-job push, and toasts for a batch are summary-only too (my call, to avoid noise). Retrying a failed batch job does not re-trigger a batch summary (the retried job notifies as a single job).
-- Recipients: every subscribed device gets every push (owner's choice). This keeps the iOS Shortcut flow working: it opens in Safari, and the home-screen app still gets the push.
+- Recipients: every subscribed device gets every push (owner's choice). A job queued from Safari still notifies the home-screen app.
 - Summary counts come from the database (`batch_id` group), not from the queue endpoint, which only returns the 20 most recent finished jobs. A multi-URL batch is named "N videos" in its push.
 - App in the foreground: the service worker always shows the push (iOS requires a visible notification for every push or it may revoke the subscription). The in-app toast still shows too. A duplicate on the device that is open is accepted (my call).
 - Delivery: `pywebpush` from the worker thread after `release_job` commits. Failures are logged and never fail the job. `404/410` responses delete the subscription.
@@ -181,7 +182,7 @@ Events:
 
 - `PRODUCT.md`: platform web + phone PWA; users include the phone; remove PWA, push and playback from out-of-scope; keep "no recommendations, avatars, view counts" (a notification toggle is not a bell).
 - `DESIGN.md`: phone section, logo mark, theme tile, toast variants, player.
-- `README.md`: Tailscale setup, iOS install and Shortcut, notifications, new env vars, disk layout.
+- `README.md`: Tailscale setup, iOS install, copy-paste flow, optional Shortcut, notifications, new env vars, disk layout.
 
 ## Delivery phases
 
@@ -189,7 +190,7 @@ Each phase is shippable on its own.
 
 1. **Downloads:** MP4 sort, slug + channel/playlist folders, `playlist_title` column, one-off move.
 2. **Shell:** logo mark, theme tile.
-3. **Phone:** phone layout for all screens, player + Save, `inline` file flag, PWA manifest/icons/service worker, `YT_HOST`, Tailscale + Shortcut docs, PRODUCT/DESIGN updates.
+3. **Phone:** phone layout for all screens, player + Save, `inline` file flag, PWA manifest/icons/service worker, phone Paste button, `YT_HOST`, Tailscale + install docs, PRODUCT/DESIGN updates.
 4. **Notifications:** batches, VAPID, subscriptions, worker push, Settings toggle, toast variants.
 
 ## Left to the builder
