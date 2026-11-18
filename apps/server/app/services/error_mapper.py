@@ -17,6 +17,13 @@ import re
 # generic ones (e.g. "denied").
 _RULES: list[tuple[str, str, re.Pattern[str]]] = [
     (
+        "output_outside_downloads",
+        "This job saves outside the downloads folder. Dismiss it and add the video again.",
+        re.compile(
+            r"must stay within the (configured )?downloads (folder|directory)", re.IGNORECASE
+        ),
+    ),
+    (
         "private_or_age_restricted",
         "This video is private or age-restricted.",
         re.compile(r"private|age[- ]?restrict|sign in to confirm your age", re.IGNORECASE),

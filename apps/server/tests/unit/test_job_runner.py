@@ -115,3 +115,30 @@ def test_job_runner_passes_quality_cap(monkeypatch, db_session_visible, tmp_path
 def test_old_enqueue_leaves_cap_null(db_session_visible) -> None:
     row = enqueue_download(db_session_visible, DownloadCreate(url="https://example.com/old"))
     assert row.quality_cap is None
+
+
+def test_run_claimed_job_output_guard_refusal_fails_clearly(
+    monkeypatch, db_session_visible, tmp_path: Path
+) -> None:
+    """An old row whose template now leaves the downloads folder gets a message that says so."""
+    row = enqueue_download(
+        db_session_visible,
+        DownloadCreate(url="https://example.com/old", output_template="/elsewhere/x.%(ext)s"),
+    )
+    db_session_visible.execute(
+        Download.__table__.update().where(Download.id == row.id).values(status="active")
+    )
+    set_settings_batch(db_session_visible, {"downloads_dir": str(tmp_path)})
+    db_session_visible.commit()
+
+    def refused(**_kwargs):
+        # What the always-on output guard raises (see test_run_download_always_guards).
+        raise ValueError("output template must stay within the downloads folder")
+
+    monkeypatch.setattr("app.services.job_runner.run_download", refused)
+
+    run_claimed_job(row.id)
+
+    db_session_visible.refresh(row)
+    assert row.status == "error"
+    assert row.error_code == "output_outside_downloads"
