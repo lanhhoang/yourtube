@@ -52,4 +52,4 @@ Tracking: 0 for body, -0.01em for `xl`. Body measure under 70ch.
 
 ## Layout
 
-Top bar 56 px: wordmark (player mark, 20 px tall, + "yourtube"), pill URL field centred up to 560 px, Fetch button, options menu. Left rail 72 px: icon over 11 px label, red count on Queue; theme switch in the rail footer. Content scrolls under the bar.
+Top bar 56 px: wordmark (player mark, 20 px tall, + "yourtube"), pill URL field centred up to 560 px, Fetch button, options menu. Left rail 72 px: icon over 11 px label, red count on Queue; theme tile in the rail footer (moon/sun/monitor, cycles Dark → Light → System; Settings keeps the three-option control). Content scrolls under the bar.

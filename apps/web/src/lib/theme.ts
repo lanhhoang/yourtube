@@ -31,3 +31,14 @@ export function watchSystemTheme(): () => void {
   query.addEventListener("change", onChange);
   return () => query.removeEventListener("change", onChange);
 }
+
+const ORDER: ThemeChoice[] = ["dark", "light", "system"];
+const NAMES: Record<ThemeChoice, string> = { dark: "Dark", light: "Light", system: "System" };
+
+export function nextTheme(choice: ThemeChoice): ThemeChoice {
+  return ORDER[(ORDER.indexOf(choice) + 1) % ORDER.length];
+}
+
+export function themeLabel(choice: ThemeChoice): string {
+  return `Theme: ${NAMES[choice]}. Switch to ${NAMES[nextTheme(choice)]}`;
+}

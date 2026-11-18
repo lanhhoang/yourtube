@@ -1,6 +1,6 @@
 <script lang="ts">
   import { href, type Section } from "../lib/router.ts";
-  import ThemeSelect from "./ThemeSelect.svelte";
+  import ThemeToggle from "./ThemeToggle.svelte";
 
   let { active, queueCount = 0 }: { active: Section; queueCount?: number } = $props();
 
@@ -60,5 +60,5 @@
       </li>
     {/each}
   </ul>
-  <div class="px-1"><ThemeSelect /></div>
+  <div class="flex justify-center"><ThemeToggle /></div>
 </nav>

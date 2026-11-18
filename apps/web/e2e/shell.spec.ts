@@ -1,13 +1,17 @@
 import { expect, test } from "@playwright/test";
 import { APP } from "./app.ts";
 
-test("dark by default, theme switch persists", async ({ page }) => {
-  await page.goto(`${APP}#/`);
+test("rail theme tile cycles, persists and stays in sync with Settings", async ({ page }) => {
+  await page.goto(`${APP}#/settings`);
   await expect(page.locator("html")).toHaveClass(/dark/);
-  await page.getByText("Light", { exact: true }).click();
-  await page.reload();
+  await page.getByRole("button", { name: "Theme: Dark. Switch to Light" }).click();
   await expect(page.locator("html")).not.toHaveClass(/dark/);
   await expect(page.getByRole("radio", { name: "Light" })).toBeChecked();
+  await page.getByText("System", { exact: true }).click();
+  await expect(page.getByRole("button", { name: "Theme: System. Switch to Dark" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("radio", { name: "System" })).toBeChecked();
+  await expect(page.getByRole("button", { name: "Theme: System. Switch to Dark" })).toBeVisible();
 });
 
 test("rail navigates", async ({ page }) => {
