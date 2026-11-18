@@ -23,3 +23,14 @@ test("fetch from the top bar opens the fetch route", async ({ page }) => {
   await page.getByRole("button", { name: "Fetch", exact: true }).click();
   await expect(page).toHaveURL(/#\/fetch\/https%3A%2F%2Fyoutu\.be%2Fa$/);
 });
+
+test("wordmark shows the player mark", async ({ page }) => {
+  await page.goto(`${APP}#/`);
+  const home = page.getByRole("link", { name: "yourtube" });
+  const mark = home.locator("svg[aria-hidden='true']");
+  await expect(mark).toBeVisible();
+  const box = await mark.boundingBox();
+  expect(box?.height).toBeGreaterThanOrEqual(17);
+  expect(box?.height).toBeLessThanOrEqual(22);
+  expect(box?.width).toBeGreaterThan(box?.height ?? 0);
+});
