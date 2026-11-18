@@ -29,6 +29,17 @@ def test_enqueue_single_with_cap(client: TestClient, db_session_visible: Session
     assert job["quality_cap"] == "720" and job["title"] == "T" and job["status"] == "queued"
 
 
+def test_enqueue_hdr_roundtrip(client: TestClient) -> None:
+    r = _post(client, [{"url": U, "quality_cap": "best", "hdr": True}])
+    assert r.status_code == 201
+    assert r.json()["created"][0]["hdr"] is True
+
+
+def test_enqueue_hdr_defaults_false(client: TestClient) -> None:
+    r = _post(client, [{"url": U, "quality_cap": "best"}])
+    assert r.json()["created"][0]["hdr"] is False
+
+
 def test_enqueue_mixed_cap_and_exact(client: TestClient, db_session_visible: Session) -> None:
     r = _post(
         client,

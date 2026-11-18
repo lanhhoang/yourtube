@@ -34,6 +34,7 @@ class DownloadCreate(BaseModel):
     audio_bitrate: str | None = None
     quality_cap: QualityCap | None = None
     subtitles: bool = False
+    hdr: bool = False
 
     @field_validator("audio_bitrate")
     @classmethod
@@ -58,6 +59,7 @@ class FormatInfo(BaseModel):
     vcodec: str | None = None
     acodec: str | None = None
     abr: float | None = None
+    dynamic_range: str | None = None
     vbr: float | None = None
     filesize: int | None = None
     tbr: float | None = None
@@ -81,6 +83,7 @@ class JobOut(BaseModel):
     status: JobStatus
     progress: float
     quality_cap: QualityCap | None
+    hdr: bool
     error_code: str | None
     error_message: str | None
     media_kind: MediaKind
@@ -108,6 +111,7 @@ class JobOut(BaseModel):
                 "status": row.status,
                 "progress": row.progress,
                 "quality_cap": row.quality_cap,
+                "hdr": bool(row.hdr),
                 "error_code": row.error_code,
                 "error_message": row.error_message,
                 "media_kind": "audio" if audio_only else "video",
@@ -165,6 +169,7 @@ class StreamRow(BaseModel):
     abr: float | None
     audio_channels: int | None
     container: str | None
+    dynamic_range: str | None
 
 
 class StreamPicker(BaseModel):

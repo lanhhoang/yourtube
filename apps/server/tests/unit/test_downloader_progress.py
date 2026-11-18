@@ -329,6 +329,18 @@ def test_run_download_exact_ids_win(monkeypatch, tmp_path: Path) -> None:
     assert "merge_output_format" not in opts
 
 
+def test_run_download_hdr_sort(monkeypatch, tmp_path: Path) -> None:
+    opts, _ = _captured_opts(monkeypatch, tmp_path, quality_cap="best", hdr=True)
+    assert opts["format_sort"] == ["res", "hdr", "vcodec:h264", "acodec:aac"]
+
+
+def test_run_download_exact_ids_ignore_hdr(monkeypatch, tmp_path: Path) -> None:
+    opts, _ = _captured_opts(
+        monkeypatch, tmp_path, video_format_id="137", audio_format_id="140", hdr=True
+    )
+    assert "format_sort" not in opts and "merge_output_format" not in opts
+
+
 def test_run_download_uses_cap(monkeypatch, tmp_path: Path) -> None:
     opts, _ = _captured_opts(monkeypatch, tmp_path, quality_cap="720")
     assert opts["format"] == "bv*+ba/b"

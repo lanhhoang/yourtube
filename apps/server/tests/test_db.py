@@ -18,6 +18,10 @@ def test_downloads_has_quality_cap_column(db_inspector):
     assert "quality_cap" in {c["name"] for c in db_inspector.get_columns("downloads")}
 
 
+def test_downloads_has_hdr_column(db_inspector):
+    assert "hdr" in {c["name"] for c in db_inspector.get_columns("downloads")}
+
+
 def test_migration_downgrade_and_upgrade(tmp_path, monkeypatch):
     from alembic.config import Config
     from sqlalchemy import create_engine, inspect
@@ -34,8 +38,9 @@ def test_migration_downgrade_and_upgrade(tmp_path, monkeypatch):
         return {c["name"] for c in inspect(create_engine(url)).get_columns("downloads")}
 
     command.upgrade(cfg, "head")
+    assert "hdr" in cols()
+    command.downgrade(cfg, "20261115120000")
+    assert "hdr" not in cols()
     assert "quality_cap" in cols()
-    command.downgrade(cfg, "-1")
-    assert "quality_cap" not in cols()
     command.upgrade(cfg, "head")
-    assert "quality_cap" in cols()
+    assert "hdr" in cols()

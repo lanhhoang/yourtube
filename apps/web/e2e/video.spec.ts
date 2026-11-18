@@ -31,3 +31,53 @@ test("a bad output template shows the server's message", async ({ page }) => {
   await page.getByRole("button", { name: "Add to queue" }).click();
   await expect(page.getByRole("alert")).toBeVisible();
 });
+
+async function fetchVideo(page: import("@playwright/test").Page, url: string) {
+  await page.goto(`${APP}#/`);
+  await page.getByRole("textbox", { name: "Video or playlist URL" }).fill(url);
+  await page.getByRole("button", { name: "Fetch", exact: true }).click();
+}
+
+test("HDR is disabled when the video has no HDR", async ({ page }) => {
+  await fetchVideo(page, "https://e2e.test/video");
+  await expect(page.getByRole("checkbox", { name: "HDR (not offered)" })).toBeDisabled();
+});
+
+test("HDR can be ticked on an HDR video", async ({ page }) => {
+  await fetchVideo(page, "https://e2e.test/v/a");
+  const box = page.getByRole("checkbox", { name: "HDR", exact: true });
+  await expect(box).toBeEnabled();
+  await box.check();
+  const request = page.waitForRequest((r) => r.url().endsWith("/api/downloads"));
+  await page.getByRole("button", { name: "Add to queue" }).click();
+  expect((await request).postDataJSON().jobs[0].hdr).toBe(true);
+});
+
+test("the HDR note appears only when the cap lands above the HDR size", async ({ page }) => {
+  await fetchVideo(page, "https://e2e.test/v/lowhdr");
+  await page.getByRole("checkbox", { name: "HDR", exact: true }).check();
+  const note = page.getByText("HDR only up to 1080p. This cap gets SDR.");
+  await expect(note).toHaveCount(0);
+  await page.getByRole("combobox", { name: "Quality" }).selectOption("best");
+  await expect(note).toBeVisible();
+  await page.getByRole("combobox", { name: "Quality" }).selectOption("1080");
+  await expect(note).toHaveCount(0);
+});
+
+test("an exact format pick disables HDR and hides its note, unpicking restores it", async ({
+  page,
+}) => {
+  await fetchVideo(page, "https://e2e.test/v/lowhdr");
+  const box = page.getByRole("checkbox", { name: "HDR", exact: true });
+  await box.check();
+  await page.getByRole("combobox", { name: "Quality" }).selectOption("best");
+  const note = page.getByText("HDR only up to 1080p. This cap gets SDR.");
+  await expect(note).toBeVisible();
+  await page.getByRole("button", { name: /^2160p/ }).click();
+  await expect(box).toBeDisabled();
+  await expect(note).toHaveCount(0);
+  await page.getByRole("button", { name: /^2160p/ }).click();
+  await expect(box).toBeEnabled();
+  await expect(box).toBeChecked();
+  await expect(note).toBeVisible();
+});

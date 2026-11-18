@@ -25,7 +25,7 @@ Success: copy a YouTube link, open the iPhone home-screen app, paste it and queu
 - Re-encoding. Streams are copied and remuxed, never transcoded.
 - Login or multi-user accounts. Tailscale is the access boundary.
 - Exposing the app to the public internet.
-- HDR output.
+- HDR output unless the job asks for it (see 2026-11-18-hdr-option-design.md).
 - Local macOS runs without ffmpeg. The owner runs YourTube in Docker/Podman or on Linux, where ffmpeg is installed. No ffmpeg diagnostic is added.
 
 ## Anti-goals (failure even if it works)

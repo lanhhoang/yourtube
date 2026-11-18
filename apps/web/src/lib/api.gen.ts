@@ -290,6 +290,11 @@ export interface components {
             audio_format_id?: string | null;
             /** Duration */
             duration?: number | null;
+            /**
+             * Hdr
+             * @default false
+             */
+            hdr: boolean;
             /** Output Template */
             output_template?: string | null;
             quality_cap?: components["schemas"]["QualityCap"] | null;
@@ -329,6 +334,8 @@ export interface components {
             file_size: number | null;
             /** Finished At */
             finished_at: string | null;
+            /** Hdr */
+            hdr: boolean;
             /** Id */
             id: number;
             /** Media Format */
@@ -483,6 +490,8 @@ export interface components {
             audio_channels: number | null;
             /** Container */
             container: string | null;
+            /** Dynamic Range */
+            dynamic_range: string | null;
             /** Ext */
             ext: string;
             /** Format Id */

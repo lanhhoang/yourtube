@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { components } from "../lib/api.gen.ts";
   import { type Selection, toggle } from "../lib/format-picker.ts";
+  import { isHdr } from "../lib/quality.ts";
 
   type Row = components["schemas"]["StreamRow"];
 
@@ -19,7 +20,9 @@
 
   function detail(r: Row): string {
     const codec = kind === "video" ? r.vcodec : r.acodec;
-    return [codec?.split(".")[0], r.ext].filter(Boolean).join(" · ");
+    return [codec?.split(".")[0], r.ext, kind === "video" && isHdr(r) ? "HDR" : null]
+      .filter(Boolean)
+      .join(" · ");
   }
 </script>
 

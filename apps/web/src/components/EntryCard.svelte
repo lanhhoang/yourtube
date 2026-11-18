@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { badgeFor } from "../lib/badges.ts";
+  import { badgeFor, hdrBadgeFor } from "../lib/badges.ts";
   import { formatDuration } from "../lib/duration.ts";
   import { type EntryState, isUnavailable } from "../lib/playlist.ts";
   import type { QualityCap } from "../lib/quality.ts";
@@ -27,6 +27,7 @@
   const thumbnail = $derived(item.entry.thumbnail ?? details?.thumbnail ?? null);
   const duration = $derived(item.entry.duration ?? details?.duration ?? null);
   const badge = $derived(badgeFor(item, cap));
+  const hdrBadge = $derived(hdrBadgeFor(item, cap));
   const unavailable = $derived(isUnavailable(item));
 
   function open() {
@@ -92,6 +93,11 @@
         title={badge.kind === "unavailable" ? badge.message : undefined}
       >
         {badge.label}
+      </span>
+    {/if}
+    {#if hdrBadge}
+      <span class="rounded-control bg-raised px-2 py-0.5 text-xs font-medium text-fg">
+        {hdrBadge.label}
       </span>
     {/if}
   </div>

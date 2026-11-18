@@ -8,6 +8,10 @@ yt-dlp's ``res`` sort field is ``min(height, width)`` (``yt_dlp/utils/_utils.py`
 so ``res:N`` prefers the largest short side <= N and never fails: when a video
 has nothing <= N it takes the closest quality above. ``best`` uses bare ``res``.
 
+With ``hdr=True`` the job asked for HDR: ``hdr`` replaces ``hdr:sdr``. ``res`` stays
+first, so resolution wins and HDR never costs resolution. A VP9.2 HDR stream beats AV1
+HDR because of ``vcodec:h264`` (accepted; see the HDR option spec).
+
 ``hdr:sdr`` must be explicit: yt-dlp's default order puts HDR first, so a 4K HDR
 upload would give HDR10, and a VP9.2 HDR stream beats an SDR AV1 one without it.
 After resolution and SDR, H.264 wins where YouTube offers it (up to 1080p) and
@@ -28,7 +32,8 @@ from typing import NamedTuple, get_args
 
 from app.schemas import FormatInfo, QualityCap
 
-MP4_SORT = ["hdr:sdr", "vcodec:h264", "acodec:aac"]
+# Sort keys after ``res`` and the HDR key: H.264 over other codecs, AAC over Opus.
+CODEC_SORT = ["vcodec:h264", "acodec:aac"]
 
 QUALITY_CAPS: tuple[QualityCap, ...] = get_args(QualityCap.__value__)
 
@@ -63,10 +68,12 @@ class CapFormat(NamedTuple):
     merge_output_format: str | None
 
 
-def cap_format_options(cap: QualityCap | None, audio_bitrate: str | None = None) -> CapFormat:
+def cap_format_options(
+    cap: QualityCap | None, audio_bitrate: str | None = None, hdr: bool = False
+) -> CapFormat:
     kbps = bitrate_kbps(audio_bitrate)
     abr = [f"abr:{kbps}"] if kbps else []
     if cap == "audio":
         return CapFormat("ba/b", abr or None, None)
     res = "res" if cap is None or cap == "best" else f"res:{cap}"
-    return CapFormat("bv*+ba/b", [res, *MP4_SORT, *abr], "mp4")
+    return CapFormat("bv*+ba/b", [res, "hdr" if hdr else "hdr:sdr", *CODEC_SORT, *abr], "mp4")

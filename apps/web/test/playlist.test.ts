@@ -59,7 +59,13 @@ const failed = (): EntryState => ({
   check: { ok: false, message: "x" },
   override: null,
 });
-const header: Header = { cap: "1080", subtitles: true, outputTemplate: "  ", audioBitrate: "" };
+const header: Header = {
+  cap: "1080",
+  subtitles: true,
+  hdr: false,
+  outputTemplate: "  ",
+  audioBitrate: "",
+};
 
 test("initialEntries: error entry is unavailable and deselected", () => {
   const r = initialEntries({
@@ -145,6 +151,19 @@ test("buildJobs", () => {
       quality_cap: "1080",
     }),
   ]);
+});
+
+test("buildJobs sends hdr on every job, including overrides", () => {
+  const custom = setOverride([ok()], 0, {
+    selection: { videoId: "137", audioId: "140" },
+    subtitles: false,
+    outputTemplate: "",
+    audioBitrate: "",
+  })[0];
+  const plain = { ...ok(), entry: { ...base, index: 1, url: "https://e/1" } };
+  const on = buildJobs([custom, plain], { ...header, hdr: true });
+  expect(on.map((j) => j.hdr)).toEqual([true, true]);
+  expect(buildJobs([plain], header)[0].hdr).toBe(false);
 });
 
 test("buildJobs keeps the title shown on the card", () => {

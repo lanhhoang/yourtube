@@ -56,6 +56,7 @@ class StreamPickerRow(TypedDict):
     abr: float | None
     audio_channels: int | None
     container: str | None
+    dynamic_range: str | None
 
 
 class StreamPickerPayload(TypedDict):
@@ -184,6 +185,7 @@ def normalize_formats(info: dict) -> list[FormatInfo]:
                 tbr=_safe_float(raw.get("tbr")),
                 format_note=_safe_str(raw.get("format_note")),
                 container=_safe_str(raw.get("container")),
+                dynamic_range=_safe_str(raw.get("dynamic_range")),
             )
         )
     return out
@@ -398,6 +400,7 @@ def build_stream_picker_payload(formats: list[FormatInfo]) -> StreamPickerPayloa
             "abr": item.abr,
             "audio_channels": item.audio_channels,
             "container": item.container,
+            "dynamic_range": item.dynamic_range,
         }
 
     expected_container_by_pair: dict[str, str] = {"|": "unknown"}
@@ -562,6 +565,7 @@ def run_download(
     subtitles: bool = False,
     progress_hook: YtdlpProgress | None = None,
     quality_cap: QualityCap | None = None,
+    hdr: bool = False,
 ) -> DownloadResult:
     """Run yt-dlp and return the output path plus file metadata.
 
@@ -575,7 +579,7 @@ def run_download(
     if video_format_id or audio_format_id:
         fmt = _format_selector(video_format_id, audio_format_id, audio_bitrate=audio_bitrate)
     else:
-        fmt, format_sort, merge_output_format = cap_format_options(quality_cap, audio_bitrate)
+        fmt, format_sort, merge_output_format = cap_format_options(quality_cap, audio_bitrate, hdr)
     ydl_opts = build_ytdlp_options(
         skip_download=False,
         output_dir=output_dir,

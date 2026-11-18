@@ -6,7 +6,7 @@
   import { formatDuration } from "../lib/duration.ts";
   import { messageFor } from "../lib/errors.ts";
   import { expectedContainer, hasExact, type Selection } from "../lib/format-picker.ts";
-  import { DEFAULT_CAP, type QualityCap } from "../lib/quality.ts";
+  import { DEFAULT_CAP, hdrAtCap, hdrSide, type QualityCap } from "../lib/quality.ts";
   import { href } from "../lib/router.ts";
 
   type Video = components["schemas"]["VideoDetails"];
@@ -17,6 +17,7 @@
   let cap = $state<QualityCap>(DEFAULT_CAP);
   let selection = $state<Selection>({ videoId: null, audioId: null });
   let subtitles = $state(false);
+  let hdr = $state(false);
   let tab = $state<Tab>("video");
   let template = $state("");
   let bitrate = $state("");
@@ -32,6 +33,16 @@
 
   const exact = $derived(hasExact(selection));
   const container = $derived(expectedContainer(video.picker, selection));
+  const streams = $derived(video.picker.video_streams);
+  const noHdr = $derived(hdrSide(streams) === null);
+  const hdrOff = $derived(noHdr || cap === "audio");
+  const hdrDisabled = $derived(hdrOff || exact);
+  const hdrNote = $derived(hdr && !hdrDisabled ? hdrAtCap(cap, streams) : null);
+
+  $effect(() => {
+    if (hdrOff) hdr = false;
+  });
+
   const minutes = $derived(video.duration === null ? "" : formatDuration(video.duration));
 
   async function add() {
@@ -54,6 +65,7 @@
                 video_format_id: selection.videoId,
                 audio_format_id: selection.audioId,
                 subtitles,
+                hdr: hdr && !hdrDisabled,
                 output_template: template.trim() || null,
                 audio_bitrate: bitrate.trim() || null,
               },
@@ -118,6 +130,24 @@
 
   <aside class="flex min-w-0 flex-col gap-4">
     <QualitySelect bind:value={cap} dimmed={exact} />
+    <div
+      class="flex flex-col gap-1 transition-opacity duration-(--duration-fast) {exact
+        ? "opacity-50"
+        : ""}"
+    >
+      <label class="flex min-h-11 items-center gap-2 text-base {hdrDisabled ? "text-muted" : ""}">
+        <input
+          type="checkbox"
+          bind:checked={hdr}
+          disabled={hdrDisabled}
+          class="size-4 accent-(--color-action)"
+        >
+        {noHdr ? "HDR (not offered)" : "HDR"}
+      </label>
+      {#if hdrNote?.kind === "below"}
+        <p class="m-0 text-sm text-muted">HDR only up to {hdrNote.side}p. This cap gets SDR.</p>
+      {/if}
+    </div>
 
     <div
       role="tablist"
