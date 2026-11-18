@@ -1,6 +1,6 @@
 # yourtube server
 
-FastAPI backend for yourtube: lifespan-managed Alembic migrations, a SQLite-backed queue and library, worker-thread downloads with yt-dlp, and the current Jinja/HTMX UI.
+FastAPI backend for yourtube: lifespan-managed Alembic migrations, a SQLite-backed queue and library, worker-thread downloads with yt-dlp, a JSON API under `/api`, and the built Svelte app from `apps/web/dist`.
 
 Run everything from the repo root with `pnpm` (see the [root README](../../README.md)), or from this directory with `uv`.
 
@@ -27,7 +27,7 @@ All settings are environment variables prefixed with `YT_`, read from the proces
 | `YT_COOKIES_PATH`   | _(unset)_                      | Cookies file passed to yt-dlp                     |
 | `YT_PROXY_URL`      | _(unset)_                      | Proxy passed to yt-dlp                            |
 | `YT_DATABASE_URL`   | _(derived from `YT_DATA_DIR`)_ | SQLAlchemy URL; relative `sqlite:///` paths resolve against the repo root |
-| `YT_WEB_DIST_DIR`   | `apps/web/dist`                | Built web app directory (unused until Phase 2)    |
+| `YT_WEB_DIST_DIR`   | `apps/web/dist`                | Built web app directory                         |
 | `YT_LOG_LEVEL`      | `INFO`                         | Logging level                                     |
 | `YT_WORKERS`        | `1`                            | Worker thread count                               |
 
@@ -43,15 +43,13 @@ apps/server/
 │   ├── db.py         — Engine, session factory, SQLite pragmas
 │   ├── models.py     — SQLAlchemy ORM models
 │   ├── schemas.py    — Pydantic request/response contracts
-│   ├── routes/       — Page route handlers
-│   ├── services/     — Queue, downloader, library, and settings logic
-│   ├── templates/    — Jinja templates
-│   └── static/       — CSS, vendored HTMX and Alpine
+│   ├── api/          — JSON routes under /api, SPA serving, error bodies
+│   └── services/     — Queue, downloader, library, and settings logic
 ├── alembic/          — Schema migrations (env.py, versions/)
 ├── alembic.ini
 ├── pyproject.toml    — Dependencies and ruff / ty / pytest config
 ├── uv.lock
-└── tests/            — unit/ and integration/, plus conftest.py with migrated DB fixtures
+└── tests/            — api/, unit/ and integration/, plus conftest.py with migrated DB fixtures
 ```
 
 ## Testing
