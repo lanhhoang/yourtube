@@ -14,7 +14,7 @@
 
 **Parent plan:** `docs/superpowers/plans/2026-11-18-phone-pwa-notifications.md`, Tasks 4, 5. The tasks below are copied from it verbatim; the parent plan wins if they ever differ. Phase index: `docs/superpowers/plans/2026-11-18-phone-pwa-notifications-phases.md`.
 
-**Prerequisites:** Phase 2 merged (`CapFormat`, `MP4_SORT`, `merge_output_format` and the `requested_downloads` path exist).
+**Prerequisites:** Phase 2 merged (`CapFormat`, `merge_output_format` and the `requested_downloads` path exist).
 
 ## Global Constraints
 
@@ -52,7 +52,7 @@ Sort `[res[:N], "hdr", "vcodec:h264", "acodec:aac"]` with `format="bv*+ba/b"`, `
 
 - Create: `apps/server/alembic/versions/20261118110000_add_hdr.py` (`down_revision = "20261115120000"`; non-null boolean `hdr`, `server_default=sa.false()`)
 - Modify: `apps/server/app/models.py` (`Download.hdr`: `Boolean, nullable=False, default=False, server_default=sa.false()`), `apps/server/app/schemas.py` (`DownloadCreate.hdr`, `JobOut.hdr` and the `"hdr"` key in `JobOut.from_row`, `FormatInfo.dynamic_range`, `StreamRow.dynamic_range`), `apps/server/app/services/queue.py` (`_row_from_payload`)
-- Modify: `apps/server/app/services/quality.py` (`cap_format_options`, docstring), `apps/server/app/services/downloader.py` (`normalize_formats`, `StreamPickerRow`, `_row` in `build_stream_picker_payload`, `run_download`), `apps/server/app/services/job_runner.py`
+- Modify: `apps/server/app/services/quality.py` (`cap_format_options`, `MP4_SORT` → `CODEC_SORT`, docstring), `apps/server/app/services/downloader.py` (`normalize_formats`, `StreamPickerRow`, `_row` in `build_stream_picker_payload`, `run_download`), `apps/server/app/services/job_runner.py`
 - Modify: `apps/server/tests/e2e_server.py` (`_video_info`'s `fmt` takes an optional `dr`; add a 2160p HDR10 stream `v2160hdr` only for URL `https://e2e.test/v/a`, and nothing else changes)
 - Modify: `apps/web/src/lib/api.gen.ts` (typegen), `apps/web/test/badges.test.ts` (add `dynamic_range: null` to the `details()` stream row, or `pnpm typecheck` fails once `StreamRow` gains the field)
 - Modify: `README.md` ("Quality caps": the HDR paragraph from spec §7), `PRODUCT.md`, `docs/superpowers/specs/2026-11-18-phone-pwa-notifications-design.md` (non-goal line)
@@ -60,9 +60,10 @@ Sort `[res[:N], "hdr", "vcodec:h264", "acodec:aac"]` with `format="bv*+ba/b"`, `
 
 **Interfaces:**
 
-- Consumes (Phase 2): `CapFormat`, `MP4_SORT = ["hdr:sdr", "vcodec:h264", "acodec:aac"]`, `cap_format_options(cap, audio_bitrate=None) -> CapFormat`, `build_ytdlp_options(..., merge_output_format=None)`.
+- Consumes (Phase 2): `CapFormat`, `MP4_SORT = ["hdr:sdr", "vcodec:h264", "acodec:aac"]` (renamed in this phase, see Produces), `cap_format_options(cap, audio_bitrate=None) -> CapFormat`, `build_ytdlp_options(..., merge_output_format=None)`.
 - Produces:
-  - `cap_format_options(cap: QualityCap | None, audio_bitrate: str | None = None, hdr: bool = False) -> CapFormat`. For video caps with `hdr=True`, the sort is `MP4_SORT` with `"hdr"` in place of `"hdr:sdr"`. `audio` ignores `hdr`.
+  - `cap_format_options(cap: QualityCap | None, audio_bitrate: str | None = None, hdr: bool = False) -> CapFormat`. For video caps with `hdr=True`, the sort is `[res, "hdr", *CODEC_SORT, *abr]` instead of `[res, "hdr:sdr", *CODEC_SORT, *abr]`. `audio` ignores `hdr`.
+  - Phase 3 replaces the `MP4_SORT` constant with `CODEC_SORT = ["vcodec:h264", "acodec:aac"]` and writes the HDR key (`"hdr"` or `"hdr:sdr"`) directly in `cap_format_options`, so the swap cannot silently stop working if the constant changes. The sorts `cap_format_options` returns do not change.
   - `run_download(..., hdr: bool = False)`. It is passed only to `cap_format_options` and ignored on the exact-ids branch.
   - `Download.hdr: Mapped[bool]` (non-null, default false). `DownloadCreate.hdr: bool = False`. `JobOut.hdr: bool`.
   - `JobOut.from_row` builds its dict by hand, so add `"hdr": bool(row.hdr)`. A `Download` built in memory and never flushed has `hdr is None` (the column default applies only on insert), and `test_media_kind_audio_for_audio_cap` in `tests/unit/test_quality.py` builds exactly that row; a bare `row.hdr` fails `JobOut` validation there.

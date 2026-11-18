@@ -36,7 +36,7 @@ Success: on a 4K HDR video, tick HDR, queue at "Best available", and get a 2160p
 
 ## Constraints
 
-- Phase 2 must be merged first. This builds on its `CapFormat`, `MP4_SORT` and `merge_output_format`.
+- Phase 2 must be merged first. This builds on its `CapFormat` and `merge_output_format`.
 - yt-dlp 2026.10.26. One `format_sort` list applies to every candidate. A codec preference added for HDR changes the SDR picks too (verified, see Appendix).
 - Database change goes through a new Alembic revision.
 - After the API schema change, run `pnpm typegen` and commit `apps/web/src/lib/api.gen.ts`.
@@ -52,7 +52,7 @@ Considered for how the HDR choice is carried:
 
 Considered for which HDR codec:
 
-- **VP9.2 HDR via the existing sort (chosen).** HDR on changes `hdr:sdr` to `hdr`, and the rest of `MP4_SORT` stays. `vcodec:h264` then ranks VP9 above AV1, so a video offering both picks VP9.2 HDR. The owner watches in VLC/IINA, which play it.
+- **VP9.2 HDR via the existing sort (chosen).** HDR on changes `hdr:sdr` to `hdr`, and the rest of the sort (`CODEC_SORT`: H.264, then AAC) stays. `vcodec:h264` then ranks VP9 above AV1, so a video offering both picks VP9.2 HDR. The owner watches in VLC/IINA, which play it.
 - **AV1 HDR via a two-step pick.** Would need the server to inspect formats and choose the sort per video, because adding `vcodec:av01` to the shared sort also makes 1080p SDR picks AV1 instead of H.264. Only buys QuickTime playback on M3+ Macs, which the owner doesn't need. Rejected.
 
 ## Decisions
