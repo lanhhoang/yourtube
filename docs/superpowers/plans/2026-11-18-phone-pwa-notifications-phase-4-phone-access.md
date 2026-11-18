@@ -14,7 +14,7 @@
 
 **Parent plan:** `docs/superpowers/plans/2026-11-18-phone-pwa-notifications.md`, Tasks 7, 8, 9, 10. The tasks below are copied from it verbatim; the parent plan wins if they ever differ. Phase index: `docs/superpowers/plans/2026-11-18-phone-pwa-notifications-phases.md`.
 
-**Prerequisites:** Phase 1 merged (`LogoMark` is the icon source). Phase 3 merged, so the README already has "Library layout" and the e2e seeded file sits at `e2e/seeded-video.mp4`.
+**Prerequisites:** Phase 1 merged (the new play-circle `public/favicon.svg` is the icon source). Phase 3 merged, so the README already has "Library layout" and the e2e seeded file sits at `e2e/seeded-video.mp4`.
 
 ## Global Constraints
 
