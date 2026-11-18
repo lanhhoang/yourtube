@@ -35,6 +35,8 @@ def test_settings_ignores_stale_playlist_page_size(
     r = client.get("/api/settings")
     assert r.status_code == 200
     assert "playlist_page_size" not in r.json()
+    assert client.put("/api/settings", json={"max_concurrent": 2}).status_code == 200
+    assert client.post("/api/settings/reset").status_code == 200
 
 
 def test_settings_reset_restores_defaults(client: TestClient, db_session_visible: Session) -> None:

@@ -24,7 +24,17 @@ After you change a route or a Pydantic schema on the server, run `pnpm typegen` 
 
 `pnpm e2e` builds the app and starts the real server on port 8100 through `apps/server/tests/e2e_server.py`. That file seeds two downloads and stubs yt-dlp, so the tests never reach YouTube. Install the browser once with `pnpm --filter @app/web exec playwright install chromium`, or set `PW_CHANNEL=chrome` to use an installed Google Chrome.
 
-To look at the app with the same fake data, start that server by hand (the command is in `playwright.config.ts`) and open http://127.0.0.1:8100/. Fetch `https://e2e.test/video` for a single video or `https://e2e.test/playlist` for a playlist.
+To look at the app with the same fake data, start that server by hand from the repo root. Keep the `YT_*` variables: without them it seeds rows and files into your real `tmp/data` and `tmp/downloads`.
+
+```bash
+pnpm build && rm -rf tmp/e2e && cd apps/server && \
+  YT_DATA_DIR=$PWD/../../tmp/e2e/data YT_DOWNLOADS_DIR=$PWD/../../tmp/e2e/downloads \
+  YT_DATABASE_URL=sqlite:///$PWD/../../tmp/e2e/data/yourtube.db \
+  YT_PROXY_URL= YT_COOKIES_PATH= YT_WORKERS_ENABLED=1 \
+  uv run uvicorn tests.e2e_server:app --host 127.0.0.1 --port 8100
+```
+
+Then open http://127.0.0.1:8100/ and fetch `https://e2e.test/video` for a single video or `https://e2e.test/playlist` for a playlist.
 
 ## Source layout
 

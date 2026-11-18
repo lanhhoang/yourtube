@@ -126,8 +126,9 @@ class JobCreate(DownloadCreate):
     @field_validator("audio_bitrate")
     @classmethod
     def _check_strict_bitrate(cls, value: str | None) -> str | None:
-        # Only the JSON API is strict: rows queued before it may hold free-form
-        # bitrates, so DownloadCreate stays lenient.
+        # Only the JSON API is strict. Rows queued before it may hold free-form
+        # bitrates; the worker reads those straight from the table, and
+        # cap_format_options tolerates them.
         if value is not None and not re.fullmatch(r"\d+[kK]?", value):
             raise ValueError("Audio bitrate must be a number such as 192 or 192K.")
         return value

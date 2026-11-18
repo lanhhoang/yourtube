@@ -373,3 +373,50 @@ def test_run_download_always_guards(monkeypatch, tmp_path: Path) -> None:
     assert "match_filter" in _captured_opts(monkeypatch, tmp_path)
     abs_t = str(tmp_path / "x.%(ext)s")
     assert "match_filter" in _captured_opts(monkeypatch, tmp_path, output_template=abs_t)
+
+
+def _real_download_through_guard(monkeypatch, tmp_path: Path, output_template: str | None) -> None:
+    """Run ``run_download`` with a real YoutubeDL that resolves the filename but skips the fetch."""
+    import yt_dlp
+
+    info = {
+        "id": "x",
+        "title": "t",
+        "ext": "mp4",
+        "extractor": "generic",
+        "extractor_key": "Generic",
+        "webpage_url": "https://x",
+        "formats": [
+            {
+                "format_id": "f",
+                "url": "https://x/f",
+                "ext": "mp4",
+                "vcodec": "avc1",
+                "acodec": "mp4a",
+                "protocol": "https",
+            }
+        ],
+    }
+    real_init = yt_dlp.YoutubeDL.__init__
+
+    def init(self, params=None, *args, **kwargs):
+        real_init(self, {**(params or {}), "skip_download": True}, *args, **kwargs)
+
+    def extract_info(self, url, download=True, **_kwargs):
+        return self.process_ie_result(dict(info), download=download)
+
+    monkeypatch.setattr(yt_dlp.YoutubeDL, "__init__", init)
+    monkeypatch.setattr(yt_dlp.YoutubeDL, "extract_info", extract_info)
+    run_download(url="https://x", output_dir=str(tmp_path), output_template=output_template)
+
+
+def test_run_download_refuses_absolute_template_outside_downloads(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """Owner decision: absolute templates are no longer exempt from the downloads-folder guard."""
+    downloads = tmp_path / "downloads"
+    _real_download_through_guard(monkeypatch, downloads, None)  # default template: allowed
+    with pytest.raises(ValueError, match="downloads folder"):
+        _real_download_through_guard(
+            monkeypatch, downloads, str(tmp_path / "elsewhere" / "x.%(ext)s")
+        )

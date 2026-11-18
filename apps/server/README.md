@@ -18,20 +18,19 @@ First-time setup: `uv sync --dev` in this directory.
 
 All settings are environment variables prefixed with `YT_`, read from the process environment and from `.env` at the **repo root** (see `app/config.py`). Relative paths resolve against the repo root, not the working directory, so `./tmp/data` always means `<repo>/tmp/data`. An empty value means "use the default".
 
-| Variable            | Default                        | Description                                       |
-| ------------------- | ------------------------------ | ------------------------------------------------- |
-| `YT_HOST`           | `127.0.0.1`                    | Bind address                                      |
-| `YT_PORT`           | `8000`                         | Bind port                                         |
-| `YT_DATA_DIR`       | `./tmp/data`                   | Database and runtime data directory               |
-| `YT_DOWNLOADS_DIR`  | `./tmp/downloads`              | Completed download output directory               |
-| `YT_COOKIES_PATH`   | _(unset)_                      | Cookies file passed to yt-dlp                     |
-| `YT_PROXY_URL`      | _(unset)_                      | Proxy passed to yt-dlp                            |
-| `YT_DATABASE_URL`   | _(derived from `YT_DATA_DIR`)_ | SQLAlchemy URL; relative `sqlite:///` paths resolve against the repo root |
-| `YT_WEB_DIST_DIR`   | `apps/web/dist`                | Built web app directory                         |
-| `YT_LOG_LEVEL`      | `INFO`                         | Logging level                                     |
-| `YT_WORKERS`        | `1`                            | Worker thread count                               |
+| Variable           | Default                        | Description                                                               |
+| ------------------ | ------------------------------ | ------------------------------------------------------------------------- |
+| `YT_DATA_DIR`      | `./tmp/data`                   | Database and runtime data directory                                       |
+| `YT_DOWNLOADS_DIR` | `./tmp/downloads`              | Completed download output directory                                       |
+| `YT_COOKIES_PATH`  | _(unset)_                      | Cookies file passed to yt-dlp                                             |
+| `YT_PROXY_URL`     | _(unset)_                      | Proxy passed to yt-dlp                                                    |
+| `YT_DATABASE_URL`  | _(derived from `YT_DATA_DIR`)_ | SQLAlchemy URL; relative `sqlite:///` paths resolve against the repo root |
+| `YT_WEB_DIST_DIR`  | `apps/web/dist`                | Built web app directory                                                   |
+| `YT_LOG_LEVEL`     | `INFO`                         | Logging level                                                             |
 
-Downloads folder, cookies path and proxy can also be changed on the Settings page; saved relative paths resolve against the repo root too.
+Downloads folder, cookies path and proxy can also be changed on the Settings page; saved relative paths resolve against the repo root too. The number of download threads is "Max concurrent downloads" on the Settings page.
+
+The bind address and port are uvicorn flags, not settings: `127.0.0.1:8000` in `package.json`, `0.0.0.0:8000` in the Dockerfile. `config.py` still declares `YT_HOST`, `YT_PORT` and `YT_WORKERS`, but nothing reads them.
 
 ## Layout
 
