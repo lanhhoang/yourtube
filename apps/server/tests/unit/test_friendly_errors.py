@@ -42,6 +42,26 @@ def test_geo_blocked_video(raw: str) -> None:
 @pytest.mark.parametrize(
     "raw",
     [
+        "Video unavailable",
+        "Video unavailable. This video has been removed by the uploader",
+        "This video is no longer available",
+    ],
+)
+def test_unavailable_video(raw: str) -> None:
+    code, message = friendly_ytdlp_error(raw)
+    assert code == "unavailable"
+    assert message == "This video is unavailable."
+
+
+def test_private_wins_over_unavailable() -> None:
+    assert friendly_ytdlp_error("Video unavailable. This video is private")[0] == (
+        "private_or_age_restricted"
+    )
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
         "HTTP Error 403: Forbidden",
         "403 Forbidden",
         "Got error 403 from server",
