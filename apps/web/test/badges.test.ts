@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import type { components } from "../src/lib/api.gen.ts";
-import { badgeFor } from "../src/lib/badges.ts";
+import { badgeFor, hdrBadgeFor } from "../src/lib/badges.ts";
 import type { EntryState, Override } from "../src/lib/playlist.ts";
 
 type Details = components["schemas"]["VideoDetails"];
@@ -127,4 +127,45 @@ test("custom video without a width uses the height", () => {
     check: { ok: true, details: details(1440, { width: null, height: 1440 }) },
   };
   expect(badgeFor(e, "720")?.label).toBe("1440p · custom");
+});
+
+const hdrRow = (w: number, h: number, dr: string, id: string) => ({
+  format_id: id,
+  ext: "webm",
+  resolution: null,
+  width: w,
+  height: h,
+  vcodec: "vp9.2",
+  acodec: null,
+  abr: null,
+  audio_channels: null,
+  container: null,
+  dynamic_range: dr,
+});
+const withRows = (e: EntryState, rows: ReturnType<typeof hdrRow>[]): EntryState => {
+  if (typeof e.check !== "object" || !e.check.ok) return e;
+  const d = e.check.details;
+  return {
+    ...e,
+    check: { ok: true, details: { ...d, picker: { ...d.picker, video_streams: rows } } },
+  };
+};
+const ladder = [
+  hdrRow(3840, 2160, "SDR", "a"),
+  hdrRow(1920, 1080, "SDR", "b"),
+  hdrRow(1920, 1080, "HDR10", "c"),
+];
+
+test("hdr badge: yes, below, none", () => {
+  const e = withRows(okEntry(2160), ladder);
+  expect(hdrBadgeFor(e, "1440")).toEqual({ label: "HDR" });
+  expect(hdrBadgeFor(e, "best")).toEqual({ label: "HDR ≤1080p" });
+  expect(hdrBadgeFor(okEntry(2160), "best")).toBeNull();
+});
+test("hdr badge: not for audio, overrides, failures or checking", () => {
+  const e = withRows(okEntry(2160), ladder);
+  expect(hdrBadgeFor(e, "audio")).toBeNull();
+  expect(hdrBadgeFor({ ...e, override: customEntry({ none: true }).override }, "1440")).toBeNull();
+  expect(hdrBadgeFor(failedEntry("x"), "1440")).toBeNull();
+  expect(hdrBadgeFor(checkingEntry(), "1440")).toBeNull();
 });

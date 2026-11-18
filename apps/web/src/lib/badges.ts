@@ -1,4 +1,4 @@
-import { CAP_OPTIONS, isBelowCap, type QualityCap } from "./quality.ts";
+import { CAP_OPTIONS, hdrAtCap, isBelowCap, type QualityCap } from "./quality.ts";
 import type { EntryState } from "./playlist.ts";
 
 export type Badge =
@@ -31,5 +31,13 @@ export function badgeFor(e: EntryState, cap: QualityCap): Badge | null {
   }
   const best = ok?.details.best_short_side ?? null;
   if (ok && best !== null && isBelowCap(cap, best)) return { kind: "below", label: `${best}p max` };
+  return null;
+}
+
+export function hdrBadgeFor(e: EntryState, cap: QualityCap): { label: string } | null {
+  if (e.override || typeof e.check !== "object" || !e.check.ok) return null;
+  const at = hdrAtCap(cap, e.check.details.picker.video_streams);
+  if (at.kind === "yes") return { label: "HDR" };
+  if (at.kind === "below") return { label: `HDR ≤${at.side}p` };
   return null;
 }

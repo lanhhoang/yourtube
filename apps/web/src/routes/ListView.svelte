@@ -26,6 +26,7 @@
   // svelte-ignore state_referenced_locally
   let entries = $state(initialEntries(result));
   let cap = $state<QualityCap>(DEFAULT_CAP);
+  let hdr = $state(false);
   let subtitles = $state(false);
   let template = $state("");
   let bitrate = $state("");
@@ -38,8 +39,12 @@
   const header = $derived<Header>({
     cap,
     subtitles,
+    hdr,
     outputTemplate: template,
     audioBitrate: bitrate,
+  });
+  $effect(() => {
+    if (cap === "audio") hdr = false;
   });
   const add = $derived(addState(entries));
   const selectedCount = $derived(entries.filter((e) => e.selected).length);
@@ -118,6 +123,17 @@
         <label class="flex items-center gap-2 pb-2 text-base">
           <input type="checkbox" bind:checked={subtitles} class="size-4 accent-(--color-action)">
           Subtitles
+        </label>
+        <label
+          class="flex min-h-11 items-center gap-2 text-base {cap === "audio" ? "text-muted" : ""}"
+        >
+          <input
+            type="checkbox"
+            bind:checked={hdr}
+            disabled={cap === "audio"}
+            class="size-4 accent-(--color-action)"
+          >
+          HDR where available
         </label>
         <button
           type="button"

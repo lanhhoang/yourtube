@@ -23,6 +23,7 @@ export type EntryState = {
 export type Header = {
   cap: QualityCap;
   subtitles: boolean;
+  hdr: boolean;
   outputTemplate: string;
   audioBitrate: string;
 };
@@ -109,7 +110,7 @@ export function buildJobs(entries: EntryState[], header: Header): JobCreate[] {
       video_format_id: o?.selection.videoId ?? null,
       audio_format_id: o?.selection.audioId ?? null,
       subtitles: o ? o.subtitles : header.subtitles,
-      hdr: false,
+      hdr: header.hdr,
       output_template: blank(o ? o.outputTemplate : header.outputTemplate),
       audio_bitrate: blank(o ? o.audioBitrate : header.audioBitrate),
     });

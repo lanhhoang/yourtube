@@ -47,3 +47,14 @@ test("leaving the playlist stops checking", async ({ page }) => {
   await page.waitForTimeout(2500); // past when the queued third lookup would start
   expect(lookups).toEqual(["https://e2e.test/v/a", "https://e2e.test/v/b"]);
 });
+
+test("HDR badge follows the cap", async ({ page }) => {
+  await openPlaylist(page);
+  await expect(page.getByRole("button", { name: "Add 2 to queue" })).toBeEnabled();
+  const card = (name: string) => page.getByRole("article").filter({ hasText: name });
+  await page.getByRole("combobox", { name: "Quality" }).selectOption("best");
+  await expect(card("Video A").getByText("HDR", { exact: true })).toBeVisible();
+  await expect(card("Video B").getByText("HDR", { exact: true })).toHaveCount(0);
+  await page.getByRole("combobox", { name: "Quality" }).selectOption("1080");
+  await expect(card("Video A").getByText(/^HDR/)).toHaveCount(0);
+});
