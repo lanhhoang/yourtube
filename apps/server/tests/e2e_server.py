@@ -43,7 +43,11 @@ def _run_download(
     return DownloadResult(str(path), 4, "mp4", 1080)
 
 
-_VIDEO_URLS = {"https://e2e.test/video", "https://e2e.test/watch?v=e2e&list=PLe2e"}
+_VIDEO_URLS = {
+    "https://e2e.test/video",
+    "https://e2e.test/v/lowhdr",
+    "https://e2e.test/watch?v=e2e&list=PLe2e",
+}
 
 
 def _video_info(url: str) -> dict[str, Any]:
@@ -69,6 +73,13 @@ def _video_info(url: str) -> dict[str, Any]:
     if url == "https://e2e.test/v/a":
         hdr10 = "vp09.02.51.10.01.09.16.09.00"
         formats.append(fmt("v2160hdr", 3840, 2160, hdr10, "none", "webm", "HDR10"))
+    if url == "https://e2e.test/v/lowhdr":
+        formats.append(
+            fmt("v2160", 3840, 2160, "vp09.00.51.08.01.01.01.01.00", "none", "webm", "SDR")
+        )
+        formats.append(
+            fmt("v1080hdr", 1920, 1080, "vp09.02.40.10.01.09.16.09.00", "none", "webm", "HDR10")
+        )
     return {
         "id": "e2e",
         "title": "E2E Video",

@@ -52,3 +52,14 @@ test("HDR can be ticked on an HDR video", async ({ page }) => {
   await page.getByRole("button", { name: "Add to queue" }).click();
   expect((await request).postDataJSON().jobs[0].hdr).toBe(true);
 });
+
+test("the HDR note appears only when the cap lands above the HDR size", async ({ page }) => {
+  await fetchVideo(page, "https://e2e.test/v/lowhdr");
+  await page.getByRole("checkbox", { name: "HDR", exact: true }).check();
+  const note = page.getByText("HDR only up to 1080p. This cap gets SDR.");
+  await expect(note).toHaveCount(0);
+  await page.getByRole("combobox", { name: "Quality" }).selectOption("best");
+  await expect(note).toBeVisible();
+  await page.getByRole("combobox", { name: "Quality" }).selectOption("1080");
+  await expect(note).toHaveCount(0);
+});
