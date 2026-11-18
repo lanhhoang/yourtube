@@ -1,12 +1,6 @@
-<script module lang="ts">
-  import { currentTheme, type ThemeChoice } from "../lib/theme.ts";
-
-  // Shared by every copy on the page so the rail and Settings always agree.
-  let choice = $state<ThemeChoice>(currentTheme());
-</script>
-
 <script lang="ts">
-  import { applyTheme } from "../lib/theme.ts";
+  import type { ThemeChoice } from "../lib/theme.ts";
+  import { setTheme, themeState } from "../lib/theme-state.svelte.ts";
 
   let { label = "Theme" }: { label?: string } = $props();
   const id = $props.id();
@@ -16,11 +10,6 @@
     { value: "light", label: "Light" },
     { value: "system", label: "System" },
   ];
-
-  function pick(value: ThemeChoice) {
-    choice = value;
-    applyTheme(value);
-  }
 </script>
 
 <div role="radiogroup" aria-label={label} class="flex flex-col gap-1">
@@ -33,8 +22,8 @@
         name="theme-{id}"
         class="sr-only"
         value={c.value}
-        checked={choice === c.value}
-        onchange={() => pick(c.value)}
+        checked={themeState.choice === c.value}
+        onchange={() => setTheme(c.value)}
       >
       {c.label}
     </label>

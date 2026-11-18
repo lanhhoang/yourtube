@@ -12,7 +12,7 @@ Success: copy a YouTube link, open the iPhone home-screen app, paste it and queu
 
 1. Capped video downloads (`best`, `2160`, `1440`, `1080`, `720`, `480`) always produce `.mp4`, with the highest resolution up to the cap, H.264 + AAC wherever YouTube offers it at that resolution, and VP9 SDR + AAC above 1080p.
 2. Default layout on disk: `<channel>/<title>.<ext>`, or `<channel>/<playlist>/<title>.<ext>` for videos queued from a playlist. Every segment is an ASCII slug: lowercase, transliterated, dashes. Existing library files are moved into this layout once.
-3. The YourTube play-circle mark sits next to the "yourtube" wordmark.
+3. The YourTube player mark sits next to the "yourtube" wordmark, and the favicon becomes the new play-circle.
 4. The theme switch in the left rail is one icon button that cycles Dark → Light → System.
 5. The app is reachable from the phone through Tailscale HTTPS, and the bind address is configurable for plain LAN http.
 6. The app installs as a PWA on iPhone (and Android/desktop) and has a phone layout for every screen.
@@ -106,7 +106,12 @@ One-off move of existing files (lifespan, after migrations and before workers st
 
 ### 3. Logo icon
 
-The red play-circle from `apps/web/public/favicon.svg` replaces the red bar in the top-bar wordmark, sized to the 17–22 px wordmark (inline SVG, `aria-hidden`; the link keeps "yourtube" as its name). The play triangle is white in both themes. The same mark is the source for PWA icons.
+Two owner-supplied marks (2026-11-18):
+
+- **Top-bar mark:** a red rounded screen with a white play triangle and a pale scrub bar (about 1.44:1). It replaces the red bar in the wordmark, 20 px tall (inline SVG, `aria-hidden`; the link keeps "yourtube" as its name).
+- **Favicon:** a two-tone red play-circle with a white triangle. It replaces `apps/web/public/favicon.svg` and is the source for the PWA icons. The circle reads better than the wide player mark on a square home-screen tile.
+
+Both are fixed brand artwork, the same in both themes, outside the `accent` token.
 
 ### 4. Theme switch
 
@@ -127,7 +132,7 @@ The red play-circle from `apps/web/public/favicon.svg` replaces the red bar in t
 ### 6. PWA
 
 - `vite-plugin-pwa` with `registerType: "autoUpdate"` and `injectManifest` strategy (needed for the custom push handlers), app-shell precache only, `navigateFallbackDenylist` for `/api/` and `/health`.
-- Manifest: name "YourTube", short name "YourTube", `display: standalone`, `start_url: "/"`, theme/background colours from `bg` (dark `#0b0b0c`), icons 64/192/512, maskable 512, apple-touch-icon 180, generated from the play-circle.
+- Manifest: name "YourTube", short name "YourTube", `display: standalone`, `start_url: "/"`, theme/background colours from `bg` (dark `#0b0b0c`), icons 64/192/512, maskable 512, apple-touch-icon 180, generated from the play-circle favicon.
 - `index.html`: viewport with `viewport-fit=cover`, `theme-color` (light and dark media variants), Apple web-app meta tags, `apple-touch-icon`.
 - Android/desktop: `share_target` (GET) to `/?share=<url>` → app reads it and routes to fetch. Harmless on iOS.
 - iOS: the main way in is copy and paste (owner's choice). Copy the link in the YouTube app, open YourTube, paste it into the top-bar field. On phones, while the field is empty, a Paste button sits beside it and calls `navigator.clipboard.readText()` on tap (iOS shows its own "Paste" confirmation); if reading fails, the field gets focus so the owner can long-press and paste. Pasting a URL does not auto-fetch; the owner taps Fetch (my call: keeps the existing behaviour and avoids surprise lookups).

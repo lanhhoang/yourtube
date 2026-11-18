@@ -1,4 +1,5 @@
 <script lang="ts">
+  import LogoMark from "./LogoMark.svelte";
   import {
     FETCH_OPTIONS_KEY,
     readFetchOptions,
@@ -43,7 +44,7 @@
     href="#/"
     class="flex w-[120px] items-center gap-2 text-lg font-bold tracking-[-0.01em] text-fg no-underline"
   >
-    <span class="block h-3 w-[18px] rounded-[3px] bg-accent" aria-hidden="true"></span>
+    <LogoMark />
     yourtube
   </a>
 

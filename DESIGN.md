@@ -19,7 +19,7 @@ Chosen by the owner on 2026-11-15 from the approved mockups (`direction-v2.html`
 | `line-strong` | `#76767d` | `#85858d` | borders of controls (3:1 UI contrast) |
 | `fg` | `#f1f1f1` | `#0f0f10` | text |
 | `muted` | `#8d8d8d` | `#5f5f66` | meta text |
-| `accent` | `#ff0033` | `#d90029` | red as text, bars, selection marker, logo mark |
+| `accent` | `#ff0033` | `#d90029` | red as text, bars, selection marker |
 | `accent-fill` | `#e6002e` | `#d90029` | red behind white text (count badges, custom badge) |
 | `warn` | `#f5a524` | `#8a5200` | amber: "below your cap" only |
 | `danger` | `#ff6b6b` | `#c4161c` | failures |
@@ -27,7 +27,7 @@ Chosen by the owner on 2026-11-15 from the approved mockups (`direction-v2.html`
 
 Contrast (WCAG, measured 2026-11-15): dark `fg` 17.4, `muted` 5.4–5.9, `accent` 4.6–5.0, `warn` 8.9–9.6, `danger` 6.5–7.1, white on `accent-fill` 4.8; light `fg` 19.2, `muted` 5.8–6.3, `accent` 4.8–5.3, `warn` 5.8–6.4, `danger` 5.5–6.0. White on `#ff0033` is 3.96 and is never used for text. Status is never colour alone: badges carry text.
 
-Rules: red marks the logo mark, progress bars, the selected format, rail counts and custom-override badges, and nothing else. No gradients on UI, no glow, no coloured side borders. Elevation is a flat surface step; no shadows except menus (offset 0 8px, blur 24px, 40% black).
+Rules: red marks progress bars, the selected format, rail counts and custom-override badges, and nothing else. The logo mark and favicon are fixed brand artwork in their own reds (`#ff0000` mark, `#dd2222`/`#bb1a1a` favicon). They are the same in both themes and are not tokens. No gradients on UI, no glow, no coloured side borders. Elevation is a flat surface step; no shadows except menus (offset 0 8px, blur 24px, 40% black).
 
 ## Typography
 
@@ -52,4 +52,4 @@ Tracking: 0 for body, -0.01em for `xl`. Body measure under 70ch.
 
 ## Layout
 
-Top bar 56 px: wordmark (red mark + "yourtube"), pill URL field centred up to 560 px, Fetch button, options menu. Left rail 72 px: icon over 11 px label, red count on Queue; theme switch in the rail footer. Content scrolls under the bar.
+Top bar 56 px: wordmark (player mark, 20 px tall, + "yourtube"), pill URL field centred up to 560 px, Fetch button, options menu. Left rail 72 px: icon over 11 px label, red count on Queue; theme tile in the rail footer (moon/sun/monitor, cycles Dark → Light → System; Settings keeps the three-option control). Content scrolls under the bar.
