@@ -157,7 +157,7 @@ The design process follows the Impeccable skill (shape → build → critique �
 
 - Tapping or clicking a finished item opens a player view `#/watch/<id>`: native `<video controls playsinline>` (or `<audio>` for audio jobs) with `src=/api/downloads/<id>/file?inline=1`, title, channel, size/format meta, and actions Save and Delete.
 - `/api/downloads/{id}/file` gains an `inline` query flag that serves `Content-Disposition: inline` (default stays `attachment`). Starlette's `FileResponse` already serves `Range` requests, which iOS needs for video.
-- Save: on devices with `navigator.canShare({ files })`, Save fetches the file and opens the share sheet (Save to Files/Photos); otherwise it is the existing download link. Large files (over ~500 MB) skip share-sheet and use the download link (builder may tune the threshold).
+- Save: on devices with `navigator.canShare({ files })`, Save fetches the file with progress ("Preparing… 42%"), then shows a "Share file" button that opens the share sheet (Save to Files/Photos). It takes two taps because iOS only opens the share sheet straight after a tap, and the fetch uses up the first one (owner's choice, 2026-11-18 readiness review). Otherwise, or if sharing fails, Save is the existing download link. Large files (over ~500 MB) skip the share sheet and use the download link (builder may tune the threshold).
 - If the browser cannot play the codec (e.g. VP9 on some Apple devices), the player shows "This device can't play this file. Save it and open it in VLC." with Save.
 - Desktop: the same view, centred, max width per `DESIGN.md`.
 
