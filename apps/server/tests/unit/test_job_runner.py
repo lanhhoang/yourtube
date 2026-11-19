@@ -6,6 +6,7 @@ from app.models import Download
 from app.schemas import DownloadCreate
 from app.services.downloader import DownloadCancelled, DownloadResult
 from app.services.job_runner import run_claimed_job
+from app.services.library_paths import PlaylistFolder
 from app.services.queue import enqueue_download
 from app.services.settings import set_settings_batch
 
@@ -166,3 +167,34 @@ def test_job_runner_passes_hdr(monkeypatch, db_session_visible, tmp_path: Path) 
     monkeypatch.setattr("app.services.job_runner.run_download", fake_run_download)
     run_claimed_job(row.id)
     assert seen["hdr"] is True
+
+
+def _seen_playlist(monkeypatch, db_session_visible, tmp_path: Path, **fields):
+    row = enqueue_download(
+        db_session_visible, DownloadCreate(url="https://example.com/pl", **fields)
+    )
+    db_session_visible.execute(
+        Download.__table__.update().where(Download.id == row.id).values(status="active")
+    )
+    set_settings_batch(db_session_visible, {"downloads_dir": str(tmp_path)})
+    db_session_visible.commit()
+    seen: dict = {}
+
+    def fake_run_download(**kwargs):
+        seen.update(kwargs)
+        return DownloadResult(path="", file_size=None, media_format=None, resolution_height=None)
+
+    monkeypatch.setattr("app.services.job_runner.run_download", fake_run_download)
+    run_claimed_job(row.id)
+    return seen["playlist"]
+
+
+def test_job_runner_passes_playlist_folder(monkeypatch, db_session_visible, tmp_path) -> None:
+    got = _seen_playlist(monkeypatch, db_session_visible, tmp_path, playlist_title="Mix")
+    assert got == PlaylistFolder("Mix", None, None)
+
+
+def test_job_runner_passes_no_playlist_for_plain_job(
+    monkeypatch, db_session_visible, tmp_path
+) -> None:
+    assert _seen_playlist(monkeypatch, db_session_visible, tmp_path) is None

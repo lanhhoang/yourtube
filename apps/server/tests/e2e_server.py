@@ -1,20 +1,16 @@
 """ASGI app for Playwright: the real app with yt-dlp calls stubbed out.
 
 Sets nothing in the environment itself; Playwright's ``webServer.env`` does.
-Seeds two rows after migrations (by wrapping the lifespan) and fakes downloads.
+Seeds two rows after migrations, just before the startup library move, and fakes downloads.
 Later phases fill in more stubs.
 """
 
 from __future__ import annotations
 
 import time
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-
-from fastapi import FastAPI
 
 from app.config import settings
 from app.db import SessionLocal
@@ -124,6 +120,7 @@ downloader.extract_info = _stub_full
 downloader.extract_flat_info = _stub_flat
 job_runner.run_download = _run_download
 
+import app.main as app_main  # noqa: E402
 from app.main import app  # noqa: E402
 
 
@@ -151,16 +148,16 @@ def _seed() -> None:
         session.commit()
 
 
-_original = app.router.lifespan_context
+# The lifespan runs the one-off library move before workers start. Seed first, so the
+# seeded file moves like a real library would (to ``e2e/seeded-video.mp4``).
+_real_migrate = app_main.migrate_library_layout
 
 
-@asynccontextmanager
-async def _lifespan(a: FastAPI) -> AsyncIterator[None]:
-    async with _original(a):
-        _seed()
-        yield
+def _seed_then_migrate(*args: Any, **kwargs: Any) -> Any:
+    _seed()
+    return _real_migrate(*args, **kwargs)
 
 
-app.router.lifespan_context = _lifespan
+app_main.migrate_library_layout = _seed_then_migrate
 
 __all__ = ["app"]

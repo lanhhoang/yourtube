@@ -42,6 +42,14 @@
     hdr,
     outputTemplate: template,
     audioBitrate: bitrate,
+    playlist:
+      result.title || result.playlist_channel || result.playlist_id
+        ? {
+            playlist_title: result.title,
+            playlist_channel: result.playlist_channel ?? null,
+            playlist_id: result.playlist_id ?? null,
+          }
+        : null,
   });
   $effect(() => {
     if (cap === "audio") hdr = false;

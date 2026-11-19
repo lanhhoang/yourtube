@@ -244,3 +244,24 @@ def test_full_lookup_that_returns_a_playlist_is_a_list() -> None:
     s = Stubs({"id": "x"}, full=_playlist(4, "f"))
     r = _run("https://e.test/odd", s)
     assert r.kind == "list" and len(r.entries) == 4
+
+
+def test_playlist_owner_comes_from_flat_info() -> None:
+    pl = {**_playlist(2), "id": "PL1", "channel": "Owner", "uploader": "Other"}
+    r = _run("https://e.test/pl", Stubs(pl))
+    assert r.playlist_channel == "Owner" and r.playlist_id == "PL1"
+
+
+def test_playlist_owner_falls_back_to_uploader() -> None:
+    pl = {**_playlist(2), "id": "PL1", "uploader": "Uploader"}
+    r = _run("https://e.test/pl", Stubs(pl))
+    assert r.playlist_channel == "Uploader"
+
+
+def test_playlist_owner_is_none_for_video_and_multi_url() -> None:
+    assert _run("https://e.test/v", Stubs(_video_info())).playlist_channel is None
+    pl = {**_playlist(1), "id": "PL1", "channel": "Owner"}
+    r = _run(
+        "https://e.test/a https://e.test/b", Stubs({"https://e.test/a": pl, "https://e.test/b": pl})
+    )
+    assert r.playlist_channel is None and r.playlist_id is None

@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, TypedDict
 
 from app.schemas import FormatInfo, QualityCap, StreamKind
+from app.services.library_paths import PlaylistFolder, default_stem
 from app.services.quality import cap_format_options, short_side
 
 
@@ -566,6 +567,7 @@ def run_download(
     progress_hook: YtdlpProgress | None = None,
     quality_cap: QualityCap | None = None,
     hdr: bool = False,
+    playlist: PlaylistFolder | None = None,
 ) -> DownloadResult:
     """Run yt-dlp and return the output path plus file metadata.
 
@@ -607,7 +609,16 @@ def run_download(
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         guard.ydl = ydl
-        info = ydl.extract_info(url, download=True)
+        if output_template:
+            info = ydl.extract_info(url, download=True)
+        else:
+            # Resolve first so channel and id are known, then download to a fixed path.
+            resolved = ydl.extract_info(url, download=False) or {}
+            stem = default_stem(resolved, playlist, Path(output_dir))
+            stem.parent.mkdir(parents=True, exist_ok=True)
+            # ``%`` in a path would otherwise be read as template syntax.
+            ydl.params["outtmpl"]["default"] = str(stem).replace("%", "%%") + ".%(ext)s"
+            info = ydl.process_ie_result(resolved, download=True)
 
     if subtitles:
         requested_subtitles = (info or {}).get("requested_subtitles") or {}

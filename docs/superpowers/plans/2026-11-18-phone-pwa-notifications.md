@@ -31,7 +31,7 @@
 ## Review Focus
 
 1. **The last two jobs of a batch finish at the same moment on two workers.** Exactly one summary push must go out, never zero and never two. Task 18 owns the test.
-2. **The startup move meets a missing file, an existing target, a file outside the downloads folder, sidecars, or a crash halfway.** Missing and outside files are skipped. Collisions get a suffix. Sidecars move with the video. A rerun after a crash finishes the job without touching files that already moved. Task 8 owns the tests.
+2. **The startup move meets a missing file, an existing target, a file outside the downloads folder, a relative `file_path`, two rows on one file, sidecars, or a crash halfway.** Missing and outside files are skipped. Collisions get a suffix. Sidecars move with their own video only. Relative paths resolve the way the library resolves them. A rerun after a crash, even one between `os.replace` and the commit, finishes the job without touching files that already moved. A failed move leaves the flag unset, so the next start retries it. Task 8 owns the tests.
 3. **Titles and channel names with `%`, `/`, `..`, emoji only, non-Latin script, or 300 characters.** The path stays inside the downloads folder. `%` never reaches yt-dlp as template syntax. Every segment is a non-empty ASCII slug of at most 80 characters. Tasks 6 and 7 own the tests.
 4. **A push endpoint is dead (`410`), slow, or unreachable.** The job still ends `done`/`error`. The worker moves on within the timeout. A dead subscription is deleted. Task 20 owns the test.
 5. **iPhone playback of a large file.** The file endpoint answers `Range` requests with `206`. Save uses the share sheet only for files of 500 MB or less, and the download link above that. Task 10 owns the tests.
@@ -674,8 +674,9 @@ Expected: FAIL, module not found.
 - Modify: `apps/server/app/services/sources.py` (`list_sources` fills `playlist_channel` = flat info `channel` then `uploader`, and `playlist_id` = flat info `id`, only when one URL is a playlist)
 - Modify: `apps/server/app/services/downloader.py` (`run_download` gains `playlist`)
 - Modify: `apps/server/app/services/job_runner.py`
-- Modify: `apps/server/tests/e2e_server.py` (the stub keeps writing `<output_dir>/<last-url-part>.mp4`; it accepts the new kwarg)
-- Modify: `apps/web/src/lib/playlist.ts` (`Header` gains `playlist: PlaylistFields | null`; `buildJobs` copies it onto each job), `apps/web/src/routes/ListView.svelte` (builds it from `result`), `apps/web/src/lib/api.gen.ts` (typegen)
+- Modify: `apps/server/tests/unit/test_downloader_progress.py` (existing fakes follow the two-pass call; see Step 1)
+- No change: `apps/server/tests/e2e_server.py`. Its `_run_download` stub already takes `**_kwargs` and keeps writing `<output_dir>/<last-url-part>.mp4`.
+- Modify: `apps/web/src/lib/playlist.ts` (`Header` gains `playlist: PlaylistFields | null`; `buildJobs` copies it onto each job), `apps/web/src/routes/ListView.svelte` (`playlist` is `{ playlist_title: result.title, playlist_channel: result.playlist_channel, playlist_id: result.playlist_id }` when any of the three is non-null, else `null`), `apps/web/src/lib/api.gen.ts` (typegen)
 - Modify: `README.md` (new "Library layout" section)
 - Test: `tests/unit/test_downloader_layout.py`, `tests/unit/test_sources.py`, `tests/api/test_enqueue_api.py`, `tests/unit/test_job_runner.py`, `apps/web/test/playlist.test.ts`
 
@@ -686,17 +687,23 @@ Expected: FAIL, module not found.
   - `DownloadCreate.playlist_title / playlist_channel / playlist_id: str | None = None` (so `JobCreate` has them too). Same nullable columns on `Download`.
   - `SourcesResult.playlist_channel: str | None`, `SourcesResult.playlist_id: str | None` (`None` for videos and multi-URL fetches, like `title`).
   - `run_download(..., playlist: PlaylistFolder | None = None)`. When `output_template` is empty, it runs two passes on one `YoutubeDL`:
-    1. `info = ydl.extract_info(url, download=False, process=False)`
+    1. `info = ydl.extract_info(url, download=False)`. Fully resolved. Do not use `process=False`: it returns a bare `url` result without `channel` for some URLs. The `_real_download_through_guard` test helper and a live run (`watch?v=jNQXAC9IVRw&list=…`, `skip_download`) both confirm that `process_ie_result(info, download=True)` on this info downloads to the new template.
     2. `stem = default_stem(info, playlist, Path(output_dir))`, `stem.parent.mkdir(parents=True, exist_ok=True)`
     3. `ydl.params["outtmpl"]["default"] = str(stem).replace("%", "%%") + ".%(ext)s"`
     4. `info = ydl.process_ie_result(info, download=True)`
 
-    A custom template keeps today's single `extract_info(url, download=True)`. The output guard stays on in both paths.
+    A custom template keeps today's single `extract_info(url, download=True)`. The output guard stays on in both paths. Pass 1 also runs it, against the default `<root>/%(title)s.%(ext)s`, which is inside the root. Read missing info keys as `None` (`info.get`); the existing fakes return `{}`.
 
   - `job_runner` builds `PlaylistFolder(job.playlist_title, job.playlist_channel, job.playlist_id)` when any of the three is set, otherwise `None`.
   - Web: `type PlaylistFields = { playlist_title: string | null; playlist_channel: string | null; playlist_id: string | null }`.
 
-- [ ] **Step 1: Write the failing downloader tests** in `tests/unit/test_downloader_layout.py`. Monkeypatch `yt_dlp.YoutubeDL.extract_info` to return a fake unprocessed info, and `process_ie_result` to record `ydl.params["outtmpl"]["default"]` and `ydl.prepare_filename(info)` and to call the progress hook with `{"status": "finished", "filename": prepare_filename}`.
+- [ ] **Step 1: Write the failing downloader tests** in `tests/unit/test_downloader_layout.py`. Monkeypatch `yt_dlp.YoutubeDL.extract_info` to return the fake info (for `download=False`). Monkeypatch `process_ie_result` to record `ydl.params["outtmpl"]["default"]` and `ydl.prepare_filename(info)`, and to call the progress hook with `{"status": "finished", "filename": prepare_filename}`. For the custom-template test, `extract_info(download=True)` returns the info and `process_ie_result` counts calls.
+
+  Then update the existing fakes in `tests/unit/test_downloader_progress.py`. The seven `MagicMock` factories (lines ~71–290) and `_captured_opts` currently do their hook-and-return work in `extract_info(url, download)`, and some assert `download is True`. Move that work to whichever call downloads:
+  - `process_ie_result(info, download=True)` in the default layout. Set `fake_ydl.process_ie_result.side_effect`.
+  - `extract_info(url, download=True)` when a custom template is set.
+
+  `extract_info(url, download=False)` returns `{"id": "v", "title": "t", "channel": "c"}`. Keep the `result.path` assertions as they are; they come from the hook or `requested_downloads`. `_real_download_through_guard` needs no change, because its `extract_info` already calls the real `process_ie_result`.
 
 ```python
 def test_default_layout_single(tmp_path, fake_ydl):
@@ -725,11 +732,11 @@ def test_custom_template_skips_layout(tmp_path, fake_ydl):
   - `test_sources.py`: a single playlist URL whose flat info has `channel: "Owner"` and `id: "PL1"` returns `playlist_channel == "Owner"` and `playlist_id == "PL1"`. With `uploader` only, it falls back to the uploader. Two URLs give `None` for both.
   - `test_enqueue_api.py`: posting a job with the three playlist fields stores them on the row.
   - `test_job_runner.py`: a row with `playlist_title="Mix"` passes `playlist=PlaylistFolder("Mix", None, None)` to `run_download`. A row with none of the three passes `playlist=None`.
-  - `playlist.test.ts`: `buildJobs(entries, { ...header, playlist: { playlist_title: "Mix", playlist_channel: "Owner", playlist_id: "PL1" } })` puts the three fields on every job. `playlist: null` gives `null` for all three.
+  - `playlist.test.ts`: `buildJobs(entries, { ...header, playlist: { playlist_title: "Mix", playlist_channel: "Owner", playlist_id: "PL1" } })` puts the three fields on every job. `playlist: null` gives `null` for all three. Update the existing fixtures so `tsc -p tsconfig.node.json` passes: the shared `header` gains `playlist: null`, and the two `SourcesResult` literals in the `initialEntries` tests gain `playlist_channel: null, playlist_id: null`.
 
 - [ ] **Step 3: Run them and see them fail**
 
-Run: `cd apps/server && uv run pytest tests/unit/test_downloader_layout.py tests/unit/test_sources.py tests/api/test_enqueue_api.py tests/unit/test_job_runner.py -q` and `pnpm vitest run apps/web/test/playlist.test.ts`
+Run: `cd apps/server && uv run pytest tests/unit/test_downloader_layout.py tests/unit/test_downloader_progress.py tests/unit/test_sources.py tests/api/test_enqueue_api.py tests/unit/test_job_runner.py -q` and `pnpm vitest run apps/web/test/playlist.test.ts`
 Expected: FAIL.
 
 - [ ] **Step 4: Implement** the migration, model, schemas, sources, `run_download`, runner and web changes. Run `pnpm typegen`.
@@ -748,7 +755,8 @@ Expected: PASS.
 **Files:**
 
 - Create: `apps/server/app/services/library_layout.py`
-- Modify: `apps/server/app/main.py` (lifespan: after `requeue_active_on_startup`, before workers start)
+- Modify: `apps/server/app/main.py` (lifespan: after `requeue_active_on_startup`, before workers start; `from app.services.library_layout import migrate_library_layout` so the e2e stub can wrap `app.main.migrate_library_layout`)
+- Modify: `apps/server/tests/e2e_server.py`. Today `_seed()` runs after the whole lifespan, after the move and after workers start, so the seeded file would never move. Wrap `app.main.migrate_library_layout` so it calls `_seed()` first, then the real function. Remove the post-lifespan `_seed()` wrapper. The seeded row keeps `uploader="E2E"`, `title="Seeded video"` and file `seeded.mp4`, so it lands at `e2e/seeded-video.mp4`. Phase 5 assumes this path.
 - Modify: `README.md` (one line under "Library layout")
 - Test: `apps/server/tests/unit/test_library_layout.py`, `apps/server/tests/integration/test_startup_recovery.py`
 
@@ -758,24 +766,30 @@ Expected: PASS.
 - Produces:
   - `LAYOUT_KEY = "library_layout"`, `LAYOUT_VERSION = "v2"`
   - `@dataclass class LayoutSummary: moved: int = 0; skipped: int = 0; failed: int = 0`
-  - `migrate_library_layout(session: Session, downloads_dir: Path) -> LayoutSummary | None`: returns `None` when the setting is already `v2`. Otherwise, for each `status == "done"` row with a `file_path`:
-    - Skip (count `skipped`) when the file is missing, or not under `downloads_dir.resolve()`.
-    - Target: `downloads_dir / first_slug(row.uploader, fallback="unknown-channel") / (first_slug(row.title, video_id_from_url(row.url), fallback=f"download-{row.id}") + suffix)`.
-    - If the target is the current path, count it as `skipped`. If the target exists, append `-<video id or row id>` to the stem.
-    - Move with `os.replace` after `mkdir(parents=True)`, together with sidecars in the same folder named `<old stem>.*` whose last suffix is `.srt`, `.vtt` or `.txt`. Update `row.file_path` and commit **per row**.
-    - On `OSError`, log it, count `failed`, and leave the row as it was.
-    - After the loop, `set_setting(session, LAYOUT_KEY, LAYOUT_VERSION)`, then log `library layout v2: moved=%d skipped=%d failed=%d`.
+  - `migrate_library_layout(session: Session, downloads_dir: Path) -> LayoutSummary | None`: returns `None` when the setting is already `v2` (`get_setting` returns `None` for this non-catalog key until it is set). Otherwise, take every `status == "done"` row with a `file_path` (ordered by `id`) and **group the rows by resolved path**, `resolve_repo_path(file_path).resolve()`, the same resolution the library uses. Older rows store paths relative to the repo root, and a re-download can leave two rows on one file. Each group is one unit; summary counts are per group. Use the lowest row id in the group for the target.
+    - Skip (count `skipped`) when the path is not under `downloads_dir.resolve()`.
+    - Target: `downloads_dir / first_slug(row.uploader, fallback="unknown-channel") / (first_slug(row.title, video_id_from_url(row.url), fallback=f"download-{row.id}") + suffix)`. The alternative is the same path with `-<video id or row id>` appended to the stem.
+    - **Missing source (crash recovery):** `os.replace` can succeed and then the process can die before the commit. If the source is missing, but the target or the alternative exists and no other done row points to it, point the group's rows at it, commit, and count `moved`. Otherwise count `skipped`.
+    - If the current path equals the target or the alternative, count `skipped`. This covers reruns, including rows that got the suffix on the first run. If the target, or any of its sidecar targets, exists, use the alternative. If that is taken too, log it and count `skipped`.
+    - Sidecars: files in the same folder named `<old stem>.<ext>` or `<old stem>.<lang>.<ext>`, where `<ext>` is `srt`, `vtt` or `txt` and `<lang>` has no dot. Leave out any file whose name starts with another done row's stem plus `.`. Example: `Foo.bar.en.srt` belongs to `Foo.bar.mp4`, not to `Foo.mp4`.
+    - Move the video, then its sidecars, with `os.replace` after `mkdir(parents=True, exist_ok=True)`. Set every row in the group to the new absolute path, and commit **per group**.
+    - On `OSError`, log it, count `failed`, and leave the rows as they were. If the video moved but a sidecar failed, the video's rows still update; log the sidecar.
+    - After the loop, log `library layout v2: moved=%d skipped=%d failed=%d`. Then call `set_setting(session, LAYOUT_KEY, LAYOUT_VERSION)` **only when `failed == 0`**. When any move failed, leave the flag unset so the next start retries the failed files. The moved files are skipped on that run, because they are already at their target. Each retry logs the summary again, so a file that keeps failing shows up on every start.
   - Old empty folders are left alone.
 
 - [ ] **Step 1: Write the failing tests** (rows built with `db_session`, files in `tmp_path`):
   - `test_moves_file_and_sidecars`: `downloads/Old Name.mp4`, `Old Name.en.srt` and `Old Name.en.txt`, with uploader "Chan" and title "Old Name", end up in `downloads/chan/old-name.mp4` (plus `.en.srt` and `.en.txt`). `row.file_path` is updated. The summary is `(1, 0, 0)`.
-  - `test_does_not_take_other_videos_sidecars`: `Foo.mp4` with a neighbouring `Foo.bar.mp4` (another row): only `Foo.mp4` moves with the first row.
+  - `test_does_not_take_other_videos_sidecars`: `Foo.mp4` sits next to `Foo.bar.mp4` and `Foo.bar.en.srt`, which belong to another row. Only `Foo.mp4` moves with the first row; `Foo.bar.en.srt` moves with `Foo.bar.mp4`.
+  - `test_relative_file_path_is_resolved`: monkeypatch `app.config.REPO_ROOT` to `tmp_path`. A row with `file_path="downloads/Old.mp4"` and `downloads_dir = tmp_path / "downloads"` moves, and gets an absolute `file_path`.
+  - `test_rows_sharing_a_file_move_together`: two done rows point to the same file. After the run, both point to the one new path, and the summary is `(1, 0, 0)`.
+  - `test_recovers_move_without_commit`: the file already sits at its target, the row still has the old path, and the flag is unset. The run points the row at the target and counts `moved`.
   - `test_missing_and_outside_are_skipped`: a missing file, and a file under `tmp_path/elsewhere`, are both untouched and give `skipped == 2`.
   - `test_collision_gets_suffix`: two rows with the same uploader and title. The second becomes `title-<video id>.mp4`.
   - `test_failed_move_keeps_row`: monkeypatch `os.replace` to raise `OSError` for one row. That row keeps its `file_path`, and the others still move.
   - `test_runs_once`: a second call returns `None` and moves nothing.
+  - `test_failure_retries_on_next_start`: `os.replace` raises for one row on the first call. The summary has `failed == 1` and `library_layout` is still unset. Remove the monkeypatch and call again: that row moves (`moved == 1`), the others count as `skipped`, and the flag is `v2`.
   - `test_rerun_after_partial_move`: one row already points to its new path, the other doesn't, and the flag is unset. The second run moves only the second row and leaves the first in place (`skipped` counts it).
-  - Integration: `test_startup_moves_library` boots the app with `TestClient(app)` and a seeded done row, then asserts the file moved and `library_layout == "v2"`.
+  - Integration: `test_startup_moves_library` uses `db_session_visible`. It sets `downloads_dir` to `tmp_path` with `set_settings_batch`, seeds a done row with a file in `tmp_path`, boots the app with `TestClient(app)`, then asserts the file moved and `library_layout == "v2"`. Every `client` fixture runs the move too. That is harmless, because the fixture boots before the test adds its rows, and `db_session_visible` deletes the settings rows afterwards.
 
 - [ ] **Step 2: Run them and see them fail**
 
@@ -784,7 +798,7 @@ Expected: FAIL.
 
 - [ ] **Step 3: Implement `library_layout.py` and call it from `lifespan`.** Wrap the call so that an unexpected exception is logged and startup continues.
 
-- [ ] **Step 4: Run `pnpm check && pnpm e2e`** (the e2e seeded file moves to `e2e/seeded-video.mp4`; library download must still work). Expected: PASS.
+- [ ] **Step 4: Update `tests/e2e_server.py`** (seed inside the wrapped `migrate_library_layout`, see Files). Then run `pnpm check && pnpm e2e`. The e2e seeded file moves to `tmp/e2e/downloads/e2e/seeded-video.mp4`, and library delete must still work. Expected: PASS.
 
 - [ ] **Step 5: Commit** `feat(server): move existing library files into channel folders once`
 
