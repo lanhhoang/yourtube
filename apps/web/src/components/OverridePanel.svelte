@@ -7,11 +7,13 @@
     header,
     onchange,
     onclose,
+    sheet = false,
   }: {
     item: EntryState;
     header: Header;
     onchange: (o: Override | null) => void;
     onclose: () => void;
+    sheet?: boolean;
   } = $props();
 
   const details = $derived(
@@ -39,23 +41,9 @@
     "cursor-pointer rounded-pill border-0 px-4 py-1.5 text-sm font-medium transition-colors duration-(--duration-fast)";
 </script>
 
-<svelte:window onkeydown={(e) => e.key === "Escape" && onclose()} />
+<svelte:window onkeydown={(e) => !sheet && e.key === "Escape" && onclose()} />
 
-<aside
-  aria-label="Settings for {title}"
-  class="sticky top-0 flex max-h-[calc(100vh-7rem)] w-[22rem] shrink-0 flex-col gap-4 self-start overflow-y-auto rounded-control border border-line bg-surface p-4"
->
-  <div class="flex items-start justify-between gap-3">
-    <h2 class="m-0 line-clamp-2 text-lg font-semibold">{title}</h2>
-    <button
-      type="button"
-      onclick={onclose}
-      class="cursor-pointer rounded-pill border-0 bg-raised px-3 py-1 text-sm font-medium text-fg"
-    >
-      Close
-    </button>
-  </div>
-
+{#snippet body()}
   {#if typeof item.check === "object" && !item.check.ok}
     <p class="m-0 text-sm text-danger">{item.check.message}</p>
   {:else if item.check === "idle"}
@@ -133,4 +121,28 @@
       </p>
     {/if}
   {/if}
-</aside>
+{/snippet}
+
+{#if sheet}
+  <div class="flex flex-col gap-4">
+    {@render body()}
+  </div>
+{:else}
+  <aside
+    aria-label="Settings for {title}"
+    class="sticky top-0 flex max-h-[calc(100vh-7rem)] w-[22rem] shrink-0 flex-col gap-4 self-start overflow-y-auto rounded-control border border-line bg-surface p-4"
+  >
+    <div class="flex items-start justify-between gap-3">
+      <h2 class="m-0 line-clamp-2 text-lg font-semibold">{title}</h2>
+      <button
+        type="button"
+        onclick={onclose}
+        class="cursor-pointer rounded-pill border-0 bg-raised px-3 py-1 text-sm font-medium text-fg"
+      >
+        Close
+      </button>
+    </div>
+
+    {@render body()}
+  </aside>
+{/if}

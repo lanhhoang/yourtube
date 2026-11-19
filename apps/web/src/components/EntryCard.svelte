@@ -66,8 +66,9 @@
     <span class="line-clamp-2 text-base font-semibold">{title}</span>
   </button>
 
-  <span
-    class="absolute top-2 left-2 grid size-6 cursor-pointer place-items-center rounded-control bg-black/60"
+  <!-- biome-ignore lint/a11y/noLabelWithoutControl: the input inside has its own aria-label; the label only widens the tap area -->
+  <label
+    class="absolute top-0 left-0 grid size-[44px] cursor-pointer place-items-center md:top-2 md:left-2 md:size-6 md:rounded-control md:bg-black/60"
   >
     <input
       type="checkbox"
@@ -77,7 +78,7 @@
       onchange={(e) => ontoggle(e.currentTarget.checked)}
       class="size-4 accent-(--color-action)"
     >
-  </span>
+  </label>
 
   <div class="flex min-h-5 items-center gap-2">
     {#if item.check === "checking"}

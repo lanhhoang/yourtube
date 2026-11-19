@@ -85,7 +85,7 @@
     "w-full rounded-control border border-line-strong bg-surface px-3 py-2 text-base text-fg placeholder:text-muted";
 </script>
 
-<div class="grid max-w-6xl grid-cols-[minmax(0,1fr)_22rem] gap-8">
+<div class="grid max-w-6xl grid-cols-1 gap-6 md:grid-cols-[minmax(0,1fr)_22rem] md:gap-8">
   <section class="flex min-w-0 flex-col gap-3">
     <div class="aspect-video overflow-hidden rounded-thumb bg-surface">
       {#if video.thumbnail}
@@ -113,7 +113,7 @@
         type="button"
         disabled={adding}
         onclick={add}
-        class="cursor-pointer rounded-pill border-0 bg-action px-5 py-2 text-sm font-semibold text-on-action disabled:opacity-50"
+        class="min-h-[44px] cursor-pointer rounded-pill border-0 bg-action px-5 py-2 text-sm font-semibold text-on-action disabled:opacity-50 md:min-h-0"
       >
         Add to queue
       </button>

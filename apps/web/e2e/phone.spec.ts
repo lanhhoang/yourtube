@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import { APP } from "./app.ts";
 import { expectNoSideScroll, expectTarget } from "./phone-helpers.ts";
 
@@ -154,4 +154,62 @@ test("watch: player fits, Save and Delete are 44 px", async ({ page }) => {
   await expectTarget(page.getByRole("button", { name: "Save", exact: true }));
   await expectTarget(page.getByRole("button", { name: "Delete" }));
   await expectNoSideScroll(page);
+});
+
+test("fetch video: no sideways scroll, Add to queue queues the job", async ({ page }) => {
+  await page.goto(`${APP}#/`);
+  await page
+    .getByRole("textbox", { name: "Video or playlist URL" })
+    .fill("https://e2e.test/v/phone");
+  await page.getByRole("button", { name: "Fetch", exact: true }).tap();
+  await expect(page.getByRole("heading", { name: "Video Phone" })).toBeVisible();
+  await expectNoSideScroll(page);
+  const add = page.getByRole("button", { name: "Add to queue" });
+  await expectTarget(add);
+  await add.tap();
+  await expect(page.getByText("Added to queue.")).toBeVisible();
+});
+
+async function openPlaylist(page: Page) {
+  await page.goto(`${APP}#/`);
+  await page
+    .getByRole("textbox", { name: "Video or playlist URL" })
+    .fill("https://e2e.test/playlist");
+  await page.getByRole("button", { name: "Fetch", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "E2E Playlist" })).toBeVisible();
+}
+
+test("playlist: no sideways scroll, override opens as a bottom sheet", async ({ page }) => {
+  await openPlaylist(page);
+  await expectNoSideScroll(page);
+  const opener = page.getByRole("button", { name: "Video A: customise" });
+  // The checkbox is wrapped in a label that carries the 44 px hit area.
+  await expectTarget(page.getByRole("checkbox", { name: "Select Video A" }).locator(".."));
+  await opener.tap();
+  const sheet = page.getByRole("dialog", { name: "Video A" });
+  await expect(sheet).toBeVisible();
+  const box = await sheet.boundingBox();
+  expect(Math.round((box?.y ?? 0) + (box?.height ?? 0))).toBe(844);
+  expect(box?.height ?? 999).toBeLessThanOrEqual(844 * 0.85 + 1);
+  await expectTarget(sheet.getByRole("button", { name: "Close" }));
+  await page.keyboard.press("Escape");
+  await expect(sheet).toBeHidden();
+  await expect(opener).toBeFocused();
+  await opener.tap();
+  await sheet.getByRole("button", { name: "Close" }).tap();
+  await expect(sheet).toBeHidden();
+  await opener.tap();
+  await expect(sheet).toBeVisible();
+  await page.mouse.click(195, 40);
+  await expect(sheet).toBeHidden();
+});
+
+test.describe("desktop width", () => {
+  test.use({ viewport: { width: 1440, height: 900 }, hasTouch: false });
+  test("playlist override stays a side panel", async ({ page }) => {
+    await openPlaylist(page);
+    await page.getByRole("button", { name: "Video A: customise" }).click();
+    await expect(page.getByRole("complementary", { name: "Settings for Video A" })).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+  });
 });

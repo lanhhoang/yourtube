@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { MediaQuery } from "svelte/reactivity";
   import EntryCard from "../components/EntryCard.svelte";
+  import BottomSheet from "../components/BottomSheet.svelte";
   import OverridePanel from "../components/OverridePanel.svelte";
   import QualitySelect from "../components/QualitySelect.svelte";
   import { api, call } from "../lib/api.ts";
@@ -10,6 +12,7 @@
     addState,
     applyResult,
     buildJobs,
+    type EntryState,
     type Header,
     initialEntries,
     type Override,
@@ -102,10 +105,17 @@
   const input =
     "w-full rounded-control border border-line-strong bg-surface px-3 py-2 text-base text-fg placeholder:text-muted";
   const pill =
-    "cursor-pointer rounded-pill border border-line-strong bg-transparent px-4 py-1.5 text-sm font-medium text-fg hover:bg-raised";
+    "min-h-[44px] cursor-pointer rounded-pill border border-line-strong bg-transparent px-4 py-1.5 text-sm font-medium text-fg hover:bg-raised md:min-h-0";
+
+  const wide = new MediaQuery("(min-width: 768px)");
+
+  function entryTitle(item: EntryState): string {
+    const details = typeof item.check === "object" && item.check.ok ? item.check.details : null;
+    return item.entry.title ?? details?.title ?? item.entry.url;
+  }
 </script>
 
-<div class="flex items-start gap-6">
+<div class="flex flex-col items-stretch gap-6 md:flex-row md:items-start">
   <section class="flex min-w-0 flex-1 flex-col gap-4">
     <header class="flex flex-col gap-3">
       <div class="flex items-baseline gap-3">
@@ -155,7 +165,7 @@
           type="button"
           disabled={add.kind !== "ready" || adding}
           onclick={addAll}
-          class="cursor-pointer rounded-pill border-0 bg-action px-5 py-2 text-sm font-semibold text-on-action disabled:opacity-50"
+          class="min-h-[44px] cursor-pointer rounded-pill border-0 bg-action px-5 py-2 text-sm font-semibold text-on-action disabled:opacity-50 md:min-h-0"
         >
           {#if add.kind === "checking"}
             Checking <span class="tabular">{add.done} / {add.total}</span>…
@@ -216,11 +226,23 @@
   </section>
 
   {#if open !== null && entries[open]}
-    <OverridePanel
-      item={entries[open]}
-      {header}
-      onchange={(o) => open !== null && changeOverride(open, o)}
-      onclose={() => (open = null)}
-    />
+    {#if wide.current}
+      <OverridePanel
+        item={entries[open]}
+        {header}
+        onchange={(o) => open !== null && changeOverride(open, o)}
+        onclose={() => (open = null)}
+      />
+    {:else}
+      <BottomSheet open title={entryTitle(entries[open])} onclose={() => (open = null)}>
+        <OverridePanel
+          sheet
+          item={entries[open]}
+          {header}
+          onchange={(o) => open !== null && changeOverride(open, o)}
+          onclose={() => (open = null)}
+        />
+      </BottomSheet>
+    {/if}
   {/if}
 </div>
