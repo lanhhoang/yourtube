@@ -31,7 +31,7 @@
 ## Review Focus
 
 1. **The last two jobs of a batch finish at the same moment on two workers.** Exactly one summary push must go out, never zero and never two. Task 18 owns the test.
-2. **The startup move meets a missing file, an existing target, a file outside the downloads folder, a relative `file_path`, two rows on one file, sidecars, or a crash halfway.** Missing and outside files are skipped. Collisions get a suffix. Sidecars move with their own video only. Relative paths resolve the way the library resolves them. A rerun after a crash, even one between `os.replace` and the commit, finishes the job without touching files that already moved. Task 8 owns the tests.
+2. **The startup move meets a missing file, an existing target, a file outside the downloads folder, a relative `file_path`, two rows on one file, sidecars, or a crash halfway.** Missing and outside files are skipped. Collisions get a suffix. Sidecars move with their own video only. Relative paths resolve the way the library resolves them. A rerun after a crash, even one between `os.replace` and the commit, finishes the job without touching files that already moved. A failed move leaves the flag unset, so the next start retries it. Task 8 owns the tests.
 3. **Titles and channel names with `%`, `/`, `..`, emoji only, non-Latin script, or 300 characters.** The path stays inside the downloads folder. `%` never reaches yt-dlp as template syntax. Every segment is a non-empty ASCII slug of at most 80 characters. Tasks 6 and 7 own the tests.
 4. **A push endpoint is dead (`410`), slow, or unreachable.** The job still ends `done`/`error`. The worker moves on within the timeout. A dead subscription is deleted. Task 20 owns the test.
 5. **iPhone playback of a large file.** The file endpoint answers `Range` requests with `206`. Save uses the share sheet only for files of 500 MB or less, and the download link above that. Task 10 owns the tests.
@@ -774,7 +774,7 @@ Expected: PASS.
     - Sidecars: files in the same folder named `<old stem>.<ext>` or `<old stem>.<lang>.<ext>`, where `<ext>` is `srt`, `vtt` or `txt` and `<lang>` has no dot. Leave out any file whose name starts with another done row's stem plus `.`. Example: `Foo.bar.en.srt` belongs to `Foo.bar.mp4`, not to `Foo.mp4`.
     - Move the video, then its sidecars, with `os.replace` after `mkdir(parents=True, exist_ok=True)`. Set every row in the group to the new absolute path, and commit **per group**.
     - On `OSError`, log it, count `failed`, and leave the rows as they were. If the video moved but a sidecar failed, the video's rows still update; log the sidecar.
-    - After the loop, `set_setting(session, LAYOUT_KEY, LAYOUT_VERSION)`, then log `library layout v2: moved=%d skipped=%d failed=%d`.
+    - After the loop, log `library layout v2: moved=%d skipped=%d failed=%d`. Then call `set_setting(session, LAYOUT_KEY, LAYOUT_VERSION)` **only when `failed == 0`**. When any move failed, leave the flag unset so the next start retries the failed files. The moved files are skipped on that run, because they are already at their target. Each retry logs the summary again, so a file that keeps failing shows up on every start.
   - Old empty folders are left alone.
 
 - [ ] **Step 1: Write the failing tests** (rows built with `db_session`, files in `tmp_path`):
@@ -787,6 +787,7 @@ Expected: PASS.
   - `test_collision_gets_suffix`: two rows with the same uploader and title. The second becomes `title-<video id>.mp4`.
   - `test_failed_move_keeps_row`: monkeypatch `os.replace` to raise `OSError` for one row. That row keeps its `file_path`, and the others still move.
   - `test_runs_once`: a second call returns `None` and moves nothing.
+  - `test_failure_retries_on_next_start`: `os.replace` raises for one row on the first call. The summary has `failed == 1` and `library_layout` is still unset. Remove the monkeypatch and call again: that row moves (`moved == 1`), the others count as `skipped`, and the flag is `v2`.
   - `test_rerun_after_partial_move`: one row already points to its new path, the other doesn't, and the flag is unset. The second run moves only the second row and leaves the first in place (`skipped` counts it).
   - Integration: `test_startup_moves_library` uses `db_session_visible`. It sets `downloads_dir` to `tmp_path` with `set_settings_batch`, seeds a done row with a file in `tmp_path`, boots the app with `TestClient(app)`, then asserts the file moved and `library_layout == "v2"`. Every `client` fixture runs the move too. That is harmless, because the fixture boots before the test adds its rows, and `db_session_visible` deletes the settings rows afterwards.
 
