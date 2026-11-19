@@ -69,6 +69,12 @@ HTTPS is required for installing the app, Save to Photos and, later, push notifi
 - **iPhone:** open the Tailscale URL in Safari, tap Share, then Add to Home Screen. Install needs iOS 16.4 or later and HTTPS.
 - **Android and desktop:** use the browser's Install option. The installed app also appears in the share sheet, so sharing a link to YourTube opens it on the fetch screen. iOS has no share target.
 
+### Paste a link on the phone
+
+Copy the link in the YouTube app, open YourTube, and tap Paste next to the URL field. It fills the field from your clipboard (iOS asks you to confirm). If reading the clipboard fails, the field gets focus so you can long-press and paste. Then tap Fetch; pasting never fetches by itself.
+
+Optional: an iOS Shortcut "Send to YourTube" skips the paste. Build it as Receive URLs from Share Sheet → URL Encode → Open URL `https://<host>/#/fetch/<encoded>`. No app code depends on it.
+
 ## Layout
 
 ```

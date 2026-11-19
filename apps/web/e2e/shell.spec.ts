@@ -53,3 +53,8 @@ test("system theme follows the OS, before and after a reload", async ({ page }) 
   await page.emulateMedia({ colorScheme: "dark" });
   await expect(page.locator("html")).toHaveClass(/dark/);
 });
+
+test("no Paste button on desktop", async ({ page }) => {
+  await page.goto(`${APP}#/`);
+  await expect(page.getByRole("button", { name: "Paste" })).toHaveCount(0);
+});
