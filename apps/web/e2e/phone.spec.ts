@@ -104,3 +104,54 @@ test("toast sits at the top, under the top bar", async ({ page }) => {
   const box = await toast.boundingBox();
   expect(box?.y ?? 999).toBeLessThan(120);
 });
+
+test("library: no sideways scroll, tap opens the player", async ({ page }) => {
+  await page.goto(`${APP}#/`);
+  const link = page.getByRole("link", { name: "Phone video" });
+  await expect(link).toBeVisible();
+  await expectNoSideScroll(page);
+  // Row layout: the thumbnail box sits left of the title, not above it.
+  const card = page.getByRole("article").filter({ hasText: "Phone video" });
+  const thumb = await card.locator("div").first().boundingBox();
+  const title = await link.boundingBox();
+  expect((title?.x ?? 0) >= (thumb?.x ?? 0) + (thumb?.width ?? 0)).toBe(true);
+  await link.tap();
+  await expect(page).toHaveURL(/#\/watch\/\d+$/);
+});
+
+test("queue: no sideways scroll, Cancel is a 44 px target", async ({ page, request }) => {
+  const res = await request.post("/api/downloads", {
+    data: { jobs: [{ url: "https://e2e.test/slow-phone", title: "Phone slow video" }] },
+  });
+  expect(res.status()).toBe(201);
+  await page.goto(`${APP}#/queue`);
+  const row = page.getByRole("listitem").filter({ hasText: "Phone slow video" });
+  await expect(row).toBeVisible();
+  await expectNoSideScroll(page);
+  const cancel = row.getByRole("button", { name: "Cancel" });
+  await expectTarget(cancel);
+  await cancel.tap();
+  await expect(row).toHaveCount(0);
+});
+
+test("settings: no sideways scroll, inputs fit, buttons are 44 px", async ({ page }) => {
+  await page.goto(`${APP}#/settings`);
+  await expect(page.getByLabel("Proxy URL")).toBeVisible();
+  await expectNoSideScroll(page);
+  for (const box of await page.locator("main input:not([type=radio])").all()) {
+    const b = await box.boundingBox();
+    expect((b?.x ?? 0) + (b?.width ?? 0)).toBeLessThanOrEqual(390);
+  }
+  await expectTarget(page.getByRole("button", { name: "Save" }));
+});
+
+test("watch: player fits, Save and Delete are 44 px", async ({ page }) => {
+  await page.goto(`${APP}#/`);
+  await page.getByRole("link", { name: "Phone video" }).tap();
+  const video = page.locator("video");
+  await expect(video).toBeVisible();
+  expect((await video.boundingBox())?.width ?? 999).toBeLessThanOrEqual(390);
+  await expectTarget(page.getByRole("button", { name: "Save", exact: true }));
+  await expectTarget(page.getByRole("button", { name: "Delete" }));
+  await expectNoSideScroll(page);
+});

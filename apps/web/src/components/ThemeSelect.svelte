@@ -15,7 +15,7 @@
 <div role="radiogroup" aria-label={label} class="flex flex-col gap-1">
   {#each CHOICES as c (c.value)}
     <label
-      class="cursor-pointer rounded-control px-2 py-1 text-center text-xs font-medium transition-colors duration-(--duration-fast) has-checked:bg-raised has-checked:text-fg has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-fg text-muted hover:text-fg"
+      class="grid min-h-[44px] cursor-pointer place-items-center rounded-control px-2 py-1 text-center text-xs md:block md:min-h-0 font-medium transition-colors duration-(--duration-fast) has-checked:bg-raised has-checked:text-fg has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-fg text-muted hover:text-fg"
     >
       <input
         type="radio"

@@ -98,9 +98,9 @@
   }
 
   const button =
-    "inline-flex min-h-9 cursor-pointer items-center rounded-pill border border-line-strong bg-transparent px-5 py-2 text-sm font-medium text-fg no-underline hover:bg-raised disabled:opacity-50";
+    "inline-flex min-h-[44px] flex-1 cursor-pointer items-center justify-center md:min-h-9 md:flex-none md:justify-start rounded-pill border border-line-strong bg-transparent px-5 py-2 text-sm font-medium text-fg no-underline hover:bg-raised disabled:opacity-50";
   const primary =
-    "inline-flex min-h-9 cursor-pointer items-center rounded-pill border-0 bg-action px-5 py-2 text-sm font-semibold text-on-action no-underline hover:opacity-90 disabled:opacity-50";
+    "inline-flex min-h-[44px] flex-1 cursor-pointer items-center justify-center md:min-h-9 md:flex-none md:justify-start rounded-pill border-0 bg-action px-5 py-2 text-sm font-semibold text-on-action no-underline hover:opacity-90 disabled:opacity-50";
 </script>
 
 {#if phase === "missing"}
@@ -115,7 +115,7 @@
   </p>
 {:else if job}
   <div class="mx-auto flex max-w-[960px] flex-col gap-4">
-    <div class="overflow-hidden rounded-thumb bg-black">
+    <div class="-mx-4 overflow-hidden bg-black md:mx-0 md:rounded-thumb">
       {#if job.media_kind === "audio"}
         <!-- biome-ignore lint/a11y/useMediaCaption: downloaded files carry no caption track -->
         <audio controls {src} class="w-full" onerror={() => (playError = true)}></audio>

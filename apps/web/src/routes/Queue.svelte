@@ -33,11 +33,11 @@
     act(j, () => call(api.POST("/api/downloads/{job_id}/dismiss", params(j))));
 
   const btn =
-    "cursor-pointer rounded-pill border border-line-strong bg-transparent px-3 py-1 text-sm font-medium text-fg transition-colors duration-(--duration-fast) hover:bg-raised disabled:cursor-default disabled:opacity-50";
+    "min-h-[44px] min-w-[44px] cursor-pointer rounded-pill border border-line-strong bg-transparent px-3 py-1 text-sm md:min-h-0 md:min-w-0 font-medium text-fg transition-colors duration-(--duration-fast) hover:bg-raised disabled:cursor-default disabled:opacity-50";
 </script>
 
 {#snippet thumb(job: JobOut)}
-  <div class="aspect-video w-40 shrink-0 overflow-hidden rounded-thumb bg-surface">
+  <div class="aspect-video w-28 shrink-0 md:w-40 overflow-hidden rounded-thumb bg-surface">
     {#if job.thumbnail}
       <img src={job.thumbnail} alt="" loading="lazy" class="size-full object-cover">
     {/if}
@@ -54,9 +54,9 @@
   {#if queue.active.length > 0}
     <ul class="m-0 mt-6 flex list-none flex-col gap-4 p-0">
       {#each queue.active as job (job.id)}
-        <li class="flex items-center gap-4">
+        <li class="flex flex-wrap items-center gap-x-4 gap-y-2 md:flex-nowrap">
           {@render thumb(job)}
-          <div class="min-w-0 flex-1">
+          <div class="min-w-0 flex-1 basis-40">
             <p class="m-0 truncate text-base font-semibold">{job.title ?? job.url}</p>
             <p class="m-0 truncate text-sm text-muted">
               {job.uploader ?? ""}{job.uploader ? " · " : ""}{job.status === "active"
@@ -85,7 +85,12 @@
               <p class="m-0 mt-1 text-sm text-danger">{errors[job.id]}</p>
             {/if}
           </div>
-          <button type="button" class={btn} disabled={busy.has(job.id)} onclick={() => cancel(job)}>
+          <button
+            type="button"
+            class="{btn} ml-auto"
+            disabled={busy.has(job.id)}
+            onclick={() => cancel(job)}
+          >
             Cancel
           </button>
         </li>
@@ -97,26 +102,33 @@
     <h2 class="m-0 mt-8 mb-3 text-lg font-semibold">Failed</h2>
     <ul class="m-0 flex list-none flex-col gap-4 p-0">
       {#each queue.failed as job (job.id)}
-        <li class="flex items-center gap-4">
+        <li class="flex flex-wrap items-center gap-x-4 gap-y-2 md:flex-nowrap">
           {@render thumb(job)}
-          <div class="min-w-0 flex-1">
+          <div class="min-w-0 flex-1 basis-40">
             <p class="m-0 truncate text-base font-semibold">{job.title ?? job.url}</p>
             <p class="m-0 text-sm text-danger">{job.error_message ?? "The download failed."}</p>
             {#if errors[job.id]}
               <p class="m-0 mt-1 text-sm text-danger">{errors[job.id]}</p>
             {/if}
           </div>
-          <button type="button" class={btn} disabled={busy.has(job.id)} onclick={() => retry(job)}>
-            Retry
-          </button>
-          <button
-            type="button"
-            class={btn}
-            disabled={busy.has(job.id)}
-            onclick={() => dismiss(job)}
-          >
-            Dismiss
-          </button>
+          <div class="ml-auto flex gap-2">
+            <button
+              type="button"
+              class={btn}
+              disabled={busy.has(job.id)}
+              onclick={() => retry(job)}
+            >
+              Retry
+            </button>
+            <button
+              type="button"
+              class={btn}
+              disabled={busy.has(job.id)}
+              onclick={() => dismiss(job)}
+            >
+              Dismiss
+            </button>
+          </div>
         </li>
       {/each}
     </ul>

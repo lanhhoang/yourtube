@@ -67,17 +67,17 @@
   }
 </script>
 
-<div class="flex items-center gap-4">
+<div class="flex flex-wrap items-center gap-x-4 gap-y-3">
   <h1 class="m-0 text-xl font-bold tracking-[-0.01em]">Library</h1>
   <input
     type="search"
     bind:value={q}
     aria-label="Search library"
     placeholder="Search title or uploader"
-    class="ml-auto w-72 rounded-pill border border-line-strong bg-surface px-4 py-1.5 text-base text-fg placeholder:text-muted"
+    class="min-h-[44px] w-full rounded-pill border border-line-strong bg-surface px-4 py-1.5 text-[16px] text-fg placeholder:text-muted md:ml-auto md:min-h-0 md:w-72 md:text-base"
   >
 </div>
-<div class="mt-4"><Chips bind:value={chip} /></div>
+<div class="mt-3 md:mt-4"><Chips bind:value={chip} /></div>
 
 {#if error}
   <p class="mt-6 text-danger">
@@ -102,7 +102,9 @@
       {/if}
     </p>
   {:else}
-    <div class="mt-6 grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-x-4 gap-y-6">
+    <div
+      class="mt-4 flex flex-col gap-3 md:mt-6 md:grid md:grid-cols-[repeat(auto-fill,minmax(240px,1fr))] md:gap-x-4 md:gap-y-6"
+    >
       {#each items as job (job.id)}
         <JobCard {job} ondeleted={removed} />
       {/each}
