@@ -59,7 +59,7 @@
       </div>
     {:else}
       <div
-        class="absolute top-2 right-2 flex flex-col rounded-control border border-line-strong bg-surface p-1 opacity-0 shadow-[0_8px_24px_rgb(0_0_0/0.4)] transition-opacity duration-(--duration-fast) group-focus-within:opacity-100 group-hover:opacity-100"
+        class="absolute top-2 right-2 z-10 flex flex-col rounded-control border border-line-strong bg-surface p-1 opacity-0 shadow-[0_8px_24px_rgb(0_0_0/0.4)] transition-opacity duration-(--duration-fast) group-focus-within:opacity-100 group-hover:opacity-100"
       >
         <a class={item} href="/api/downloads/{job.id}/file" download>Download file</a>
         <button type="button" class={item} disabled={deleting} onclick={remove} onblur={reset}>
@@ -69,7 +69,15 @@
     {/if}
   </div>
   <div class="min-w-0">
-    <h3 class="m-0 line-clamp-2 text-base font-semibold">{job.title ?? job.url}</h3>
+    <h3 class="m-0 line-clamp-2 text-base font-semibold">
+      {#if inProgress}
+        {job.title ?? job.url}
+      {:else}
+        <a href="#/watch/{job.id}" class="text-fg no-underline hover:underline"
+          >{job.title ?? job.url}</a
+        >
+      {/if}
+    </h3>
     {#if inProgress}
       <p class="m-0 text-sm text-muted">
         {job.status === "active" ? "Downloading" : "Queued"}

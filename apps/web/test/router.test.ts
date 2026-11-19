@@ -26,3 +26,12 @@ test("section maps routes to rail links", () => {
   expect(section({ name: "queue" })).toBe("queue");
   expect(section({ name: "library" })).toBe("library");
 });
+
+test("watch route", () => {
+  expect(parseHash("#/watch/12")).toEqual({ name: "watch", id: 12 });
+  expect(parseHash("#/watch/x")).toEqual({ name: "library" });
+  expect(parseHash("#/watch/")).toEqual({ name: "library" });
+  expect(parseHash("#/watch/1.5")).toEqual({ name: "library" });
+  expect(href({ name: "watch", id: 12 })).toBe("#/watch/12");
+  expect(section({ name: "watch", id: 12 })).toBe("library");
+});

@@ -68,8 +68,18 @@ def dismiss(job_id: int, session: Session = Depends(get_session)) -> Response:
     return Response(status_code=204)
 
 
+@router.get("/downloads/{job_id}")
+def get_job(job_id: int, session: Session = Depends(get_session)) -> JobOut:
+    row = session.get(Download, job_id)
+    if row is None:
+        raise ApiError(404, "not_found", "Download not found.")
+    return JobOut.from_row(row)
+
+
 @router.get("/downloads/{job_id}/file")
-def download_file(job_id: int, session: Session = Depends(get_session)) -> FileResponse:
+def download_file(
+    job_id: int, inline: bool = False, session: Session = Depends(get_session)
+) -> FileResponse:
     row = session.get(Download, job_id)
     if row is None:
         raise ApiError(404, "not_found", "Download not found.")
@@ -78,4 +88,8 @@ def download_file(job_id: int, session: Session = Depends(get_session)) -> FileR
     path = resolve_repo_path(row.file_path)
     if not path.exists():
         raise ApiError(404, "file_missing", "File is missing.")
-    return FileResponse(path, filename=path.name)
+    return FileResponse(
+        path,
+        filename=path.name,
+        content_disposition_type="inline" if inline else "attachment",
+    )

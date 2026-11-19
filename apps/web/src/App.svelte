@@ -14,6 +14,7 @@
   import Library from "./routes/Library.svelte";
   import Queue from "./routes/Queue.svelte";
   import Settings from "./routes/Settings.svelte";
+  import Watch from "./routes/Watch.svelte";
 
   const TOAST_MS = 5000;
 
@@ -66,6 +67,10 @@
         <Queue {queue} refresh={refreshQueue} />
       {:else if router.route.name === "settings"}
         <Settings />
+      {:else if router.route.name === "watch"}
+        {#key router.route.id}
+          <Watch id={router.route.id} />
+        {/key}
       {:else if router.route.name === "fetch"}
         <Fetch urls={router.route.urls} />
       {:else}

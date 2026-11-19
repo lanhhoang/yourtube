@@ -117,3 +117,33 @@ def test_file_route_resolves_relative_path_against_repo_root(
     r = client.get(f"/api/downloads/{job}/file")
     assert r.status_code == 200
     assert r.content == b"rel"
+
+
+def test_file_inline_and_attachment(
+    client: TestClient, db_session_visible: Session, tmp_path: Path
+) -> None:
+    f = tmp_path / "v.mp4"
+    f.write_bytes(b"data")
+    job = _add(db_session_visible, file_path=str(f))
+    r = client.get(f"/api/downloads/{job}/file?inline=1")
+    assert r.headers["content-disposition"].startswith("inline;")
+    r = client.get(f"/api/downloads/{job}/file")
+    assert r.headers["content-disposition"].startswith("attachment;")
+
+
+def test_file_supports_range(
+    client: TestClient, db_session_visible: Session, tmp_path: Path
+) -> None:
+    f = tmp_path / "v.mp4"
+    f.write_bytes(b"data")
+    job = _add(db_session_visible, file_path=str(f))
+    r = client.get(f"/api/downloads/{job}/file?inline=1", headers={"Range": "bytes=0-1"})
+    assert r.status_code == 206 and r.content == b"da"
+
+
+def test_get_job(client: TestClient, db_session_visible: Session) -> None:
+    job = _add(db_session_visible, "queued")
+    r = client.get(f"/api/downloads/{job}")
+    assert r.status_code == 200 and r.json()["id"] == job
+    r = client.get("/api/downloads/999999")
+    assert r.status_code == 404 and r.json()["error"]["code"] == "not_found"
