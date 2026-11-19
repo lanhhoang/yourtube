@@ -1,4 +1,5 @@
 export const SHARE_LIMIT_BYTES = 500 * 1024 * 1024;
+const FOLD_BYTES = 16 * 1024 * 1024;
 
 export function saveMode(size: number | null, canShare: boolean): "share" | "link" {
   return canShare && size !== null && size >= 1 && size <= SHARE_LIMIT_BYTES ? "share" : "link";
@@ -31,14 +32,24 @@ export async function fetchBlob(
   if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
   const total = Number(res.headers.get("Content-Length")) || 0;
   const reader = res.body.getReader();
-  const chunks: Uint8Array<ArrayBuffer>[] = [];
+  // Fold chunks into the Blob as they arrive: WebKit keeps Blob data off the JS heap, so a
+  // large file never sits in memory twice.
+  let acc = new Blob([]);
+  let chunks: Uint8Array<ArrayBuffer>[] = [];
+  let pending = 0;
   let received = 0;
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
     chunks.push(value as Uint8Array<ArrayBuffer>);
     received += value.length;
+    pending += value.length;
+    if (pending >= FOLD_BYTES) {
+      acc = new Blob([acc, ...chunks]);
+      chunks = [];
+      pending = 0;
+    }
     if (total) onProgress(Math.min(1, received / total));
   }
-  return new Blob(chunks, { type: res.headers.get("Content-Type") ?? "" });
+  return new Blob([acc, ...chunks], { type: res.headers.get("Content-Type") ?? "" });
 }

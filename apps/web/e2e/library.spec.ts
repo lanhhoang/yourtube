@@ -33,6 +33,9 @@ test("Save prepares the file, then shares it on a second tap", async ({ page }) 
   await page.addInitScript(() => {
     const w = window as unknown as { __shared?: unknown };
     Object.defineProperty(navigator, "canShare", { value: () => true });
+    const media = window.matchMedia.bind(window);
+    window.matchMedia = (q: string) =>
+      q === "(pointer: coarse)" ? ({ matches: true } as MediaQueryList) : media(q);
     Object.defineProperty(navigator, "share", {
       value: (d: { files: File[] }) => {
         w.__shared = d.files.map((f) => [f.name, f.size, f.type]);
@@ -47,6 +50,22 @@ test("Save prepares the file, then shares it on a second tap", async ({ page }) 
   await expect
     .poll(() => page.evaluate(() => (window as unknown as { __shared?: unknown }).__shared))
     .toEqual([["Seeded video.mp4", 4, "video/mp4"]]);
+});
+
+test("tapping the thumbnail opens the player", async ({ page }) => {
+  await page.goto(`${APP}#/`);
+  const card = page.getByRole("article").filter({ hasText: "Seeded video" });
+  await card.click({ position: { x: 20, y: 20 } }); // over the thumbnail
+  await expect(page).toHaveURL(/#\/watch\/\d+$/);
+});
+
+test("desktop Save downloads even when files can be shared", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "canShare", { value: () => true });
+  });
+  await page.goto(`${APP}#/`);
+  await page.getByRole("link", { name: "Seeded video" }).click();
+  await expect(page.getByRole("link", { name: "Save" })).toHaveAttribute("download", "");
 });
 
 test("a missing download says so", async ({ page }) => {

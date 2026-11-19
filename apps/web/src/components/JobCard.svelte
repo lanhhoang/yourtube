@@ -73,7 +73,9 @@
       {#if inProgress}
         {job.title ?? job.url}
       {:else}
-        <a href="#/watch/{job.id}" class="text-fg no-underline hover:underline"
+        <a
+          href="#/watch/{job.id}"
+          class="text-fg no-underline after:absolute after:inset-0 after:content-[''] hover:underline"
           >{job.title ?? job.url}</a
         >
       {/if}

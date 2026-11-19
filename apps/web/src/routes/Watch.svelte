@@ -30,7 +30,9 @@
       : "",
   );
   const mode = $derived(
-    job && save !== "failed" ? saveMode(job.file_size, canShareFiles()) : "link",
+    job && save !== "failed"
+      ? saveMode(job.file_size, canShareFiles() && matchMedia("(pointer: coarse)").matches)
+      : "link",
   );
 
   $effect(() => {
