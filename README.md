@@ -64,6 +64,11 @@ Tailscale ends TLS and passes plain HTTP to the app on `127.0.0.1:8000`, so keep
 
 HTTPS is required for installing the app, Save to Photos and, later, push notifications. `YT_HOST=0.0.0.0` in `.env` listens on the LAN over plain http, which is fine for browsing only. The Docker Compose setup already binds `0.0.0.0`.
 
+### Install it on your phone
+
+- **iPhone:** open the Tailscale URL in Safari, tap Share, then Add to Home Screen. Install needs iOS 16.4 or later and HTTPS.
+- **Android and desktop:** use the browser's Install option. The installed app also appears in the share sheet, so sharing a link to YourTube opens it on the fetch screen. iOS has no share target.
+
 ## Layout
 
 ```
