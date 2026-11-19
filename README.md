@@ -50,7 +50,30 @@ For one process on one port, build the web app and start the server:
 pnpm build && pnpm start            # everything on http://127.0.0.1:8000
 ```
 
-`pnpm dev` and `pnpm start` listen on localhost only. `.env` lives at the repo root. Details for each app: [`apps/web/README.md`](apps/web/README.md) and [`apps/server/README.md`](apps/server/README.md).
+`pnpm dev` and `pnpm start` listen on localhost unless `YT_HOST` says otherwise. `.env` lives at the repo root. Details for each app: [`apps/web/README.md`](apps/web/README.md) and [`apps/server/README.md`](apps/server/README.md).
+
+## Use it from your phone
+
+Run YourTube on a computer or server, then open it on your phone over [Tailscale](https://tailscale.com):
+
+```bash
+tailscale serve --bg 8000           # https://<host>.<tailnet>.ts.net
+```
+
+Tailscale ends TLS and passes plain HTTP to the app on `127.0.0.1:8000`, so keep `YT_HOST` at its default. Only devices on your tailnet can reach it; never expose the app to the public internet.
+
+HTTPS is required for installing the app, Save to Photos and, later, push notifications. `YT_HOST=0.0.0.0` in `.env` listens on the LAN over plain http, which is fine for browsing only. The Docker Compose setup already binds `0.0.0.0`.
+
+### Install it on your phone
+
+- **iPhone:** open the Tailscale URL in Safari, tap Share, then Add to Home Screen. Install needs iOS 16.4 or later and HTTPS.
+- **Android and desktop:** use the browser's Install option. The installed app also appears in the share sheet, so sharing a link to YourTube opens it on the fetch screen. iOS has no share target.
+
+### Paste a link on the phone
+
+Copy the link in the YouTube app, open YourTube, and tap Paste next to the URL field. It fills the field from your clipboard (iOS asks you to confirm). If reading the clipboard fails, the field gets focus so you can long-press and paste. Then tap Fetch; pasting never fetches by itself.
+
+Optional: an iOS Shortcut "Send to YourTube" skips the paste. Build it as Receive URLs from Share Sheet → URL Encode → Open URL `https://<host>/#/fetch/<encoded>`. No app code depends on it.
 
 ## Layout
 

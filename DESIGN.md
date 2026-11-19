@@ -53,3 +53,7 @@ Tracking: 0 for body, -0.01em for `xl`. Body measure under 70ch.
 ## Layout
 
 Top bar 56 px: wordmark (player mark, 20 px tall, + "yourtube"), pill URL field centred up to 560 px, Fetch button, options menu. Left rail 72 px: icon over 11 px label, red count on Queue; theme tile in the rail footer (moon/sun/monitor, cycles Dark → Light → System; Settings keeps the three-option control). Content scrolls under the bar.
+
+## Player
+
+The watch view (`#/watch/<id>`) is centred, up to 960 px wide: a black 16:9 box with the browser's native controls (`<audio>` for audio jobs), then the title, a muted meta line (channel · quality · size · format) and the actions Save and Delete as pill buttons. Save is the primary (`action`) pill; Delete is an outlined pill with the same two-step confirm as the library card. If the browser can't play the file, a `warn` line above the actions says so and points to Save. On phones Save takes two taps: "Preparing… 42%", then "Share file".

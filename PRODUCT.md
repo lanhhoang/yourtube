@@ -4,11 +4,11 @@
 
 ## Platform
 
-web
+web, plus a phone PWA (installed from the Tailscale HTTPS URL)
 
 ## Users
 
-The owner and the few people they share the server with (inferred from "self-hosted" and "this one is yours"). They sit at a computer, paste a YouTube video or playlist URL, choose a quality, and expect the file to be in their library later. They come back to the library to get files they already downloaded. Computer only for now; phone layouts are out of scope.
+The owner and the few people they share the server with (inferred from "self-hosted" and "this one is yours"). They sit at a computer or phone, paste a YouTube video or playlist URL, choose a quality, and expect the file to be in their library later. They come back to the library to get files they already downloaded. On the phone the app is installed to the home screen; the dedicated phone layout comes later.
 
 ## Product Purpose
 
@@ -31,7 +31,8 @@ YourTube is a self-hosted YouTube downloader with a web UI, a persistent queue a
 - Quality is a per-job cap: `best`, `2160`, `1440`, `1080`, `720`, `480`, `audio`. Default "Up to 1080p". The cap compares the short side of the video. Exact format ids override the cap. An opt-in HDR choice keeps HDR where the video offers it at the capped resolution; off by default.
 - Playlists: one cap for all selected videos, per-video override, every selected video checked before "Add to queue" is enabled. A video must never silently download below the chosen quality without being flagged first.
 - Terms: "cap" (quality limit), "Library" (finished downloads), "Queue" (queued, active and failed jobs).
-- Not in scope: in-browser playback, translation, PWA/offline, live push, server-side playlist checking.
+- Finished files play in the app (`#/watch/<id>`) and can be saved to the phone.
+- Not in scope: translation, offline use, live push, server-side playlist checking.
 
 ## Brand Commitments
 

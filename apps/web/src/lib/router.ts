@@ -2,7 +2,8 @@ export type Route =
   | { name: "library" }
   | { name: "queue" }
   | { name: "settings" }
-  | { name: "fetch"; urls: string };
+  | { name: "fetch"; urls: string }
+  | { name: "watch"; id: number };
 
 const LIBRARY: Route = { name: "library" };
 
@@ -26,6 +27,8 @@ export function parseHash(hash: string): Route {
       const urls = raw ? decode(raw) : null;
       return urls ? { name: "fetch", urls } : LIBRARY;
     }
+    case "watch":
+      return raw && /^\d+$/.test(raw) ? { name: "watch", id: Number(raw) } : LIBRARY;
     default:
       return LIBRARY;
   }
@@ -37,6 +40,8 @@ export function href(r: Route): string {
       return "#/";
     case "fetch":
       return `#/fetch/${encodeURIComponent(r.urls)}`;
+    case "watch":
+      return `#/watch/${r.id}`;
     default:
       return `#/${r.name}`;
   }
@@ -46,5 +51,6 @@ export type Section = "library" | "queue" | "settings" | null;
 
 // Which rail link a route belongs to, for aria-current. A fetch has none.
 export function section(r: Route): Section {
-  return r.name === "fetch" ? null : r.name;
+  if (r.name === "fetch") return null;
+  return r.name === "watch" ? "library" : r.name;
 }

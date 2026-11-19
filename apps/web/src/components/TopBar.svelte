@@ -9,6 +9,7 @@
   import { navigate } from "../lib/router.svelte.ts";
 
   let field = $state("");
+  let input = $state<HTMLTextAreaElement>();
   let options = $state<FetchOptions>(readFetchOptions(localStorage.getItem(FETCH_OPTIONS_KEY)));
   let menuOpen = $state(false);
 
@@ -18,6 +19,17 @@
     const urls = field.trim();
     if (!urls) return;
     navigate({ name: "fetch", urls });
+  }
+
+  async function paste() {
+    let text = "";
+    try {
+      text = (await navigator.clipboard.readText()).trim();
+    } catch {
+      // Blocked or unavailable: fall through and focus the field for a manual paste.
+    }
+    if (text) field = text;
+    else input?.focus();
   }
 
   function onKeydown(e: KeyboardEvent) {
@@ -50,6 +62,7 @@
 
   <div class="mx-auto flex w-full max-w-[560px] items-start gap-2">
     <textarea
+      bind:this={input}
       bind:value={field}
       onkeydown={onKeydown}
       rows={lines}
@@ -57,6 +70,16 @@
       placeholder="Paste a video or playlist URL…"
       class="min-h-9 flex-1 resize-none rounded-[18px] border border-line-strong bg-surface px-4 py-[7px] text-sm leading-[1.4] text-fg placeholder:text-muted"
     ></textarea>
+
+    {#if !field}
+      <button
+        type="button"
+        onclick={paste}
+        class="h-11 shrink-0 cursor-pointer rounded-pill border border-line-strong bg-transparent px-4 text-sm font-semibold text-fg hover:bg-raised md:hidden"
+      >
+        Paste
+      </button>
+    {/if}
 
     <button
       type="button"
