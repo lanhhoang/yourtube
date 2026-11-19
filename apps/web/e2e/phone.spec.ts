@@ -147,15 +147,32 @@ test("settings: no sideways scroll, inputs fit, buttons are 44 px", async ({ pag
   await expectTarget(page.getByRole("button", { name: "Save" }));
 });
 
-test("watch: player fits, Save and Delete are 44 px", async ({ page }) => {
+async function watchPage(page: Page) {
   await page.goto(`${APP}#/`);
   await page.getByRole("link", { name: "Phone video" }).tap();
+}
+
+test("watch: player fits, Save and Delete are 44 px", async ({ page }) => {
+  // Share mode: touch makes the browser report file sharing, so Save is a button.
+  await page.addInitScript(() =>
+    Object.defineProperty(navigator, "canShare", { value: () => true, configurable: true }),
+  );
+  await watchPage(page);
   const video = page.locator("video");
   await expect(video).toBeVisible();
   expect((await video.boundingBox())?.width ?? 999).toBeLessThanOrEqual(390);
   await expectTarget(page.getByRole("button", { name: "Save", exact: true }));
   await expectTarget(page.getByRole("button", { name: "Delete" }));
   await expectNoSideScroll(page);
+});
+
+test("watch: Save as a download link is a 44 px target too", async ({ page }) => {
+  // Browsers without file sharing (and CI's Chromium) show Save as a link.
+  await page.addInitScript(() =>
+    Object.defineProperty(navigator, "canShare", { value: undefined }),
+  );
+  await watchPage(page);
+  await expectTarget(page.getByRole("link", { name: "Save", exact: true }));
 });
 
 test("fetch video: no sideways scroll, Add to queue queues the job", async ({ page }) => {
