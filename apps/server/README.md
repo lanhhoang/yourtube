@@ -30,7 +30,7 @@ All settings are environment variables prefixed with `YT_`, read from the proces
 
 Downloads folder, cookies path and proxy can also be changed on the Settings page; saved relative paths resolve against the repo root too. The number of download threads is "Max concurrent downloads" on the Settings page.
 
-The bind address and port are uvicorn flags, not settings: `127.0.0.1:8000` in `package.json`, `0.0.0.0:8000` in the Dockerfile. `config.py` still declares `YT_HOST`, `YT_PORT` and `YT_WORKERS`, but nothing reads them.
+`pnpm start` and `pnpm dev` run `python -m app`, which reads `YT_HOST` (default `127.0.0.1`) and `YT_PORT` (default `8000`). Docker passes its own uvicorn flags (`0.0.0.0:8000`). `config.py` still declares `YT_WORKERS`, but nothing reads it.
 
 ## Layout
 
