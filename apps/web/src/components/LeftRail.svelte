@@ -11,7 +11,10 @@
   ] as const;
 </script>
 
-<nav aria-label="Main" class="flex h-full w-[72px] shrink-0 flex-col justify-between py-2">
+<nav
+  aria-label="Main"
+  class="hidden h-full w-[72px] shrink-0 flex-col justify-between py-2 md:flex"
+>
   <ul class="m-0 flex list-none flex-col items-center gap-3 p-0">
     {#each LINKS as l (l.section)}
       <li>

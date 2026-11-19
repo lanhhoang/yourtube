@@ -51,16 +51,18 @@
 
 <svelte:window onkeydown={onWindowKeydown} />
 
-<header class="flex h-14 shrink-0 items-center gap-3 px-4">
+<header
+  class="flex min-h-14 shrink-0 items-center gap-3 px-3 pt-[env(safe-area-inset-top)] md:px-4"
+>
   <a
     href="#/"
-    class="flex w-[120px] items-center gap-2 text-lg font-bold tracking-[-0.01em] text-fg no-underline"
+    class="flex shrink-0 items-center gap-2 text-lg md:w-[120px] font-bold tracking-[-0.01em] text-fg no-underline"
   >
     <LogoMark />
-    yourtube
+    <span class="sr-only md:not-sr-only">yourtube</span>
   </a>
 
-  <div class="mx-auto flex w-full max-w-[560px] items-start gap-2">
+  <div class="mx-auto flex w-full min-w-0 max-w-[560px] items-start gap-2">
     <textarea
       bind:this={input}
       bind:value={field}
@@ -68,14 +70,14 @@
       rows={lines}
       aria-label="Video or playlist URL"
       placeholder="Paste a video or playlist URL…"
-      class="min-h-9 flex-1 resize-none rounded-[18px] border border-line-strong bg-surface px-4 py-[7px] text-sm leading-[1.4] text-fg placeholder:text-muted"
+      class="min-h-[44px] min-w-0 flex-1 resize-none rounded-[22px] border border-line-strong bg-surface px-4 py-[11px] text-[16px] leading-[1.3] md:min-h-9 md:rounded-[18px] md:py-[7px] md:text-sm md:leading-[1.4] text-fg placeholder:text-muted"
     ></textarea>
 
     {#if !field}
       <button
         type="button"
         onclick={paste}
-        class="h-11 shrink-0 cursor-pointer rounded-pill border border-line-strong bg-transparent px-4 text-sm font-semibold text-fg hover:bg-raised md:hidden"
+        class="h-[44px] shrink-0 cursor-pointer rounded-pill border border-line-strong bg-transparent px-4 text-sm font-semibold text-fg hover:bg-raised md:hidden"
       >
         Paste
       </button>
@@ -84,7 +86,7 @@
     <button
       type="button"
       onclick={submit}
-      class="h-9 shrink-0 cursor-pointer rounded-pill border-0 bg-action px-4 text-sm font-semibold text-on-action transition-opacity duration-(--duration-fast) hover:opacity-90"
+      class="h-[44px] shrink-0 cursor-pointer rounded-pill border-0 bg-action md:h-9 px-4 text-sm font-semibold text-on-action transition-opacity duration-(--duration-fast) hover:opacity-90"
     >
       Fetch
     </button>
@@ -96,7 +98,7 @@
         aria-expanded={menuOpen}
         aria-haspopup="true"
         onclick={() => (menuOpen = !menuOpen)}
-        class="grid size-9 cursor-pointer place-items-center rounded-pill border-0 bg-raised text-fg"
+        class="grid size-[44px] cursor-pointer md:size-9 place-items-center rounded-pill border-0 bg-raised text-fg"
       >
         <svg
           viewBox="0 0 24 24"
@@ -140,5 +142,5 @@
       {/if}
     </div>
   </div>
-  <div class="w-[120px]" aria-hidden="true"></div>
+  <div class="hidden w-[120px] md:block" aria-hidden="true"></div>
 </header>

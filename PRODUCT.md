@@ -8,7 +8,7 @@ web, plus a phone PWA (installed from the Tailscale HTTPS URL)
 
 ## Users
 
-The owner and the few people they share the server with (inferred from "self-hosted" and "this one is yours"). They sit at a computer or phone, paste a YouTube video or playlist URL, choose a quality, and expect the file to be in their library later. They come back to the library to get files they already downloaded. On the phone the app is installed to the home screen; the dedicated phone layout comes later.
+The owner and the few people they share the server with (inferred from "self-hosted" and "this one is yours"). They sit at a computer or phone, paste a YouTube video or playlist URL, choose a quality, and expect the file to be in their library later. They come back to the library to get files they already downloaded. On the phone the app is installed to the home screen, with a dedicated phone layout.
 
 ## Product Purpose
 
