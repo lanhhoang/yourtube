@@ -27,6 +27,7 @@ from app.api.spa import spa_router
 from app.config import settings
 from app.db import SessionLocal, engine
 from app.services.job_runner import run_claimed_job
+from app.services.library_layout import migrate_library_layout
 from app.services.queue import claim_next, detect_stale_jobs, requeue_active_on_startup
 from app.services.settings import resolve_runtime_settings
 
@@ -142,6 +143,11 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         requeue_active_on_startup(session)
         runtime = resolve_runtime_settings(session)
     Path(runtime.downloads_dir).mkdir(parents=True, exist_ok=True)
+    try:
+        with SessionLocal() as session:
+            migrate_library_layout(session, Path(runtime.downloads_dir))
+    except Exception:  # noqa: BLE001 - a failed move must not stop the app
+        logger.exception("library layout move failed")
     worker_pool = WorkerPool()
     if settings.workers_enabled:
         worker_pool.start(runtime.max_concurrent)

@@ -27,3 +27,29 @@ def test_startup_requeues_active_rows(db_session_visible) -> None:
 
     db_session_visible.refresh(row)
     assert row.status == "queued"
+
+
+def test_startup_moves_library(db_session_visible, tmp_path) -> None:
+    from app.services.settings import get_setting, set_settings_batch
+
+    old = tmp_path / "Old Name.mp4"
+    old.write_bytes(b"x")
+    set_settings_batch(db_session_visible, {"downloads_dir": str(tmp_path)})
+    row = Download(
+        url="https://www.youtube.com/watch?v=vid1",
+        title="Old Name",
+        uploader="Chan",
+        status="done",
+        file_path=str(old),
+    )
+    db_session_visible.add(row)
+    db_session_visible.commit()
+
+    with TestClient(app):
+        pass
+
+    db_session_visible.expire_all()
+    new = tmp_path / "chan" / "old-name.mp4"
+    assert new.exists() and not old.exists()
+    assert db_session_visible.get(Download, row.id).file_path == str(new)
+    assert get_setting(db_session_visible, "library_layout") == "v2"

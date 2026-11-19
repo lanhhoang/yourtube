@@ -29,6 +29,8 @@ Every folder and file name is a lowercase ASCII slug of at most 80 characters: n
 
 A custom output template on a job overrides this layout.
 
+On the first start after upgrading, existing library files move once into `<channel>/<title>.<ext>` (subtitle files go with them). Only files inside the downloads folder move, and a failed move leaves the file where it was, still playable and deletable. Failed moves are tried again on the next start.
+
 ### Playlists
 
 A playlist fetch lists up to 500 entries. The browser checks each selected video against the cap, two lookups at a time, and flags any video that would download below it ("720p max") or is unavailable. "Add to queue" waits until every selected video has been checked. Leaving the page stops checking.
