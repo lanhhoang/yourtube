@@ -1,5 +1,6 @@
 <script lang="ts">
   import LeftRail from "./components/LeftRail.svelte";
+  import TabBar from "./components/TabBar.svelte";
   import Toasts, { type Toast } from "./components/Toasts.svelte";
   import TopBar from "./components/TopBar.svelte";
   import { api, call } from "./lib/api.ts";
@@ -58,11 +59,11 @@
   });
 </script>
 
-<div class="flex h-screen flex-col">
+<div class="flex h-dvh flex-col">
   <TopBar />
   <div class="flex min-h-0 flex-1">
     <LeftRail active={section(router.route)} queueCount={queue?.active.length ?? 0} />
-    <main class="min-w-0 flex-1 overflow-y-auto p-6">
+    <main class="min-w-0 flex-1 overflow-y-auto p-4 md:p-6">
       {#if router.route.name === "queue"}
         <Queue {queue} refresh={refreshQueue} />
       {:else if router.route.name === "settings"}
@@ -78,5 +79,6 @@
       {/if}
     </main>
   </div>
+  <TabBar active={section(router.route)} queueCount={queue?.active.length ?? 0} />
   <Toasts {toasts} onclose={closeToast} />
 </div>

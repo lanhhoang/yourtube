@@ -45,8 +45,10 @@
     "cursor-pointer rounded-control border-0 bg-transparent px-3 py-1.5 text-left text-sm font-medium text-fg no-underline transition-colors duration-(--duration-fast) hover:bg-raised disabled:opacity-50";
 </script>
 
-<article class="group relative flex min-w-0 flex-col gap-2">
-  <div class="relative aspect-video overflow-hidden rounded-thumb bg-surface">
+<article class="group relative flex min-w-0 flex-row gap-3 md:flex-col md:gap-2">
+  <div
+    class="relative aspect-video w-2/5 shrink-0 overflow-hidden rounded-thumb bg-surface md:w-auto md:shrink"
+  >
     {#if job.thumbnail}
       <img src={job.thumbnail} alt="" loading="lazy" class="size-full object-cover">
     {/if}
@@ -59,7 +61,7 @@
       </div>
     {:else}
       <div
-        class="absolute top-2 right-2 z-10 flex flex-col rounded-control border border-line-strong bg-surface p-1 opacity-0 shadow-[0_8px_24px_rgb(0_0_0/0.4)] transition-opacity duration-(--duration-fast) group-focus-within:opacity-100 group-hover:opacity-100"
+        class="absolute top-2 right-2 z-10 hidden flex-col md:flex rounded-control border border-line-strong bg-surface p-1 opacity-0 shadow-[0_8px_24px_rgb(0_0_0/0.4)] transition-opacity duration-(--duration-fast) group-focus-within:opacity-100 group-hover:opacity-100"
       >
         <a class={item} href="/api/downloads/{job.id}/file" download>Download file</a>
         <button type="button" class={item} disabled={deleting} onclick={remove} onblur={reset}>
@@ -68,7 +70,7 @@
       </div>
     {/if}
   </div>
-  <div class="min-w-0">
+  <div class="min-w-0 flex-1">
     <h3 class="m-0 line-clamp-2 text-base font-semibold">
       {#if inProgress}
         {job.title ?? job.url}

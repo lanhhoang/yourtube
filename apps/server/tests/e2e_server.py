@@ -144,6 +144,23 @@ def _seed() -> None:
                 finished_at=datetime.now(),
             )
         )
+        # Used only by e2e/phone.spec.ts, so it never races the seeded-video tests.
+        phone = downloads / "phone.mp4"
+        phone.write_bytes(b"data")
+        session.add(
+            Download(
+                url="https://e2e.test/phone",
+                title="Phone video",
+                uploader="E2E",
+                status="done",
+                progress=100.0,
+                file_path=str(phone),
+                file_size=4,
+                media_format="mp4",
+                resolution_height=1080,
+                finished_at=datetime.now(),
+            )
+        )
         session.add(Download(url="https://e2e.test/slow", title="Slow video", status="queued"))
         session.commit()
 

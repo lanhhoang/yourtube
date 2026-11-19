@@ -1,0 +1,1756 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>YourTube phone mockups (390×844)</title>
+  <style>
+    :root {
+      --color-bg: #ffffff;
+      --color-surface: #f4f4f5;
+      --color-raised: #e9e9eb;
+      --color-line: #dcdce0;
+      --color-line-strong: #85858d;
+      --color-fg: #0f0f10;
+      --color-muted: #5f5f66;
+      --color-accent: #d90029;
+      --color-accent-fill: #d90029;
+      --color-on-accent: #ffffff;
+      --color-warn: #8a5200;
+      --color-danger: #c4161c;
+      --color-action: #0f0f10;
+      --color-on-action: #ffffff;
+      --radius-control: 0.5rem;
+      --radius-pill: 999px;
+    }
+    .dark {
+      --color-bg: #0b0b0c;
+      --color-surface: #161618;
+      --color-raised: #1f1f22;
+      --color-line: #2a2a2d;
+      --color-line-strong: #76767d;
+      --color-fg: #f1f1f1;
+      --color-muted: #8d8d8d;
+      --color-accent: #ff0033;
+      --color-accent-fill: #e6002e;
+      --color-on-accent: #ffffff;
+      --color-warn: #f5a524;
+      --color-danger: #ff6b6b;
+      --color-action: #f1f1f1;
+      --color-on-action: #0b0b0c;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+      background: #888;
+      color: #111;
+    }
+    body.solo {
+      background: var(--color-bg);
+    }
+    figure {
+      margin: 0;
+    }
+    figcaption {
+      display: none;
+    }
+    .phone {
+      position: relative;
+      width: 390px;
+      height: 844px;
+      overflow: hidden;
+      background: var(--color-bg);
+      color: var(--color-fg);
+      display: flex;
+      flex-direction: column;
+      font-size: 15px;
+    }
+    .status {
+      height: 47px;
+      flex: none;
+      padding: 14px 28px 0;
+      font-weight: 600;
+      font-size: 15px;
+    }
+    .top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      flex: none;
+    }
+    .mark {
+      flex: none;
+      display: grid;
+      place-items: center;
+      width: 32px;
+    }
+    .field {
+      flex: 1;
+      min-width: 0;
+      min-height: 44px;
+      border: 1px solid var(--color-line-strong);
+      background: var(--color-surface);
+      border-radius: 22px;
+      padding: 12px 16px;
+      font-size: 16px;
+      line-height: 1.3;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .ph {
+      color: var(--color-muted);
+    }
+    .pill {
+      min-height: 44px;
+      border-radius: 999px;
+      padding: 0 16px;
+      font: 600 14px inherit;
+      font-family: inherit;
+      border: 1px solid var(--color-line-strong);
+      background: transparent;
+      color: var(--color-fg);
+    }
+    .pill.action {
+      background: var(--color-action);
+      color: var(--color-on-action);
+      border: 0;
+    }
+    .pill.wide {
+      width: 100%;
+    }
+    .opt {
+      flex: none;
+      width: 44px;
+      height: 44px;
+      border-radius: 999px;
+      border: 0;
+      background: var(--color-raised);
+      color: var(--color-fg);
+      font-size: 18px;
+    }
+    main {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      padding: 12px 16px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 22px;
+      letter-spacing: -0.01em;
+    }
+    h2 {
+      margin: 20px 0 8px;
+      font-size: 17px;
+    }
+    .m {
+      margin: 0;
+      font-size: 13px;
+      color: var(--color-muted);
+    }
+    .t {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 600;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .t.one {
+      -webkit-line-clamp: 1;
+    }
+    .search {
+      min-height: 44px;
+      border: 1px solid var(--color-line-strong);
+      border-radius: 999px;
+      background: var(--color-surface);
+      padding: 12px 16px;
+      color: var(--color-muted);
+      font-size: 16px;
+    }
+    .chips {
+      display: flex;
+      gap: 8px;
+      margin: 12px 0;
+      overflow: hidden;
+    }
+    .chips b {
+      flex: none;
+      min-height: 44px;
+      display: grid;
+      place-items: center;
+      padding: 0 16px;
+      border-radius: 999px;
+      background: var(--color-raised);
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .chips b.on {
+      background: var(--color-action);
+      color: var(--color-on-action);
+    }
+    .row {
+      display: flex;
+      gap: 12px;
+      padding: 8px 0;
+    }
+    .th {
+      flex: none;
+      width: 40%;
+      aspect-ratio: 16 / 9;
+      border-radius: 8px;
+    }
+    .rt {
+      min-width: 0;
+      flex: 1;
+    }
+    .rt .t {
+      margin-bottom: 4px;
+    }
+    .bar {
+      height: 4px;
+      border-radius: 99px;
+      background: var(--color-raised);
+      margin: 8px 0 4px;
+      overflow: hidden;
+    }
+    .bar i {
+      display: block;
+      height: 100%;
+      background: var(--color-accent);
+    }
+    .qa {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-bottom: 8px;
+    }
+    .tabs {
+      flex: none;
+      display: flex;
+      border-top: 1px solid var(--color-line);
+      background: var(--color-bg);
+      padding-bottom: 34px;
+    }
+    .tab {
+      flex: 1;
+      min-height: 56px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--color-muted);
+    }
+    .tab[aria-current] {
+      color: var(--color-fg);
+      font-weight: 600;
+    }
+    .ico {
+      position: relative;
+      display: grid;
+    }
+    .badge {
+      position: absolute;
+      top: -6px;
+      left: 14px;
+      min-width: 18px;
+      height: 18px;
+      border-radius: 9px;
+      background: var(--color-accent-fill);
+      color: var(--color-on-accent);
+      font-size: 11px;
+      font-weight: 700;
+      display: grid;
+      place-items: center;
+      padding: 0 4px;
+    }
+    .toast {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      top: 55px;
+      z-index: 5;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      background: var(--color-raised);
+      border: 1px solid var(--color-line-strong);
+      border-radius: 8px;
+      padding: 8px 8px 8px 12px;
+      box-shadow: 0 8px 24px rgb(0 0 0 / 0.4);
+    }
+    .toast > div {
+      flex: 1;
+      min-width: 0;
+    }
+    .x {
+      width: 44px;
+      height: 44px;
+      border: 0;
+      background: transparent;
+      color: var(--color-muted);
+      font-size: 16px;
+    }
+    .hero {
+      aspect-ratio: 16 / 9;
+      border-radius: 8px;
+      position: relative;
+      margin-bottom: 12px;
+    }
+    .hero.s {
+      margin-bottom: 6px;
+    }
+    .hero.v {
+      margin: 0 -16px 12px;
+      border-radius: 0;
+      display: grid;
+      place-items: center;
+    }
+    .play {
+      color: #fff;
+      font-size: 32px;
+    }
+    .hero em {
+      position: absolute;
+      right: 6px;
+      bottom: 6px;
+      background: #000c;
+      color: #fff;
+      font-style: normal;
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+    .cb {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+    }
+    .cb i,
+    .chk i {
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      background: var(--color-action);
+      display: block;
+    }
+    .chk {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      min-height: 44px;
+      margin-bottom: 8px;
+    }
+    .tools {
+      display: flex;
+      gap: 8px;
+      margin: 12px 0;
+      flex-wrap: wrap;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .card .t {
+      font-size: 14px;
+    }
+    .tag {
+      display: inline-block;
+      margin-top: 4px;
+      padding: 2px 8px;
+      border-radius: 8px;
+      background: var(--color-raised);
+      color: var(--color-warn);
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .scrim {
+      position: absolute;
+      inset: 0;
+      background: #0009;
+      z-index: 6;
+    }
+    .sheet {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 7;
+      max-height: 85%;
+      background: var(--color-surface);
+      border-radius: 8px 8px 0 0;
+      padding: 16px 16px calc(16px + 34px);
+    }
+    .sh {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .sh h2 {
+      margin: 0;
+    }
+    .seg {
+      display: flex;
+      gap: 4px;
+      margin: 12px 0;
+    }
+    .seg b {
+      flex: 1;
+      min-height: 44px;
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      background: var(--color-raised);
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .seg b.on {
+      background: var(--color-action);
+      color: var(--color-on-action);
+    }
+    .fmt {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      min-height: 48px;
+      border-bottom: 1px solid var(--color-line);
+      font-size: 15px;
+    }
+    .r {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 2px solid var(--color-line-strong);
+    }
+    .r.on {
+      border-color: var(--color-fg);
+      background: radial-gradient(var(--color-fg) 40%, transparent 45%);
+    }
+    .sw {
+      width: 48px;
+      height: 28px;
+      border-radius: 99px;
+      background: var(--color-raised);
+      border: 1px solid var(--color-line-strong);
+    }
+    .f {
+      margin-bottom: 16px;
+    }
+    .f label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+    .in {
+      min-height: 44px;
+      border: 1px solid var(--color-line-strong);
+      background: var(--color-surface);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 16px;
+    }
+    .in.w {
+      width: 96px;
+    }
+    .actions,
+    .acts {
+      display: flex;
+      gap: 12px;
+    }
+    .acts .pill {
+      flex: 1;
+    }
+
+    body {
+      padding: 24px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, 390px);
+      gap: 24px;
+    }
+    .dark {
+      --x: 0;
+    }
+  </style>
+  <body>
+    <div class="dark">
+      <figure>
+        <div class="phone">
+          <div class="status">9:41</div>
+          <header class="top">
+            <span class="mark"
+              ><svg viewBox="0 0 36 25" width="29" height="20" aria-hidden="true">
+                <rect width="36" height="25" rx="6" fill="#e6002e" />
+                <path d="M14 7l10 5.5L14 18z" fill="#fff" />
+                <rect x="5" y="21" width="26" height="1.6" rx=".8" fill="#fff" opacity=".5" />
+              </svg></span
+            >
+            <div class="field"><span class="ph">Paste a video or playlist URL</span></div>
+            <button type="button" class="pill ghost">Paste</button
+            ><button type="button" class="pill action">Fetch</button
+            ><button type="button" class="opt" aria-label="Fetch options">⋯</button>
+          </header>
+          <main>
+            <div class="search">Search library</div>
+            <div class="chips">
+              <b class="on">All</b><b>Downloading</b><b>Video</b><b>Audio only</b>
+            </div>
+            <div class="row">
+              <div class="th" style="background:#7a2a2a"></div>
+              <div class="rt">
+                <p class="t">Never Gonna Give You Up (Official Video)</p>
+                <p class="m">Rick Astley · 3:33 · 1080p · 42 MB</p>
+              </div>
+            </div>
+            <div class="row">
+              <div class="th" style="background:#2a4a7a"></div>
+              <div class="rt">
+                <p class="t">Lofi hip hop radio</p>
+                <p class="m">ChilledCow · 1:02:10 · 720p · 310 MB</p>
+              </div>
+            </div>
+            <div class="row">
+              <div class="th" style="background:#2a6a4a"></div>
+              <div class="rt">
+                <p class="t">Sample 4K HDR</p>
+                <p class="m">Test · 0:61 · 2160p HDR · 88 MB</p>
+              </div>
+            </div>
+          </main>
+          <nav class="tabs">
+            <a class="tab" aria-current="page"
+              ><span class="ico"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="3" y="5" width="18" height="14" rx="2" />
+                  <path d="M10 9.5l5 2.5-5 2.5z" />
+                </svg></span
+              >Library</a
+            ><a class="tab"
+              ><span class="ico"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14" />
+                </svg><span class="badge">1</span></span
+              >Queue</a
+            ><a class="tab"
+              ><span class="ico"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="3" />
+                  <path
+                    d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"
+                  />
+                </svg></span
+              >Settings</a
+            >
+          </nav>
+        </div>
+        <figcaption>01-shell-library</figcaption>
+      </figure>
+    </div>
+    <div class="dark">
+      <figure>
+        <div class="phone">
+          <div class="status">9:41</div>
+          <header class="top">
+            <span class="mark"
+              ><svg viewBox="0 0 36 25" width="29" height="20" aria-hidden="true">
+                <rect width="36" height="25" rx="6" fill="#e6002e" />
+                <path d="M14 7l10 5.5L14 18z" fill="#fff" />
+                <rect x="5" y="21" width="26" height="1.6" rx=".8" fill="#fff" opacity=".5" />
+              </svg></span
+            >
+            <div class="field"><span class="ph">Paste a video or playlist URL</span></div>
+            <button type="button" class="pill ghost">Paste</button
+            ><button type="button" class="pill action">Fetch</button
+            ><button type="button" class="opt" aria-label="Fetch options">⋯</button>
+          </header>
+          <main>
+            <div class="search">Search library</div>
+            <div class="chips">
+              <b class="on">All</b><b>Downloading</b><b>Video</b><b>Audio only</b>
+            </div>
+            <div class="row">
+              <div class="th" style="background:#7a2a2a"></div>
+              <div class="rt">
+                <p class="t">Never Gonna Give You Up (Official Video)</p>
+                <p class="m">Rick Astley · 3:33 · 1080p · 42 MB</p>
+              </div>
+            </div>
+            <div class="row">
+              <div class="th" style="background:#2a4a7a"></div>
+              <div class="rt">
+                <p class="t">Lofi hip hop radio</p>
+                <p class="m">ChilledCow · 1:02:10 · 720p · 310 MB</p>
+              </div>
+            </div>
+            <div class="row">
+              <div class="th" style="background:#2a6a4a"></div>
+              <div class="rt">
+                <p class="t">Sample 4K HDR</p>
+                <p class="m">Test · 0:61 · 2160p HDR · 88 MB</p>
+              </div>
+            </div>
+          </main>
+          <nav class="tabs">
+            <a class="tab" aria-current="page"
+              ><span class="ico"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="3" y="5" width="18" height="14" rx="2" />
+                  <path d="M10 9.5l5 2.5-5 2.5z" />
+                </svg></span
+              >Library</a
+            ><a class="tab"
+              ><span class="ico"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14" />
+                </svg><span class="badge">1</span></span
+              >Queue</a
+            ><a class="tab"
+              ><span class="ico"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="3" />
+                  <path
+                    d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"
+                  />
+                </svg></span
+              >Settings</a
+            >
+          </nav>
+          <div class="toast">
+            <div>
+              <p class="m">Downloaded</p>
+              <p class="t one">Never Gonna Give You Up</p>
+            </div>
+            <button type="button" class="x">✕</button>
+          </div>
+        </div>
+        <figcaption>02-toast</figcaption>
+      </figure>
+    </div>
+    <div class="dark">
+      <figure>
+        <div class="phone">
+          <div class="status">9:41</div>
+          <header class="top">
+            <span class="mark"
+              ><svg viewBox="0 0 36 25" width="29" height="20" aria-hidden="true">
+                <rect width="36" height="25" rx="6" fill="#e6002e" />
+                <path d="M14 7l10 5.5L14 18z" fill="#fff" />
+                <rect x="5" y="21" width="26" height="1.6" rx=".8" fill="#fff" opacity=".5" />
+              </svg></span
+            >
+            <div class="field"><span class="ph">Paste a video or playlist URL</span></div>
+            <button type="button" class="pill ghost">Paste</button
+            ><button type="button" class="pill action">Fetch</button
+            ><button type="button" class="opt" aria-label="Fetch options">⋯</button>
+          </header>
+          <main>
+            <h1>Queue</h1>
+            <div class="row">
+              <div class="th" style="background:#444"></div>
+              <div class="rt">
+                <p class="t">Phone slow video</p>
+                <p class="m">Downloading · 1080p</p>
+                <div class="bar"><i style="width:42%"></i></div>
+                <span class="m">42%</span>
+              </div>
+            </div>
+            <div class="qa"><button type="button" class="pill ghost">Cancel</button></div>
+            <h2>Failed</h2>
+            <div class="row">
+              <div class="th" style="background:#333"></div>
+              <div class="rt">
+                <p class="t">Private video</p>
+                <p class="m">Unavailable</p>
+              </div>
+            </div>
+            <div class="qa">
+              <button type="button" class="pill ghost">Retry</button
+              ><button type="button" class="pill ghost">Dismiss</button>
+            </div>
+          </main>
+          <nav class="tabs">
+            <a class="tab"
+              ><span class="ico"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="3" y="5" width="18" height="14" rx="2" />
+                  <path d="M10 9.5l5 2.5-5 2.5z" />
+                </svg></span
+              >Library</a
+            ><a class="tab" aria-current="page"
+              ><span class="ico"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14" />
+                </svg><span class="badge">1</span></span
+              >Queue</a
+            ><a class="tab"
+              ><span class="ico"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="3" />
+                  <path
+                    d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"
+                  />
+                </svg></span
+              >Settings</a
+            >
+          </nav>
+        </div>
+        <figcaption>03-queue</figcaption>
+      </figure>
+    </div>
+    <div class="dark">
+      <figure>
+        <div class="phone">
+          <div class="status">9:41</div>
+          <header class="top">
+            <span class="mark"
+              ><svg viewBox="0 0 36 25" width="29" height="20" aria-hidden="true">
+                <rect width="36" height="25" rx="6" fill="#e6002e" />
+                <path d="M14 7l10 5.5L14 18z" fill="#fff" />
+                <rect x="5" y="21" width="26" height="1.6" rx=".8" fill="#fff" opacity=".5" />
+              </svg></span
+            >
+            <div class="field">https://youtu.be/dQw4w9WgXcQ</div>
+            <button type="button" class="pill action">Fetch</button
+            ><button type="button" class="opt" aria-label="Fetch options">⋯</button>
+          </header>
+          <main>
+            <div class="hero" style="background:#7a2a2a"></div>
+            <h1>Video Phone</h1>
+            <p class="m">E2E · 1:01</p>
+            <label class="chk"><i></i>Download subtitles</label
+            ><button type="button" class="pill action wide">Add to queue</button>
+          </main>
+        </div>
+        <figcaption>04-fetch-video</figcaption>
+      </figure>
+    </div>
+    <div class="dark">
+      <figure>
+        <div class="phone">
+          <div class="status">9:41</div>
+          <header class="top">
+            <span class="mark"
+              ><svg viewBox="0 0 36 25" width="29" height="20" aria-hidden="true">
+                <rect width="36" height="25" rx="6" fill="#e6002e" />
+                <path d="M14 7l10 5.5L14 18z" fill="#fff" />
+                <rect x="5" y="21" width="26" height="1.6" rx=".8" fill="#fff" opacity=".5" />
+              </svg></span
+            >
+            <div class="field">https://youtube.com/playlist?list=PL…</div>
+            <button type="button" class="pill action">Fetch</button
+            ><button type="button" class="opt" aria-label="Fetch options">⋯</button>
+          </header>
+          <main>
+            <h1>E2E Playlist</h1>
+            <p class="m">3 videos · 2 selected</p>
+            <div class="tools">
+              <button type="button" class="pill ghost">Select all</button
+              ><button type="button" class="pill ghost">Select none</button
+              ><button type="button" class="pill ghost">Advanced</button>
+            </div>
+            <button type="button" class="pill action wide">Add 2 to queue</button>
+            <div class="grid">
+              <div class="card">
+                <div class="hero s" style="background:#7a2a2a">
+                  <span class="cb"><i></i></span><em>3:33</em>
+                </div>
+                <p class="t">Video A</p>
+                <span class="tag">720p max</span>
+              </div>
+              <div class="card">
+                <div class="hero s" style="background:#2a4a7a">
+                  <span class="cb"><i></i></span><em>3:33</em>
+                </div>
+                <p class="t">Video B</p>
+                <span class="tag">720p max</span>
+              </div>
+            </div>
+          </main>
+        </div>
+        <figcaption>05-playlist</figcaption>
+      </figure>
+    </div>
+    <div class="dark">
+      <figure>
+        <div class="phone">
+          <div class="status">9:41</div>
+          <header class="top">
+            <span class="mark"
+              ><svg viewBox="0 0 36 25" width="29" height="20" aria-hidden="true">
+                <rect width="36" height="25" rx="6" fill="#e6002e" />
+                <path d="M14 7l10 5.5L14 18z" fill="#fff" />
+                <rect x="5" y="21" width="26" height="1.6" rx=".8" fill="#fff" opacity=".5" />
+              </svg></span
+            >
+            <div class="field">https://youtube.com/playlist?list=PL…</div>
+            <button type="button" class="pill action">Fetch</button
+            ><button type="button" class="opt" aria-label="Fetch options">⋯</button>
+          </header>
+          <main>
+            <h1>E2E Playlist</h1>
+            <p class="m">3 videos · 2 selected</p>
+            <div class="tools">
+              <button type="button" class="pill ghost">Select all</button
+              ><button type="button" class="pill ghost">Select none</button
+              ><button type="button" class="pill ghost">Advanced</button>
+            </div>
+            <button type="button" class="pill action wide">Add 2 to queue</button>
+            <div class="grid">
+              <div class="card">
+                <div class="hero s" style="background:#7a2a2a">
+                  <span class="cb"><i></i></span><em>3:33</em>
+                </div>
+                <p class="t">Video A</p>
+                <span class="tag">720p max</span>
+              </div>
+              <div class="card">
+                <div class="hero s" style="background:#2a4a7a">
+                  <span class="cb"><i></i></span><em>3:33</em>
+                </div>
+                <p class="t">Video B</p>
+                <span class="tag">720p max</span>
+              </div>
+            </div>
+          </main>
+          <div class="scrim"></div>
+          <section class="sheet">
+            <div class="sh">
+              <h2>Video A</h2>
+              <button type="button" class="pill ghost">Close</button>
+            </div>
+            <p class="m">Use the playlist settings, or customise this video.</p>
+            <div class="seg"><b class="on">Playlist settings</b><b>Custom</b></div>
+            <div class="fmt"><span>1080p · H.264</span><i class="r on"></i></div>
+            <div class="fmt"><span>720p · H.264</span><i class="r"></i></div>
+            <div class="fmt"><span>Audio · AAC 129k</span><i class="r"></i></div>
+          </section>
+        </div>
+        <figcaption>06-override-sheet</figcaption>
+      </figure>
+    </div>
+    <div class="dark">
+      <figure>
+        <div class="phone">
+          <div class="status">9:41</div>
+          <header class="top">
+            <span class="mark"
+              ><svg viewBox="0 0 36 25" width="29" height="20" aria-hidden="true">
+                <rect width="36" height="25" rx="6" fill="#e6002e" />
+                <path d="M14 7l10 5.5L14 18z" fill="#fff" />
+                <rect x="5" y="21" width="26" height="1.6" rx=".8" fill="#fff" opacity=".5" />
+              </svg></span
+            >
+            <div class="field"><span class="ph">Paste a video or playlist URL</span></div>
+            <button type="button" class="pill ghost">Paste</button
+            ><button type="button" class="pill action">Fetch</button
+            ><button type="button" class="opt" aria-label="Fetch options">⋯</button>
+          </header>
+          <main>
+            <h1>Settings</h1>
+            <div class="f">
+              <label>Max concurrent downloads</label>
+              <div class="in w">1</div>
+            </div>
+            <div class="f">
+              <label>Proxy URL</label>
+              <div class="in"></div>
+            </div>
+            <div class="f">
+              <label>Downloads folder</label>
+              <div class="in">/downloads</div>
+            </div>
+            <div class="actions">
+              <button type="button" class="pill action">Save</button
+              ><button type="button" class="pill ghost">Reset</button>
+            </div>
+            <h2>Theme</h2>
+            <div class="seg"><b class="on">Dark</b><b>Light</b><b>System</b></div>
+            <h2>Notifications</h2>
+            <div class="fmt">
+              <span>Notify when downloads finish <em class="m">(Phase 7)</em></span
+              ><i class="sw"></i>
+            </div>
+          </main>
+          <nav class="tabs">
+            <a class="tab"
+              ><span class="ico"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="3" y="5" width="18" height="14" rx="2" />
+                  <path d="M10 9.5l5 2.5-5 2.5z" />
+                </svg></span
+              >Library</a
+            ><a class="tab"
+              ><span class="ico"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14" />
+                </svg><span class="badge">1</span></span
+              >Queue</a
+            ><a class="tab" aria-current="page"
+              ><span class="ico"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="3" />
+                  <path
+                    d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"
+                  />
+                </svg></span
+              >Settings</a
+            >
+          </nav>
+        </div>
+        <figcaption>07-settings</figcaption>
+      </figure>
+    </div>
+    <div class="dark">
+      <figure>
+        <div class="phone">
+          <div class="status">9:41</div>
+          <header class="top">
+            <span class="mark"
+              ><svg viewBox="0 0 36 25" width="29" height="20" aria-hidden="true">
+                <rect width="36" height="25" rx="6" fill="#e6002e" />
+                <path d="M14 7l10 5.5L14 18z" fill="#fff" />
+                <rect x="5" y="21" width="26" height="1.6" rx=".8" fill="#fff" opacity=".5" />
+              </svg></span
+            >
+            <div class="field"><span class="ph">Paste a video or playlist URL</span></div>
+            <button type="button" class="pill ghost">Paste</button
+            ><button type="button" class="pill action">Fetch</button
+            ><button type="button" class="opt" aria-label="Fetch options">⋯</button>
+          </header>
+          <main>
+            <div class="hero v" style="background:#000"><span class="play">▶</span></div>
+            <h1>Never Gonna Give You Up (Official Video)</h1>
+            <p class="m">Rick Astley · 1080p · 42 MB</p>
+            <div class="acts">
+              <button type="button" class="pill action">Save</button
+              ><button type="button" class="pill ghost">Delete</button>
+            </div>
+          </main>
+          <nav class="tabs">
+            <a class="tab" aria-current="page"
+              ><span class="ico"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="3" y="5" width="18" height="14" rx="2" />
+                  <path d="M10 9.5l5 2.5-5 2.5z" />
+                </svg></span
+              >Library</a
+            ><a class="tab"
+              ><span class="ico"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14" />
+                </svg><span class="badge">1</span></span
+              >Queue</a
+            ><a class="tab"
+              ><span class="ico"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="3" />
+                  <path
+                    d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"
+                  />
+                </svg></span
+              >Settings</a
+            >
+          </nav>
+        </div>
+        <figcaption>08-watch</figcaption>
+      </figure>
+    </div>
+    <div class="">
+      <figure>
+        <div class="phone">
+          <div class="status">9:41</div>
+          <header class="top">
+            <span class="mark"
+              ><svg viewBox="0 0 36 25" width="29" height="20" aria-hidden="true">
+                <rect width="36" height="25" rx="6" fill="#e6002e" />
+                <path d="M14 7l10 5.5L14 18z" fill="#fff" />
+                <rect x="5" y="21" width="26" height="1.6" rx=".8" fill="#fff" opacity=".5" />
+              </svg></span
+            >
+            <div class="field"><span class="ph">Paste a video or playlist URL</span></div>
+            <button type="button" class="pill ghost">Paste</button
+            ><button type="button" class="pill action">Fetch</button
+            ><button type="button" class="opt" aria-label="Fetch options">⋯</button>
+          </header>
+          <main>
+            <div class="search">Search library</div>
+            <div class="chips">
+              <b class="on">All</b><b>Downloading</b><b>Video</b><b>Audio only</b>
+            </div>
+            <div class="row">
+              <div class="th" style="background:#7a2a2a"></div>
+              <div class="rt">
+                <p class="t">Never Gonna Give You Up (Official Video)</p>
+                <p class="m">Rick Astley · 3:33 · 1080p · 42 MB</p>
+              </div>
+            </div>
+            <div class="row">
+              <div class="th" style="background:#2a4a7a"></div>
+              <div class="rt">
+                <p class="t">Lofi hip hop radio</p>
+                <p class="m">ChilledCow · 1:02:10 · 720p · 310 MB</p>
+              </div>
+            </div>
+            <div class="row">
+              <div class="th" style="background:#2a6a4a"></div>
+              <div class="rt">
+                <p class="t">Sample 4K HDR</p>
+                <p class="m">Test · 0:61 · 2160p HDR · 88 MB</p>
+              </div>
+            </div>
+          </main>
+          <nav class="tabs">
+            <a class="tab" aria-current="page"
+              ><span class="ico"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="3" y="5" width="18" height="14" rx="2" />
+                  <path d="M10 9.5l5 2.5-5 2.5z" />
+                </svg></span
+              >Library</a
+            ><a class="tab"
+              ><span class="ico"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14" />
+                </svg><span class="badge">1</span></span
+              >Queue</a
+            ><a class="tab"
+              ><span class="ico"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="3" />
+                  <path
+                    d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"
+                  />
+                </svg></span
+              >Settings</a
+            >
+          </nav>
+        </div>
+        <figcaption>01-shell-library</figcaption>
+      </figure>
+    </div>
+    <div class="">
+      <figure>
+        <div class="phone">
+          <div class="status">9:41</div>
+          <header class="top">
+            <span class="mark"
+              ><svg viewBox="0 0 36 25" width="29" height="20" aria-hidden="true">
+                <rect width="36" height="25" rx="6" fill="#e6002e" />
+                <path d="M14 7l10 5.5L14 18z" fill="#fff" />
+                <rect x="5" y="21" width="26" height="1.6" rx=".8" fill="#fff" opacity=".5" />
+              </svg></span
+            >
+            <div class="field"><span class="ph">Paste a video or playlist URL</span></div>
+            <button type="button" class="pill ghost">Paste</button
+            ><button type="button" class="pill action">Fetch</button
+            ><button type="button" class="opt" aria-label="Fetch options">⋯</button>
+          </header>
+          <main>
+            <div class="search">Search library</div>
+            <div class="chips">
+              <b class="on">All</b><b>Downloading</b><b>Video</b><b>Audio only</b>
+            </div>
+            <div class="row">
+              <div class="th" style="background:#7a2a2a"></div>
+              <div class="rt">
+                <p class="t">Never Gonna Give You Up (Official Video)</p>
+                <p class="m">Rick Astley · 3:33 · 1080p · 42 MB</p>
+              </div>
+            </div>
+            <div class="row">
+              <div class="th" style="background:#2a4a7a"></div>
+              <div class="rt">
+                <p class="t">Lofi hip hop radio</p>
+                <p class="m">ChilledCow · 1:02:10 · 720p · 310 MB</p>
+              </div>
+            </div>
+            <div class="row">
+              <div class="th" style="background:#2a6a4a"></div>
+              <div class="rt">
+                <p class="t">Sample 4K HDR</p>
+                <p class="m">Test · 0:61 · 2160p HDR · 88 MB</p>
+              </div>
+            </div>
+          </main>
+          <nav class="tabs">
+            <a class="tab" aria-current="page"
+              ><span class="ico"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="3" y="5" width="18" height="14" rx="2" />
+                  <path d="M10 9.5l5 2.5-5 2.5z" />
+                </svg></span
+              >Library</a
+            ><a class="tab"
+              ><span class="ico"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14" />
+                </svg><span class="badge">1</span></span
+              >Queue</a
+            ><a class="tab"
+              ><span class="ico"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="3" />
+                  <path
+                    d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"
+                  />
+                </svg></span
+              >Settings</a
+            >
+          </nav>
+          <div class="toast">
+            <div>
+              <p class="m">Downloaded</p>
+              <p class="t one">Never Gonna Give You Up</p>
+            </div>
+            <button type="button" class="x">✕</button>
+          </div>
+        </div>
+        <figcaption>02-toast</figcaption>
+      </figure>
+    </div>
+    <div class="">
+      <figure>
+        <div class="phone">
+          <div class="status">9:41</div>
+          <header class="top">
+            <span class="mark"
+              ><svg viewBox="0 0 36 25" width="29" height="20" aria-hidden="true">
+                <rect width="36" height="25" rx="6" fill="#e6002e" />
+                <path d="M14 7l10 5.5L14 18z" fill="#fff" />
+                <rect x="5" y="21" width="26" height="1.6" rx=".8" fill="#fff" opacity=".5" />
+              </svg></span
+            >
+            <div class="field"><span class="ph">Paste a video or playlist URL</span></div>
+            <button type="button" class="pill ghost">Paste</button
+            ><button type="button" class="pill action">Fetch</button
+            ><button type="button" class="opt" aria-label="Fetch options">⋯</button>
+          </header>
+          <main>
+            <h1>Queue</h1>
+            <div class="row">
+              <div class="th" style="background:#444"></div>
+              <div class="rt">
+                <p class="t">Phone slow video</p>
+                <p class="m">Downloading · 1080p</p>
+                <div class="bar"><i style="width:42%"></i></div>
+                <span class="m">42%</span>
+              </div>
+            </div>
+            <div class="qa"><button type="button" class="pill ghost">Cancel</button></div>
+            <h2>Failed</h2>
+            <div class="row">
+              <div class="th" style="background:#333"></div>
+              <div class="rt">
+                <p class="t">Private video</p>
+                <p class="m">Unavailable</p>
+              </div>
+            </div>
+            <div class="qa">
+              <button type="button" class="pill ghost">Retry</button
+              ><button type="button" class="pill ghost">Dismiss</button>
+            </div>
+          </main>
+          <nav class="tabs">
+            <a class="tab"
+              ><span class="ico"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="3" y="5" width="18" height="14" rx="2" />
+                  <path d="M10 9.5l5 2.5-5 2.5z" />
+                </svg></span
+              >Library</a
+            ><a class="tab" aria-current="page"
+              ><span class="ico"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14" />
+                </svg><span class="badge">1</span></span
+              >Queue</a
+            ><a class="tab"
+              ><span class="ico"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="3" />
+                  <path
+                    d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"
+                  />
+                </svg></span
+              >Settings</a
+            >
+          </nav>
+        </div>
+        <figcaption>03-queue</figcaption>
+      </figure>
+    </div>
+    <div class="">
+      <figure>
+        <div class="phone">
+          <div class="status">9:41</div>
+          <header class="top">
+            <span class="mark"
+              ><svg viewBox="0 0 36 25" width="29" height="20" aria-hidden="true">
+                <rect width="36" height="25" rx="6" fill="#e6002e" />
+                <path d="M14 7l10 5.5L14 18z" fill="#fff" />
+                <rect x="5" y="21" width="26" height="1.6" rx=".8" fill="#fff" opacity=".5" />
+              </svg></span
+            >
+            <div class="field">https://youtu.be/dQw4w9WgXcQ</div>
+            <button type="button" class="pill action">Fetch</button
+            ><button type="button" class="opt" aria-label="Fetch options">⋯</button>
+          </header>
+          <main>
+            <div class="hero" style="background:#7a2a2a"></div>
+            <h1>Video Phone</h1>
+            <p class="m">E2E · 1:01</p>
+            <label class="chk"><i></i>Download subtitles</label
+            ><button type="button" class="pill action wide">Add to queue</button>
+          </main>
+        </div>
+        <figcaption>04-fetch-video</figcaption>
+      </figure>
+    </div>
+    <div class="">
+      <figure>
+        <div class="phone">
+          <div class="status">9:41</div>
+          <header class="top">
+            <span class="mark"
+              ><svg viewBox="0 0 36 25" width="29" height="20" aria-hidden="true">
+                <rect width="36" height="25" rx="6" fill="#e6002e" />
+                <path d="M14 7l10 5.5L14 18z" fill="#fff" />
+                <rect x="5" y="21" width="26" height="1.6" rx=".8" fill="#fff" opacity=".5" />
+              </svg></span
+            >
+            <div class="field">https://youtube.com/playlist?list=PL…</div>
+            <button type="button" class="pill action">Fetch</button
+            ><button type="button" class="opt" aria-label="Fetch options">⋯</button>
+          </header>
+          <main>
+            <h1>E2E Playlist</h1>
+            <p class="m">3 videos · 2 selected</p>
+            <div class="tools">
+              <button type="button" class="pill ghost">Select all</button
+              ><button type="button" class="pill ghost">Select none</button
+              ><button type="button" class="pill ghost">Advanced</button>
+            </div>
+            <button type="button" class="pill action wide">Add 2 to queue</button>
+            <div class="grid">
+              <div class="card">
+                <div class="hero s" style="background:#7a2a2a">
+                  <span class="cb"><i></i></span><em>3:33</em>
+                </div>
+                <p class="t">Video A</p>
+                <span class="tag">720p max</span>
+              </div>
+              <div class="card">
+                <div class="hero s" style="background:#2a4a7a">
+                  <span class="cb"><i></i></span><em>3:33</em>
+                </div>
+                <p class="t">Video B</p>
+                <span class="tag">720p max</span>
+              </div>
+            </div>
+          </main>
+        </div>
+        <figcaption>05-playlist</figcaption>
+      </figure>
+    </div>
+    <div class="">
+      <figure>
+        <div class="phone">
+          <div class="status">9:41</div>
+          <header class="top">
+            <span class="mark"
+              ><svg viewBox="0 0 36 25" width="29" height="20" aria-hidden="true">
+                <rect width="36" height="25" rx="6" fill="#e6002e" />
+                <path d="M14 7l10 5.5L14 18z" fill="#fff" />
+                <rect x="5" y="21" width="26" height="1.6" rx=".8" fill="#fff" opacity=".5" />
+              </svg></span
+            >
+            <div class="field">https://youtube.com/playlist?list=PL…</div>
+            <button type="button" class="pill action">Fetch</button
+            ><button type="button" class="opt" aria-label="Fetch options">⋯</button>
+          </header>
+          <main>
+            <h1>E2E Playlist</h1>
+            <p class="m">3 videos · 2 selected</p>
+            <div class="tools">
+              <button type="button" class="pill ghost">Select all</button
+              ><button type="button" class="pill ghost">Select none</button
+              ><button type="button" class="pill ghost">Advanced</button>
+            </div>
+            <button type="button" class="pill action wide">Add 2 to queue</button>
+            <div class="grid">
+              <div class="card">
+                <div class="hero s" style="background:#7a2a2a">
+                  <span class="cb"><i></i></span><em>3:33</em>
+                </div>
+                <p class="t">Video A</p>
+                <span class="tag">720p max</span>
+              </div>
+              <div class="card">
+                <div class="hero s" style="background:#2a4a7a">
+                  <span class="cb"><i></i></span><em>3:33</em>
+                </div>
+                <p class="t">Video B</p>
+                <span class="tag">720p max</span>
+              </div>
+            </div>
+          </main>
+          <div class="scrim"></div>
+          <section class="sheet">
+            <div class="sh">
+              <h2>Video A</h2>
+              <button type="button" class="pill ghost">Close</button>
+            </div>
+            <p class="m">Use the playlist settings, or customise this video.</p>
+            <div class="seg"><b class="on">Playlist settings</b><b>Custom</b></div>
+            <div class="fmt"><span>1080p · H.264</span><i class="r on"></i></div>
+            <div class="fmt"><span>720p · H.264</span><i class="r"></i></div>
+            <div class="fmt"><span>Audio · AAC 129k</span><i class="r"></i></div>
+          </section>
+        </div>
+        <figcaption>06-override-sheet</figcaption>
+      </figure>
+    </div>
+    <div class="">
+      <figure>
+        <div class="phone">
+          <div class="status">9:41</div>
+          <header class="top">
+            <span class="mark"
+              ><svg viewBox="0 0 36 25" width="29" height="20" aria-hidden="true">
+                <rect width="36" height="25" rx="6" fill="#e6002e" />
+                <path d="M14 7l10 5.5L14 18z" fill="#fff" />
+                <rect x="5" y="21" width="26" height="1.6" rx=".8" fill="#fff" opacity=".5" />
+              </svg></span
+            >
+            <div class="field"><span class="ph">Paste a video or playlist URL</span></div>
+            <button type="button" class="pill ghost">Paste</button
+            ><button type="button" class="pill action">Fetch</button
+            ><button type="button" class="opt" aria-label="Fetch options">⋯</button>
+          </header>
+          <main>
+            <h1>Settings</h1>
+            <div class="f">
+              <label>Max concurrent downloads</label>
+              <div class="in w">1</div>
+            </div>
+            <div class="f">
+              <label>Proxy URL</label>
+              <div class="in"></div>
+            </div>
+            <div class="f">
+              <label>Downloads folder</label>
+              <div class="in">/downloads</div>
+            </div>
+            <div class="actions">
+              <button type="button" class="pill action">Save</button
+              ><button type="button" class="pill ghost">Reset</button>
+            </div>
+            <h2>Theme</h2>
+            <div class="seg"><b class="on">Dark</b><b>Light</b><b>System</b></div>
+            <h2>Notifications</h2>
+            <div class="fmt">
+              <span>Notify when downloads finish <em class="m">(Phase 7)</em></span
+              ><i class="sw"></i>
+            </div>
+          </main>
+          <nav class="tabs">
+            <a class="tab"
+              ><span class="ico"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="3" y="5" width="18" height="14" rx="2" />
+                  <path d="M10 9.5l5 2.5-5 2.5z" />
+                </svg></span
+              >Library</a
+            ><a class="tab"
+              ><span class="ico"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14" />
+                </svg><span class="badge">1</span></span
+              >Queue</a
+            ><a class="tab" aria-current="page"
+              ><span class="ico"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="3" />
+                  <path
+                    d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"
+                  />
+                </svg></span
+              >Settings</a
+            >
+          </nav>
+        </div>
+        <figcaption>07-settings</figcaption>
+      </figure>
+    </div>
+    <div class="">
+      <figure>
+        <div class="phone">
+          <div class="status">9:41</div>
+          <header class="top">
+            <span class="mark"
+              ><svg viewBox="0 0 36 25" width="29" height="20" aria-hidden="true">
+                <rect width="36" height="25" rx="6" fill="#e6002e" />
+                <path d="M14 7l10 5.5L14 18z" fill="#fff" />
+                <rect x="5" y="21" width="26" height="1.6" rx=".8" fill="#fff" opacity=".5" />
+              </svg></span
+            >
+            <div class="field"><span class="ph">Paste a video or playlist URL</span></div>
+            <button type="button" class="pill ghost">Paste</button
+            ><button type="button" class="pill action">Fetch</button
+            ><button type="button" class="opt" aria-label="Fetch options">⋯</button>
+          </header>
+          <main>
+            <div class="hero v" style="background:#000"><span class="play">▶</span></div>
+            <h1>Never Gonna Give You Up (Official Video)</h1>
+            <p class="m">Rick Astley · 1080p · 42 MB</p>
+            <div class="acts">
+              <button type="button" class="pill action">Save</button
+              ><button type="button" class="pill ghost">Delete</button>
+            </div>
+          </main>
+          <nav class="tabs">
+            <a class="tab" aria-current="page"
+              ><span class="ico"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="3" y="5" width="18" height="14" rx="2" />
+                  <path d="M10 9.5l5 2.5-5 2.5z" />
+                </svg></span
+              >Library</a
+            ><a class="tab"
+              ><span class="ico"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14" />
+                </svg><span class="badge">1</span></span
+              >Queue</a
+            ><a class="tab"
+              ><span class="ico"
+                ><svg
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="3" />
+                  <path
+                    d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"
+                  />
+                </svg></span
+              >Settings</a
+            >
+          </nav>
+        </div>
+        <figcaption>08-watch</figcaption>
+      </figure>
+    </div>
+  </body>
+</html>

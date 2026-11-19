@@ -4,7 +4,7 @@ Tokens live in `apps/web/src/app.css` (Tailwind 4 `@theme`, dark set on `.dark`)
 
 ## Direction
 
-A minimal, near-black YouTube: the layout grammar (top bar, left rail, chips, thumbnail grid) with nothing else. Surfaces are flat and monochrome so thumbnails carry the colour. Red is the only accent. Dark is the default theme; light and system are options. Computer only, designed at 1280 and 1440 px wide, no narrower than 960 px.
+A minimal, near-black YouTube: the layout grammar (top bar, left rail, chips, thumbnail grid) with nothing else. Surfaces are flat and monochrome so thumbnails carry the colour. Red is the only accent. Dark is the default theme; light and system are options. Designed at 1280 and 1440 px wide, with a phone layout below 768 px (see Phone).
 
 Chosen by the owner on 2026-11-15 from the approved mockups (`direction-v2.html`, `playlist-quality.html`): mockup colour values kept, Inter as the one typeface.
 
@@ -57,3 +57,13 @@ Top bar 56 px: wordmark (player mark, 20 px tall, + "yourtube"), pill URL field 
 ## Player
 
 The watch view (`#/watch/<id>`) is centred, up to 960 px wide: a black 16:9 box with the browser's native controls (`<audio>` for audio jobs), then the title, a muted meta line (channel · quality · size · format) and the actions Save and Delete as pill buttons. Save is the primary (`action`) pill; Delete is an outlined pill with the same two-step confirm as the library card. If the browser can't play the file, a `warn` line above the actions says so and points to Save. On phones Save takes two taps: "Preparing… 42%", then "Share file".
+
+## Phone
+
+Below 768 px (`md`) every screen uses the phone layout; at 768 px and up nothing changes. Mockups: `docs/design/phone-mockups.html`, approved 2026-11-18.
+
+- Shell: the left rail and theme tile are hidden. A bottom tab bar (Library, Queue with the red count as text, Settings) sits below the content, each link at least 56 px tall, padded by `env(safe-area-inset-bottom)`. The top bar pads `env(safe-area-inset-top)` because the installed app draws under the status bar, shows the mark only (the wordmark stays as screen-reader text), and the field fills the width.
+- Targets: at least 44 px high and wide for every tap target. The root font is 15 px, so write `44px`, not `h-11`.
+- Inputs: 16 px text, so iOS does not zoom on focus.
+- Toasts: full width at the top, below the status bar.
+- Theme: the control lives in Settings only.

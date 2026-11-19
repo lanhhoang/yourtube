@@ -1121,16 +1121,23 @@ Also add a desktop test in `shell.spec.ts`: at 1440 px, `page.getByRole("button"
 
 **Files:**
 
-- Create: `docs/design/phone-mockups.html` (static, self-contained, no CDN, uses `DESIGN.md` tokens)
+- Create: `docs/design/phone-mockups.html` (static, self-contained, no CDN, uses the `DESIGN.md` tokens from `apps/web/src/app.css`)
 - Create: `docs/superpowers/specs/2026-11-18-phone-layout-mockups.md` (one section per screen: what changes and why, plus the owner's decision)
 
 **Interfaces:**
 
-- Produces: approved mockups at 390×844 for the shell (top bar, bottom tab bar, toasts at the top), Library list, Queue, Fetch video view with the override bottom sheet, playlist picker, Settings (theme control and the future notification toggle) and Watch. Tasks 14–17 build to them.
+- Produces: approved mockups at 390×844 for the shell (top bar under the status bar, bottom tab bar, toasts at the top), Library list, Queue, Fetch video view, playlist picker with the override bottom sheet, Settings (theme radios and a placeholder for Phase 7's notification toggle) and Watch. Tasks 14–17 build to them.
 
-- [ ] **Step 1: Load the Impeccable skill (shape) with `DESIGN.md` and `PRODUCT.md` as context.** Draft the mockups, then check them against the taste-skill anti-slop rules.
-- [ ] **Step 2: Render every screen in both themes** (a Playwright screenshot or a browser) and look at each one.
-- [ ] **Step 3: Show the owner the screenshots and the notes. STOP until the owner approves.** Record the approval and any requested changes in the mockups doc.
+The mockups must settle these, each with a proposed default the owner can change:
+
+- **Library card actions on touch.** Today `JobCard`'s Download file / Delete menu only shows on hover or focus, so a finger can't reach it. Proposed: below md the menu is not rendered. A tap on the row opens Watch, which already has Save and Delete.
+- **Top bar under the status bar.** `index.html` sets `apple-mobile-web-app-status-bar-style` to `black-translucent` and `viewport-fit=cover`, so the installed app draws under the status bar. Proposed: the top bar pads `env(safe-area-inset-top)` and keeps 56 px of content height. The mark replaces the wordmark. Field, Paste (when empty), Fetch, and options sit on one row. Fetch and options are 44 px.
+- **Override sheet chrome.** The sheet has one title and one Close button. `OverridePanel`'s own header does not show twice.
+- **Playlist select checkbox.** Proposed: the hit area grows to 44 px. The visible box stays small.
+
+- [ ] **Step 1: Load the Impeccable skill (shape) with `DESIGN.md` and `PRODUCT.md` as context.** Draft the mockups, then check them against the taste-skill anti-slop rules. The desktop direction mockups (`direction-v2.html`, local only under `.superpowers/brainstorm/`) show the grammar to keep.
+- [ ] **Step 2: Render every screen in both themes** (Playwright screenshots into `tmp/phone-mockups/`, which is git-ignored) and look at each one.
+- [ ] **Step 3: Show the owner the screenshots and the notes. STOP until the owner approves.** Record the approval, the answers to the questions above and any requested changes in the mockups doc.
 - [ ] **Step 4: Commit** `docs: approved phone layout mockups`
 
 ### Task 14: Phone shell
@@ -1138,35 +1145,66 @@ Also add a desktop test in `shell.spec.ts`: at 1440 px, `page.getByRole("button"
 **Files:**
 
 - Create: `apps/web/src/components/TabBar.svelte`
-- Modify: `apps/web/src/App.svelte`, `apps/web/src/app.css` (drop `min-width: 960px`, add safe-area padding), `apps/web/src/components/LeftRail.svelte` (`hidden md:flex`), `apps/web/src/components/TopBar.svelte` (below md: mark only, wordmark text visually hidden, field fills the width), `apps/web/src/components/Toasts.svelte` (top on phones, below `safe-area-inset-top`)
-- Modify: `DESIGN.md` (Phone section: 768 px breakpoint, tab bar, 44 px targets, safe areas; remove the 960 px minimum)
-- Test: `apps/web/e2e/phone.spec.ts`
+- Modify: `apps/web/src/App.svelte` (`h-screen` → `h-dvh`, render `TabBar`, `main` padding `p-4 md:p-6`), `apps/web/src/app.css` (drop `min-width: 960px`), `apps/web/src/components/LeftRail.svelte` (`hidden md:flex`), `apps/web/src/components/TopBar.svelte` (below md: mark only, the "yourtube" text `sr-only`, no fixed `w-[120px]` on the home link, the right spacer `hidden md:block`, the field fills the width, textarea `text-base md:text-sm` so iOS does not zoom on focus, Fetch and options 44 px, pad `env(safe-area-inset-top)`), `apps/web/src/components/Toasts.svelte` (below md: full width at the top, below `safe-area-inset-top`; close button 44 px; unchanged at md and up)
+- Modify: `DESIGN.md` (Direction: drop "Computer only … no narrower than 960 px". Add a Phone section covering the 768 px breakpoint, the tab bar, 44 px targets, safe areas top and bottom, and 16 px inputs.) `PRODUCT.md` (drop "the dedicated phone layout comes later")
+- Test: `apps/web/e2e/phone.spec.ts`, `apps/web/e2e/phone-helpers.ts` (new)
 
 **Interfaces:**
 
-- Consumes: `section(route)`, the queue count from `App.svelte`, `LogoMark` (Task 1).
-- Produces: `TabBar.svelte` with props `{ active: Section; queueCount: number }`. It renders links Library, Queue (red count badge with the number in text) and Settings, each at least 44 px tall. It pads `env(safe-area-inset-bottom)` and is `md:hidden`.
+- Consumes: `section(route)` from `lib/router.ts`, `queue?.active.length` from `App.svelte`, the rail's `LINKS` icons (copy them or move them into a shared module; your call).
+- Produces: `TabBar.svelte` with props `{ active: Section; queueCount: number }`. It is a `<nav aria-label="Tabs">` with links Library, Queue and Settings. Queue has a red count badge with the number in text, using the rail's pattern `{n}<span class="sr-only"> in queue</span>`. Each link is at least 44 px tall and sets `aria-current="page"` when active. It pads `env(safe-area-inset-bottom)` and is `md:hidden`. It sits below `main` in the flex column, not `fixed`, so `main` never scrolls under it.
+- Produces: `e2e/phone-helpers.ts`:
 
-- [ ] **Step 1: Write the failing e2e tests** (390×844):
-  - The tab bar's links navigate and set `aria-current="page"`. The rail is hidden.
-  - `document.documentElement.scrollWidth <= innerWidth` on `#/`, `#/queue` and `#/settings`.
-  - Every tab link's bounding box is at least 44 px tall.
-  - The theme tile is not visible, and Settings has the theme radios.
-- [ ] **Step 2: Run them and see them fail**, then build to the approved mockup.
-- [ ] **Step 3: Run `pnpm check && pnpm e2e`** (desktop specs must still pass at 1440 px). **Commit** `feat(web): phone shell with bottom tab bar`
+```ts
+import { expect, type Locator, type Page } from "@playwright/test";
+
+// `main` scrolls on its own (overflow-y-auto), so it clips sideways overflow and
+// documentElement alone misses it. Check both.
+export async function expectNoSideScroll(page: Page): Promise<void> {
+  const m = await page.evaluate(() => {
+    const main = document.querySelector("main");
+    return {
+      doc: document.documentElement.scrollWidth - window.innerWidth,
+      main: main ? main.scrollWidth - main.clientWidth : 0,
+    };
+  });
+  expect(m).toEqual({ doc: 0, main: 0 });
+}
+
+export async function expectTarget(loc: Locator): Promise<void> {
+  const box = await loc.boundingBox();
+  expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+  expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
+}
+```
+
+Tabs are named "Library", "Queue" and "Settings", the same as the rail's links. The rail is `display: none` below md, so `getByRole("link", { name: "Queue" })` finds only the tab. At 1440 px the tab bar is hidden, so the desktop specs (`shell.spec.ts`, `playlist.spec.ts`) find only the rail.
+
+- [ ] **Step 1: Write the failing e2e tests** in `phone.spec.ts` (390×844, `hasTouch`, already set by `test.use`):
+  - The Queue tab navigates and gets `aria-current="page"`. The `Main` nav (rail) is hidden. The `Tabs` nav is visible.
+  - `expectNoSideScroll` on `#/`, `#/queue` and `#/settings`. Wait for each page's `h1` first.
+  - `expectTarget` on every tab link, the Fetch button and the "Fetch options" button.
+  - The theme tile (`/^Theme: /` button) is hidden. Settings shows the Dark, Light and System radios.
+  - The top-bar field's computed `font-size` is at least 16 px.
+  - Toast at the top: `page.route("**/api/queue", …)` answers `{active: [], failed: [], completed: []}` on the first poll and a done `JobOut` titled "Phone toast" after that. Every `JobOut` field must be present: `id, url, title, uploader, duration, thumbnail, status, progress, quality_cap, hdr, error_code, error_message, media_kind, file_size, media_format, resolution_height, created_at, finished_at`. The toast with "Phone toast" becomes visible, and its box's `y` is less than the top bar's bottom + 16. It is full width within the 16 px page margins.
+- [ ] **Step 2: Run them and see them fail** (`PW_CHANNEL=chrome pnpm e2e -- phone` if the bundled headless shell is missing). Then build to the approved mockup.
+- [ ] **Step 3: Run `pnpm check && pnpm e2e`.** The desktop specs must still pass at 1440 px. **Commit** `feat(web): phone shell with bottom tab bar`
 
 ### Task 15: Phone Library, Queue, Settings and Watch
 
 **Files:**
 
-- Modify: `apps/web/src/routes/Library.svelte` (single-column list below md: thumbnail left, title/meta right, tap opens `#/watch/<id>`), `apps/web/src/components/JobCard.svelte` (a list variant, or responsive classes), `apps/web/src/routes/Queue.svelte` (single column, actions 44 px), `apps/web/src/routes/Settings.svelte` (stacked form), `apps/web/src/routes/Watch.svelte` (full-width player, actions in thumb reach)
+- Modify: `apps/server/tests/e2e_server.py` (seed one more done row, used only by `phone.spec.ts`: url `https://e2e.test/phone`, title "Phone video", uploader "E2E", file `phone.mp4` written with `b"data"`, same fields as "Seeded video". The lifespan moves it like the seeded file.)
+- Modify: `apps/web/src/routes/Library.svelte` (below md: search full width on its own row, single-column list), `apps/web/src/components/JobCard.svelte` (below md: a row with the thumbnail on the left (about 40% wide) and title/meta on the right; the whole row opens `#/watch/<id>` through the existing title link overlay; the hover menu is not rendered below md, as decided in Task 13), `apps/web/src/components/Chips.svelte` (44 px tall below md, scroll sideways inside their own row if they don't fit; that row is `overflow-x-auto`, so it doesn't make `main` scroll), `apps/web/src/routes/Queue.svelte` (below md: thumbnail `w-28`, actions `min-h-11 min-w-11`), `apps/web/src/routes/Settings.svelte` (stacked form, Save/Reset 44 px), `apps/web/src/routes/Watch.svelte` (below md: player full bleed (negative `main` margin) or full width; Save and Delete `min-h-11`, full-width row in thumb reach)
 - Test: `apps/web/e2e/phone.spec.ts`
 
-- [ ] **Step 1: Write the failing e2e tests** (390×844, seeded library and the slow queued job):
-  - Library: no horizontal overflow. Tapping the seeded item opens `#/watch/<id>`.
-  - Queue: no horizontal overflow. The Cancel button is at least 44 px.
-  - Settings: no horizontal overflow, and every input is visible without sideways scrolling.
-  - Watch: the video width is at most the viewport width. Save and Delete are at least 44 px.
+Don't use "Seeded video" or "Slow video" in phone tests. Spec files run in parallel against one server. `library.spec.ts` deletes the seeded video and `queue.spec.ts` cancels the slow one.
+
+- [ ] **Step 1: Write the failing e2e tests** (390×844):
+  - Library: wait for "Phone video", then `expectNoSideScroll`. Tapping the "Phone video" link (`.tap()`) opens `#/watch/\d+`.
+  - Queue: post your own slow job with `request.post("/api/downloads", { data: { jobs: [{ url: "https://e2e.test/slow-phone", title: "Phone slow video" }] } })` (201). Open `#/queue` and run `expectNoSideScroll`. Run `expectTarget` on that row's Cancel button. Tap Cancel and expect the row to go, so it doesn't hold the single worker for 20 s.
+  - Settings: `expectNoSideScroll`. For every `textbox` and `spinbutton`, the bounding box's right edge is at most 390.
+  - Watch (open "Phone video" from the library): the `video` box width is at most 390. `expectTarget` on `getByText("Save", { exact: true })` (a button here, since emulated touch makes `canShare` true) and on the Delete button. `expectNoSideScroll`.
 - [ ] **Step 2: Run them and see them fail**, then build to the mockups.
 - [ ] **Step 3: Run `pnpm check && pnpm e2e`. Commit** `feat(web): phone layout for library, queue, settings and player`
 
@@ -1175,16 +1213,33 @@ Also add a desktop test in `shell.spec.ts`: at 1440 px, `page.getByRole("button"
 **Files:**
 
 - Create: `apps/web/src/components/BottomSheet.svelte`
-- Modify: `apps/web/src/routes/VideoView.svelte`, `apps/web/src/routes/ListView.svelte`, `apps/web/src/components/EntryCard.svelte`, `apps/web/src/components/OverridePanel.svelte` (rendered inside `BottomSheet` below md, unchanged above)
+- Modify: `apps/web/src/routes/VideoView.svelte` (below md: one column, `grid-cols-1 md:grid-cols-[minmax(0,1fr)_22rem]`; "Add to queue" 44 px), `apps/web/src/routes/ListView.svelte` (below md: toolbar wraps, buttons 44 px; the panel renders through `BottomSheet`), `apps/web/src/components/EntryCard.svelte` (select checkbox: 44 px hit area below md), `apps/web/src/components/OverridePanel.svelte` (new prop `sheet = false`; when true it renders only its body, without the `<aside>` frame, the title, the Close button or the window Escape handler, because the sheet provides them; unchanged when false)
 - Test: `apps/web/e2e/phone.spec.ts`
 
 **Interfaces:**
 
-- Produces: `BottomSheet.svelte` with props `{ open: boolean; title: string; onclose: () => void; children: Snippet }`. It is a modal `<dialog>` docked to the bottom, max height 85vh, scrolls inside, closes on Escape, backdrop tap and a Close button, and returns focus to the opener. It pads `safe-area-inset-bottom`.
+- Produces: `BottomSheet.svelte` with props `{ open: boolean; title: string; onclose: () => void; children: Snippet }`. This is a modal `<dialog>` docked to the bottom, `aria-labelledby` its `h2` (id from `$props.id()`). Max height `85dvh`, scrolls inside, pads `safe-area-inset-bottom`. It closes on Escape (`oncancel`: `preventDefault()` then `onclose()`), on a backdrop tap (`onclick` where `e.target === dialog`) and on a 44 px Close button, and returns focus to the opener. Shape checked in a throwaway build:
 
-- [ ] **Step 1: Write the failing e2e tests** (390×844, stubbed `https://e2e.test/video` and the playlist URL used in `playlist.spec.ts`):
-  - Video view: no horizontal overflow. "Download" is reachable and queues the job.
-  - Playlist: no horizontal overflow. Opening an entry's override shows a `dialog` named after the panel title. Escape closes it and focus returns to the opener.
+```svelte
+$effect(() => {
+  if (!open || !el) return;
+  const dialog = el;
+  const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  dialog.showModal();
+  return () => {
+    dialog.close();
+    opener?.focus();
+  };
+});
+```
+
+Classes: `m-0 mt-auto max-h-[85dvh] w-full max-w-none overflow-y-auto rounded-t-control border-0 bg-surface p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] text-fg backdrop:bg-black/60`. The dialog's `onclick` needs `<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->` and `<!-- biome-ignore lint/a11y/useKeyWithClickEvents: Escape and the Close button cover keyboards -->`.
+- In `ListView.svelte`: `const wide = new MediaQuery("(min-width: 768px)")` (from `svelte/reactivity`). Render `OverridePanel` as today when `wide.current`. Otherwise render it with `sheet` inside `<BottomSheet open title={…} onclose={() => (open = null)}>`. Only one renders at a time.
+
+- [ ] **Step 1: Write the failing e2e tests** (390×844):
+  - Video view: fetch `https://e2e.test/v/phone` (stubbed, title "Video Phone", lookup takes about 1 s). Don't use `https://e2e.test/video`, because a second "E2E Video" card breaks `video.spec.ts`. Wait for the `heading` "Video Phone", then `expectNoSideScroll`. `expectTarget` on "Add to queue". Tap it and expect "Added to queue.".
+  - Playlist (`https://e2e.test/playlist`): wait for the `heading` "E2E Playlist", then `expectNoSideScroll`. Tap "Video A: customise". A `dialog` named "Video A" is visible and its bottom edge is at 844. Escape closes it and focus returns to "Video A: customise". Open it again and tap Close; it closes. Open it again and tap the backdrop (`page.mouse.click(195, 40)`); it closes.
+  - The same playlist at 1440 px (`test.use` in a `describe` block) still shows the `complementary` "Settings for Video A" and no `dialog`.
 - [ ] **Step 2: Run them and see them fail**, then build to the mockups.
 - [ ] **Step 3: Run `pnpm check && pnpm e2e`. Commit** `feat(web): phone fetch views with bottom-sheet overrides`
 
@@ -1195,7 +1250,8 @@ Also add a desktop test in `shell.spec.ts`: at 1440 px, `page.getByRole("button"
 - [ ] **Step 1: Run the Impeccable skill's critique and audit on every phone screen in both themes**, plus the taste-skill anti-slop checks. List the findings in the mockups doc.
 - [ ] **Step 2: Fix each finding in its own small commit,** with a test where the finding is behavioural.
 - [ ] **Step 3: Check contrast (AA) for the tab bar, the badges and the toasts in both themes.** Check that the phone e2e suite passes.
-- [ ] **Step 4: Show the owner the final screenshots.** Commit `polish(web): phone layout critique fixes`
+- [ ] **Step 4: Check by hand on the iPhone (installed app):** no sideways scroll on any screen, the top bar clears the status bar, the tab bar clears the home indicator, the field does not zoom on focus, and the sheet scrolls inside. Record the result in the mockups doc.
+- [ ] **Step 5: Show the owner the final screenshots.** Commit `polish(web): phone layout critique fixes`
 
 ---
 

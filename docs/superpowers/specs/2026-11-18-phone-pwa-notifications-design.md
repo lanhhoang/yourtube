@@ -143,8 +143,8 @@ Both are fixed brand artwork, the same in both themes, outside the `accent` toke
 Breakpoint: below 768 px is the phone layout. Every screen works there.
 
 - Left rail becomes a bottom tab bar (Library, Queue with red count, Settings), respecting `safe-area-inset-bottom`.
-- Top bar: logo mark only (wordmark hidden), URL field takes the remaining width, Fetch button, options menu. Multi-line paste still works.
-- Library: single-column list, thumbnail left, title/meta right. Tap opens the player.
+- Top bar: logo mark only (wordmark hidden), URL field takes the remaining width, Fetch button, options menu. Multi-line paste still works. It sits below the status bar (`safe-area-inset-top`; the installed app draws under it). The field text is at least 16 px so iOS doesn't zoom on focus.
+- Library: single-column list, thumbnail left, title/meta right. Tap opens the player. The hover-only card menu can't be used by touch; the mockups decide whether it goes (proposed: yes, Watch has Save and Delete).
 - Queue: single column; progress and actions reachable with the thumb (44 px targets).
 - Fetch video view and playlist picker: stacked; the override panel becomes a bottom sheet.
 - Settings: stacked form.

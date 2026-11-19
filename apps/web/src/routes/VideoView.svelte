@@ -82,10 +82,10 @@
   }
 
   const input =
-    "w-full rounded-control border border-line-strong bg-surface px-3 py-2 text-base text-fg placeholder:text-muted";
+    "w-full rounded-control border border-line-strong bg-surface min-h-[44px] px-3 py-2 text-[16px] text-fg placeholder:text-muted md:min-h-0 md:text-base";
 </script>
 
-<div class="grid max-w-6xl grid-cols-[minmax(0,1fr)_22rem] gap-8">
+<div class="grid max-w-6xl grid-cols-1 gap-6 md:grid-cols-[minmax(0,1fr)_22rem] md:gap-8">
   <section class="flex min-w-0 flex-col gap-3">
     <div class="aspect-video overflow-hidden rounded-thumb bg-surface">
       {#if video.thumbnail}
@@ -104,7 +104,7 @@
         >
       </p>
     {/if}
-    <label class="flex items-center gap-2 text-base">
+    <label class="flex min-h-[44px] items-center gap-2 text-base md:min-h-0">
       <input type="checkbox" bind:checked={subtitles} class="size-4 accent-(--color-action)">
       Subtitles
     </label>
@@ -113,7 +113,7 @@
         type="button"
         disabled={adding}
         onclick={add}
-        class="cursor-pointer rounded-pill border-0 bg-action px-5 py-2 text-sm font-semibold text-on-action disabled:opacity-50"
+        class="min-h-[44px] cursor-pointer rounded-pill border-0 bg-action px-5 py-2 text-sm font-semibold text-on-action disabled:opacity-50 md:min-h-0"
       >
         Add to queue
       </button>
@@ -135,7 +135,9 @@
         ? "opacity-50"
         : ""}"
     >
-      <label class="flex min-h-11 items-center gap-2 text-base {hdrDisabled ? "text-muted" : ""}">
+      <label
+        class="flex min-h-[44px] items-center gap-2 text-base {hdrDisabled ? "text-muted" : ""}"
+      >
         <input
           type="checkbox"
           bind:checked={hdr}
@@ -162,7 +164,7 @@
           aria-selected={tab === t.id}
           aria-controls="panel"
           onclick={() => (tab = t.id)}
-          class="cursor-pointer rounded-pill border-0 px-4 py-1.5 text-sm font-medium transition-colors duration-(--duration-fast) {tab ===
+          class="min-h-[44px] cursor-pointer rounded-pill border-0 px-4 py-1.5 text-sm font-medium transition-colors md:min-h-0 duration-(--duration-fast) {tab ===
           t.id
             ? "bg-action text-on-action"
             : "bg-transparent text-fg"}"

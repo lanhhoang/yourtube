@@ -4,7 +4,10 @@
   let { toasts, onclose }: { toasts: Toast[]; onclose: (id: number) => void } = $props();
 </script>
 
-<div aria-live="polite" class="fixed right-6 bottom-6 z-20 flex w-80 flex-col gap-2">
+<div
+  aria-live="polite"
+  class="fixed inset-x-4 top-[calc(env(safe-area-inset-top)+4rem)] z-20 flex flex-col gap-2 md:inset-x-auto md:top-auto md:right-6 md:bottom-6 md:w-80"
+>
   {#each toasts as t (t.id)}
     <div
       class="flex items-start gap-3 rounded-control border border-line-strong bg-raised p-3 shadow-[0_8px_24px_rgb(0_0_0/0.4)]"
@@ -16,7 +19,7 @@
       <button
         type="button"
         aria-label="Close"
-        class="grid size-6 shrink-0 cursor-pointer place-items-center rounded-control border-0 bg-transparent text-muted transition-colors duration-(--duration-fast) hover:text-fg"
+        class="grid size-[44px] shrink-0 md:size-6 cursor-pointer place-items-center rounded-control border-0 bg-transparent text-muted transition-colors duration-(--duration-fast) hover:text-fg"
         onclick={() => onclose(t.id)}
       >
         <svg

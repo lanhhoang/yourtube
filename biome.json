@@ -9,6 +9,7 @@
     "includes": [
       "**",
       "!**/*.md",
+      "!docs/design",
       "!pnpm-lock.yaml",
       "!apps/server",
       "!apps/web/src/lib/api.gen.ts",

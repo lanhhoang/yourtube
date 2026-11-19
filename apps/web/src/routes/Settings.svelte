@@ -58,9 +58,9 @@
   }
 
   const input =
-    "w-full rounded-control border border-line-strong bg-surface px-3 py-2 text-base text-fg placeholder:text-muted";
+    "w-full rounded-control border border-line-strong bg-surface px-3 py-2 text-[16px] text-fg placeholder:text-muted md:text-base min-h-[44px] md:min-h-0";
   const btn =
-    "cursor-pointer rounded-pill border border-line-strong bg-transparent px-4 py-2 text-sm font-medium text-fg transition-colors duration-(--duration-fast) hover:bg-raised disabled:cursor-default disabled:opacity-50";
+    "min-h-[44px] cursor-pointer rounded-pill border border-line-strong bg-transparent px-4 py-2 text-sm md:min-h-0 font-medium text-fg transition-colors duration-(--duration-fast) hover:bg-raised disabled:cursor-default disabled:opacity-50";
 </script>
 
 <h1 class="m-0 text-xl font-bold tracking-[-0.01em]">Settings</h1>
@@ -115,11 +115,11 @@
         bind:value={form.downloads_dir}
       >
     </div>
-    <div class="flex items-center gap-3">
+    <div class="flex flex-wrap items-center gap-3">
       <button
         type="submit"
         disabled={saving}
-        class="cursor-pointer rounded-pill border-0 bg-action px-5 py-2 text-sm font-semibold text-on-action disabled:opacity-50"
+        class="min-h-[44px] cursor-pointer rounded-pill border-0 bg-action px-5 py-2 md:min-h-0 text-sm font-semibold text-on-action disabled:opacity-50"
       >
         Save
       </button>
@@ -136,6 +136,6 @@
 
   <div class="mt-8 max-w-xl">
     <h2 class="m-0 mb-2 text-lg font-semibold">Theme</h2>
-    <div class="w-24"><ThemeSelect label="Theme (settings)" /></div>
+    <div class="w-full md:w-24"><ThemeSelect label="Theme (settings)" /></div>
   </div>
 {/if}
