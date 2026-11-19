@@ -36,9 +36,9 @@
   }
 
   const input =
-    "w-full rounded-control border border-line-strong bg-surface px-3 py-2 text-base text-fg placeholder:text-muted";
+    "w-full rounded-control border border-line-strong bg-surface min-h-[44px] px-3 py-2 text-[16px] text-fg placeholder:text-muted md:min-h-0 md:text-base";
   const seg =
-    "cursor-pointer rounded-pill border-0 px-4 py-1.5 text-sm font-medium transition-colors duration-(--duration-fast)";
+    "min-h-[44px] cursor-pointer rounded-pill border-0 px-4 py-1.5 text-sm md:min-h-0 font-medium transition-colors duration-(--duration-fast)";
 </script>
 
 <svelte:window onkeydown={(e) => !sheet && e.key === "Escape" && onclose()} />
@@ -84,7 +84,7 @@
         rows={details.picker.audio_streams}
         bind:selection={() => override.selection, (selection) => patch({ selection })}
       />
-      <label class="flex items-center gap-2 text-base">
+      <label class="flex min-h-[44px] items-center gap-2 text-base md:min-h-0">
         <input
           type="checkbox"
           checked={override.subtitles}

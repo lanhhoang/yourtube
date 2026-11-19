@@ -6,7 +6,7 @@
 
 <div
   aria-live="polite"
-  class="fixed inset-x-4 top-[calc(env(safe-area-inset-top)+3.5rem)] z-20 flex flex-col gap-2 md:inset-x-auto md:top-auto md:right-6 md:bottom-6 md:w-80"
+  class="fixed inset-x-4 top-[calc(env(safe-area-inset-top)+4rem)] z-20 flex flex-col gap-2 md:inset-x-auto md:top-auto md:right-6 md:bottom-6 md:w-80"
 >
   {#each toasts as t (t.id)}
     <div

@@ -37,7 +37,7 @@
           type="button"
           aria-pressed={on}
           onclick={() => (selection = toggle(selection, kind, r.format_id))}
-          class="flex w-full cursor-pointer items-center justify-between rounded-control border-0 px-3 py-2 text-left text-base text-fg transition-colors duration-(--duration-fast) hover:bg-raised {on
+          class="flex w-full cursor-pointer items-center justify-between rounded-control border-0 min-h-[44px] px-3 py-2 text-left text-base md:min-h-0 text-fg transition-colors duration-(--duration-fast) hover:bg-raised {on
             ? "bg-raised"
             : "bg-transparent"}"
         >

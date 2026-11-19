@@ -13,7 +13,7 @@
   <select
     id="quality"
     bind:value
-    class="w-full cursor-pointer rounded-control border border-line-strong bg-surface px-3 py-2 text-base text-fg"
+    class="w-full cursor-pointer rounded-control border border-line-strong bg-surface min-h-[44px] px-3 py-2 text-[16px] text-fg md:min-h-0 md:text-base"
   >
     {#each CAP_OPTIONS as o (o.value)}
       <option value={o.value}>{o.label}</option>

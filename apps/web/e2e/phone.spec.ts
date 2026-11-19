@@ -38,7 +38,7 @@ test("tab bar navigates and the rail is hidden", async ({ page }) => {
 
 test("no sideways scroll on library, queue and settings", async ({ page }) => {
   for (const [hash, heading] of [
-    ["#/", /.*/],
+    ["#/", "Library"],
     ["#/queue", "Queue"],
     ["#/settings", "Settings"],
   ] as const) {
@@ -102,6 +102,8 @@ test("toast sits at the top, under the top bar", async ({ page }) => {
   const toast = page.getByText("Phone toast");
   await expect(toast).toBeVisible({ timeout: 10_000 });
   const box = await toast.boundingBox();
+  const header = await page.locator("header").first().boundingBox();
+  expect(box?.y ?? 999).toBeGreaterThanOrEqual((header?.y ?? 0) + (header?.height ?? 999) - 1);
   expect(box?.y ?? 999).toBeLessThan(120);
 });
 
@@ -121,11 +123,11 @@ test("library: no sideways scroll, tap opens the player", async ({ page }) => {
 
 test("queue: no sideways scroll, Cancel is a 44 px target", async ({ page, request }) => {
   const res = await request.post("/api/downloads", {
-    data: { jobs: [{ url: "https://e2e.test/slow-phone", title: "Phone slow video" }] },
+    data: { jobs: [{ url: "https://e2e.test/slow-phone", title: "Phone queued job" }] },
   });
   expect(res.status()).toBe(201);
   await page.goto(`${APP}#/queue`);
-  const row = page.getByRole("listitem").filter({ hasText: "Phone slow video" });
+  const row = page.getByRole("listitem").filter({ hasText: "Phone queued job" });
   await expect(row).toBeVisible();
   await expectNoSideScroll(page);
   const cancel = row.getByRole("button", { name: "Cancel" });
@@ -235,6 +237,50 @@ test("settings theme choice is a full-width row of 44 px targets", async ({ page
   );
   expect(new Set(boxes.map((b) => Math.round(b.y))).size).toBe(1);
   for (const b of boxes) expect(b.height).toBeGreaterThanOrEqual(44);
+});
+
+test("fetch views: fields are 16 px and tap targets are 44 px", async ({ page }) => {
+  await page.goto(`${APP}#/`);
+  await page
+    .getByRole("textbox", { name: "Video or playlist URL" })
+    .fill("https://e2e.test/v/phone");
+  await page.getByRole("button", { name: "Fetch", exact: true }).tap();
+  await expect(page.getByRole("heading", { name: "Video Phone" })).toBeVisible();
+  await page.getByRole("tab", { name: "Advanced" }).tap();
+  const small = async (sel: string) =>
+    page
+      .locator(sel)
+      .evaluateAll(
+        (els) => els.filter((e) => Number.parseFloat(getComputedStyle(e).fontSize) < 16).length,
+      );
+  expect(await small("main input:not([type=checkbox]):not([type=radio]), main select")).toBe(0);
+  for (const name of ["Video", "Audio", "Advanced"]) {
+    await expectTarget(page.getByRole("tab", { name }));
+  }
+  for (const label of await page.locator("main label:has(input[type=checkbox])").all()) {
+    expect((await label.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+  }
+  for (const row of await page.getByRole("tabpanel").getByRole("button").all()) {
+    expect((await row.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+  }
+});
+
+test("override sheet: fields are 16 px and targets are 44 px", async ({ page }) => {
+  await openPlaylist(page);
+  await page.getByRole("button", { name: "Video A: customise" }).tap();
+  const sheet = page.getByRole("dialog", { name: "Video A" });
+  await sheet.getByRole("button", { name: "Custom" }).tap();
+  await expectTarget(sheet.getByRole("button", { name: "Custom" }));
+  await expectTarget(sheet.getByRole("button", { name: "Playlist setting" }));
+  const small = await sheet
+    .locator("input:not([type=checkbox]):not([type=radio]), select")
+    .evaluateAll(
+      (els) => els.filter((e) => Number.parseFloat(getComputedStyle(e).fontSize) < 16).length,
+    );
+  expect(small).toBe(0);
+  for (const row of await sheet.getByRole("button").all()) {
+    expect((await row.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+  }
 });
 
 test.describe("desktop width", () => {

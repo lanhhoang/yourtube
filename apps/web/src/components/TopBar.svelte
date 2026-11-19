@@ -52,7 +52,7 @@
 <svelte:window onkeydown={onWindowKeydown} />
 
 <header
-  class="flex min-h-14 shrink-0 items-center gap-3 px-3 pt-[env(safe-area-inset-top)] md:px-4"
+  class="flex min-h-[calc(3.5rem+env(safe-area-inset-top))] shrink-0 items-center gap-3 px-3 pt-[env(safe-area-inset-top)] md:px-4"
 >
   <a
     href="#/"
@@ -114,10 +114,10 @@
       </button>
       {#if menuOpen}
         <div
-          class="absolute top-11 right-0 z-10 flex w-52 flex-col gap-1 rounded-control border border-line bg-surface p-2 shadow-[0_8px_24px_rgb(0_0_0/0.4)]"
+          class="absolute top-[48px] right-0 z-10 flex w-52 flex-col gap-1 rounded-control border border-line bg-surface p-2 shadow-[0_8px_24px_rgb(0_0_0/0.4)]"
         >
           <label
-            class="flex cursor-pointer items-center gap-2 rounded-control px-2 py-1.5 text-sm hover:bg-raised"
+            class="flex cursor-pointer items-center gap-2 rounded-control min-h-[44px] px-2 py-1.5 text-sm hover:bg-raised md:min-h-0"
           >
             <input
               type="checkbox"
@@ -128,7 +128,7 @@
             Use saved proxy
           </label>
           <label
-            class="flex cursor-pointer items-center gap-2 rounded-control px-2 py-1.5 text-sm hover:bg-raised"
+            class="flex cursor-pointer items-center gap-2 rounded-control min-h-[44px] px-2 py-1.5 text-sm hover:bg-raised md:min-h-0"
           >
             <input
               type="checkbox"

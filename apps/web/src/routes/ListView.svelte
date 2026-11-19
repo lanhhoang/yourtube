@@ -103,7 +103,7 @@
   }
 
   const input =
-    "w-full rounded-control border border-line-strong bg-surface px-3 py-2 text-base text-fg placeholder:text-muted";
+    "w-full rounded-control border border-line-strong bg-surface min-h-[44px] px-3 py-2 text-[16px] text-fg placeholder:text-muted md:min-h-0 md:text-base";
   const pill =
     "min-h-[44px] cursor-pointer rounded-pill border border-line-strong bg-transparent px-4 py-1.5 text-sm font-medium text-fg hover:bg-raised md:min-h-0";
 
@@ -138,12 +138,14 @@
           </button>
         </div>
         <QualitySelect bind:value={cap} />
-        <label class="flex items-center gap-2 pb-2 text-base">
+        <label class="flex min-h-[44px] items-center gap-2 text-base md:min-h-0 md:pb-2">
           <input type="checkbox" bind:checked={subtitles} class="size-4 accent-(--color-action)">
           Subtitles
         </label>
         <label
-          class="flex min-h-11 items-center gap-2 text-base {cap === "audio" ? "text-muted" : ""}"
+          class="flex min-h-[44px] items-center gap-2 text-base {cap === "audio"
+            ? "text-muted"
+            : ""}"
         >
           <input
             type="checkbox"
