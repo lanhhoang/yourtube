@@ -8,7 +8,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.config import resolve_repo_path
@@ -20,6 +20,9 @@ logger = logging.getLogger("yourtube")
 
 LAYOUT_KEY = "library_layout"
 LAYOUT_VERSION = "v2"
+# Highest row id at the first attempt. A retry ignores newer rows, which the new downloader
+# already saved in their final folders (playlist folders included).
+CUTOFF_KEY = "library_layout_cutoff"
 
 _SIDECAR_EXTS = {"srt", "vtt", "txt"}
 
@@ -67,9 +70,15 @@ def migrate_library_layout(session: Session, downloads_dir: Path) -> LayoutSumma
         return None
 
     root = downloads_dir.resolve()
+    cutoff_raw = get_setting(session, CUTOFF_KEY)
+    if cutoff_raw is None:
+        cutoff = session.scalar(select(func.max(Download.id))) or 0
+        set_setting(session, CUTOFF_KEY, str(cutoff))
+    else:
+        cutoff = int(cutoff_raw)
     rows = session.scalars(
         select(Download)
-        .where(Download.status == "done", Download.file_path.is_not(None))
+        .where(Download.status == "done", Download.file_path.is_not(None), Download.id <= cutoff)
         .order_by(Download.id)
     ).all()
     groups: dict[Path, list[Download]] = defaultdict(list)
@@ -78,8 +87,9 @@ def migrate_library_layout(session: Session, downloads_dir: Path) -> LayoutSumma
             groups[resolve_repo_path(row.file_path).resolve()].append(row)
 
     summary = LayoutSummary()
+    claimed: set[Path] = set()
     for src, members in groups.items():
-        _move_group(session, downloads_dir, root, src, members, groups, summary)
+        _move_group(session, downloads_dir, root, src, members, groups, claimed, summary)
 
     logger.info(
         "library layout %s: moved=%d skipped=%d failed=%d",
@@ -101,6 +111,7 @@ def _move_group(
     src: Path,
     members: list[Download],
     groups: dict[Path, list[Download]],
+    claimed: set[Path],
     summary: LayoutSummary,
 ) -> None:
     if not src.is_relative_to(root):
@@ -122,12 +133,14 @@ def _move_group(
         for member in members:
             member.file_path = str(path)
         session.commit()
+        claimed.add(path.resolve())
         summary.moved += 1
 
     if not src.exists():
         # A crash after ``os.replace`` but before the commit leaves the file at its target.
         for candidate in (target, alternative):
-            if candidate.exists() and candidate.resolve() not in others:
+            resolved = candidate.resolve()
+            if candidate.exists() and resolved not in others and resolved not in claimed:
                 point_rows_at(candidate)
                 return
         summary.skipped += 1

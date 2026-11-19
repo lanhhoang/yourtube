@@ -201,3 +201,46 @@ def test_recovers_move_without_commit(db_session: Session, tmp_path: Path) -> No
 
     assert _summary(summary) == (1, 0, 0)
     assert row.file_path == str(target)
+
+
+def test_missing_source_does_not_take_a_file_moved_this_run(
+    db_session: Session, tmp_path: Path
+) -> None:
+    kept = _touch(tmp_path / "Foo.mp4")
+    first = _row(db_session, kept, title="Foo", url="https://www.youtube.com/watch?v=a")
+    stale = _row(
+        db_session, tmp_path / "Foo (old).mp4", title="Foo", url="https://www.youtube.com/watch?v=b"
+    )
+
+    summary = migrate_library_layout(db_session, tmp_path)
+
+    assert _summary(summary) == (1, 1, 0)
+    assert first.file_path == str(tmp_path / "chan" / "foo.mp4")
+    assert stale.file_path == str(tmp_path / "Foo (old).mp4")
+
+
+def test_retry_only_touches_rows_that_failed(
+    db_session: Session, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bad = _touch(tmp_path / "bad.mp4")
+    bad_row = _row(db_session, bad, title="Bad", url="https://www.youtube.com/watch?v=bad")
+    real = os.replace
+
+    def replace(src, dst):
+        raise OSError("nope")
+
+    with monkeypatch.context() as m:
+        m.setattr(os, "replace", replace)
+        migrate_library_layout(db_session, tmp_path)
+    # A playlist download made after the failed run must stay in its playlist folder.
+    new = _touch(tmp_path / "owner" / "mix" / "ep-1.mp4")
+    new_row = _row(
+        db_session, new, title="Ep 1", uploader="Guest", url="https://www.youtube.com/watch?v=e"
+    )
+    assert real is os.replace
+
+    summary = migrate_library_layout(db_session, tmp_path)
+
+    assert _summary(summary) == (1, 0, 0)
+    assert bad_row.file_path == str(tmp_path / "chan" / "bad.mp4")
+    assert new_row.file_path == str(new) and new.exists()
