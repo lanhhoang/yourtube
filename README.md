@@ -21,6 +21,14 @@ Capped video is saved as MP4: H.264 + AAC up to 1080p where YouTube offers it, V
 
 HDR: off by default. When ticked, a video that offers HDR at the resolution your cap picks downloads in HDR (VP9.2 or AV1 + AAC, `.mp4`); otherwise you get the normal SDR file. HDR files play in VLC, IINA and mpv, not in Safari, QuickTime or on iPhone.
 
+### Library layout
+
+New downloads are saved as `<channel>/<title>.<ext>`. A download from a playlist goes to `<playlist-owner>/<playlist>/<title>.<ext>`, so the whole playlist lands in one folder even when it mixes channels. If the playlist has no owner, the video's own channel is used.
+
+Every folder and file name is a lowercase ASCII slug of at most 80 characters: non-Latin text is transliterated and any other run of characters becomes one `-`. When a name comes out empty, it falls back to an id (`unknown-channel` for a missing channel). If the file already exists, `-<video id>` is added to the title.
+
+A custom output template on a job overrides this layout.
+
 ### Playlists
 
 A playlist fetch lists up to 500 entries. The browser checks each selected video against the cap, two lookups at a time, and flags any video that would download below it ("720p max") or is unavailable. "Add to queue" waits until every selected video has been checked. Leaving the page stops checking.

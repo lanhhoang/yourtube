@@ -65,6 +65,22 @@ def test_progress_callback_raises_on_cancellation() -> None:
         progress({"status": "downloading", "_percent_str": "10.0%"})
 
 
+def _wire(ydl: MagicMock, download_fn) -> None:
+    """Route a fake download through both call shapes ``run_download`` can use.
+
+    The default layout resolves info first (``extract_info(download=False)``) and then
+    downloads with ``process_ie_result``; a custom template downloads in ``extract_info``.
+    """
+
+    def extract(url, download=True, **_kwargs):
+        if download:
+            return download_fn(url, download)
+        return {"id": "v", "title": "t", "channel": "c"}
+
+    ydl.extract_info.side_effect = extract
+    ydl.process_ie_result.side_effect = lambda _info, download=True: download_fn("", download)
+
+
 # --- run_download tests ----------------------------------------------------
 
 
@@ -85,7 +101,7 @@ def test_run_download_raises_when_hook_cancels(tmp_path: Path) -> None:
                 hook({"status": "downloading", "_percent_str": "10.0%"})
             return {}
 
-        fake_ydl.extract_info.side_effect = fake_extract_info
+        _wire(fake_ydl, fake_extract_info)
         return fake_ydl
 
     with patch("yt_dlp.YoutubeDL", side_effect=factory):
@@ -115,7 +131,7 @@ def test_run_download_returns_output_path_on_success(tmp_path: Path) -> None:
                 hook({"status": "finished", "filename": expected_path})
             return {}
 
-        fake_ydl.extract_info.side_effect = fake_extract_info
+        _wire(fake_ydl, fake_extract_info)
         return fake_ydl
 
     with patch("yt_dlp.YoutubeDL", side_effect=factory):
@@ -145,7 +161,7 @@ def test_run_download_returns_output_path_without_progress_hook(tmp_path: Path) 
                 hook({"status": "finished", "filename": expected_path})
             return {}
 
-        fake_ydl.extract_info.side_effect = fake_extract_info
+        _wire(fake_ydl, fake_extract_info)
         return fake_ydl
 
     with patch("yt_dlp.YoutubeDL", side_effect=factory):
@@ -184,7 +200,7 @@ def test_run_download_writes_transcript_sidecar_when_subtitles_present(tmp_path:
                 }
             }
 
-        fake_ydl.extract_info.side_effect = fake_extract_info
+        _wire(fake_ydl, fake_extract_info)
         return fake_ydl
 
     with patch("yt_dlp.YoutubeDL", side_effect=factory):
@@ -214,7 +230,7 @@ def test_run_download_succeeds_when_requested_subtitles_are_absent(tmp_path: Pat
                 hook({"status": "finished", "filename": expected_path})
             return {"requested_subtitles": {}}
 
-        fake_ydl.extract_info.side_effect = fake_extract_info
+        _wire(fake_ydl, fake_extract_info)
         return fake_ydl
 
     with patch("yt_dlp.YoutubeDL", side_effect=factory):
@@ -244,7 +260,7 @@ def test_run_download_extracts_media_format_and_resolution(tmp_path: Path) -> No
                 hook({"status": "finished", "filename": str(expected_path)})
             return {"ext": "mp4", "height": 1080}
 
-        fake_ydl.extract_info.side_effect = fake_extract_info
+        _wire(fake_ydl, fake_extract_info)
         return fake_ydl
 
     with patch("yt_dlp.YoutubeDL", side_effect=factory):
@@ -275,7 +291,7 @@ def test_run_download_falls_back_to_info_filesize_when_file_missing(tmp_path: Pa
                 hook({"status": "finished", "filename": str(expected_path)})
             return {"ext": "webm", "height": 720, "filesize": 4096}
 
-        fake_ydl.extract_info.side_effect = fake_extract_info
+        _wire(fake_ydl, fake_extract_info)
         return fake_ydl
 
     with patch("yt_dlp.YoutubeDL", side_effect=factory):
@@ -312,7 +328,7 @@ def _captured_opts(
                 opts["progress_hooks"][0]({"status": "finished", "filename": f})
             return info if info is not None else {"ext": "mp4", "height": 720}
 
-        ydl.extract_info.side_effect = extract
+        _wire(ydl, extract)
         return ydl
 
     monkeypatch.setattr("yt_dlp.YoutubeDL", factory)

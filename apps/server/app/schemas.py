@@ -35,6 +35,9 @@ class DownloadCreate(BaseModel):
     quality_cap: QualityCap | None = None
     subtitles: bool = False
     hdr: bool = False
+    playlist_title: str | None = None
+    playlist_channel: str | None = None
+    playlist_id: str | None = None
 
     @field_validator("audio_bitrate")
     @classmethod
@@ -217,6 +220,8 @@ class LookupRequest(BaseModel):
 class SourcesResult(BaseModel):
     kind: Literal["video", "list"]
     title: str | None
+    playlist_channel: str | None = None
+    playlist_id: str | None = None
     video: VideoDetails | None
     entries: list[SourceEntry]
     skipped: int

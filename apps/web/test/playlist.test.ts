@@ -65,6 +65,7 @@ const header: Header = {
   hdr: false,
   outputTemplate: "  ",
   audioBitrate: "",
+  playlist: null,
 };
 
 test("initialEntries: error entry is unavailable and deselected", () => {
@@ -73,6 +74,8 @@ test("initialEntries: error entry is unavailable and deselected", () => {
     title: null,
     video: null,
     skipped: 0,
+    playlist_channel: null,
+    playlist_id: null,
     entries: [base, { ...base, index: 1, error_code: "c", error_message: "bad" }],
   });
   expect(r[1]).toMatchObject({ selected: false, check: { ok: false, message: "bad" } });
@@ -85,6 +88,8 @@ test("initialEntries: entry with details starts checked", () => {
     title: null,
     video: null,
     skipped: 0,
+    playlist_channel: null,
+    playlist_id: null,
     entries: [{ ...base, details: details() }],
   });
   expect(r[0]).toMatchObject({ selected: true, check: { ok: true } });
@@ -174,4 +179,17 @@ test("buildJobs keeps the title shown on the card", () => {
   const unnamed = { ...named, entry: { ...base, title: null } };
   const jobs = buildJobs([named, unnamed], header);
   expect(jobs.map((j) => j.title)).toEqual(["E0", "https://e/canon"]);
+});
+
+test("buildJobs copies the playlist fields onto every job", () => {
+  const plain = { ...ok(), entry: { ...base, index: 1, url: "https://e/1" } };
+  const playlist = { playlist_title: "Mix", playlist_channel: "Owner", playlist_id: "PL1" };
+  const jobs = buildJobs([ok(), plain], { ...header, playlist });
+  for (const j of jobs) expect(j).toMatchObject(playlist);
+  const none = buildJobs([ok()], header)[0];
+  expect([none.playlist_title, none.playlist_channel, none.playlist_id]).toEqual([
+    null,
+    null,
+    null,
+  ]);
 });

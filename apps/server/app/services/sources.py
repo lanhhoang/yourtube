@@ -177,6 +177,8 @@ def list_sources(
 
     collected: list[SourceEntry] = []
     playlist_title: str | None = None
+    playlist_channel: str | None = None
+    playlist_id: str | None = None
     single_video: VideoDetails | None = None
     for url in urls:
         try:
@@ -197,6 +199,10 @@ def list_sources(
                 info = extract_full(current, **kw)
             if _is_playlist(info):
                 playlist_title = _str_or_none(info.get("title"))
+                playlist_channel = _str_or_none(info.get("channel")) or _str_or_none(
+                    info.get("uploader")
+                )
+                playlist_id = _str_or_none(info.get("id"))
                 collected.extend(_expand(info, url))
                 continue
             details = video_details(info, url)
@@ -225,6 +231,8 @@ def list_sources(
     return SourcesResult(
         kind="list",
         title=playlist_title if len(urls) == 1 else None,
+        playlist_channel=playlist_channel if len(urls) == 1 else None,
+        playlist_id=playlist_id if len(urls) == 1 else None,
         video=None,
         entries=kept,
         skipped=len(unique) - len(kept),

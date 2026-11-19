@@ -20,12 +20,14 @@ export type EntryState = {
   check: Check;
   override: Override | null;
 };
+export type PlaylistFields = Pick<JobCreate, "playlist_title" | "playlist_channel" | "playlist_id">;
 export type Header = {
   cap: QualityCap;
   subtitles: boolean;
   hdr: boolean;
   outputTemplate: string;
   audioBitrate: string;
+  playlist: PlaylistFields | null;
 };
 
 export function initialEntries(result: SourcesResult): EntryState[] {
@@ -113,6 +115,9 @@ export function buildJobs(entries: EntryState[], header: Header): JobCreate[] {
       hdr: header.hdr,
       output_template: blank(o ? o.outputTemplate : header.outputTemplate),
       audio_bitrate: blank(o ? o.audioBitrate : header.audioBitrate),
+      playlist_title: header.playlist?.playlist_title ?? null,
+      playlist_channel: header.playlist?.playlist_channel ?? null,
+      playlist_id: header.playlist?.playlist_id ?? null,
     });
   }
   return jobs;

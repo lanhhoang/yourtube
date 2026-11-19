@@ -297,6 +297,12 @@ export interface components {
             hdr: boolean;
             /** Output Template */
             output_template?: string | null;
+            /** Playlist Channel */
+            playlist_channel?: string | null;
+            /** Playlist Id */
+            playlist_id?: string | null;
+            /** Playlist Title */
+            playlist_title?: string | null;
             quality_cap?: components["schemas"]["QualityCap"] | null;
             /**
              * Subtitles
@@ -461,6 +467,10 @@ export interface components {
              * @enum {string}
              */
             kind: "video" | "list";
+            /** Playlist Channel */
+            playlist_channel?: string | null;
+            /** Playlist Id */
+            playlist_id?: string | null;
             /** Skipped */
             skipped: number;
             /** Title */

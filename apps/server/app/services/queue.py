@@ -61,6 +61,9 @@ def _row_from_payload(payload: DownloadCreate) -> Download:
         subtitles=payload.subtitles,
         quality_cap=payload.quality_cap,
         hdr=payload.hdr,
+        playlist_title=payload.playlist_title,
+        playlist_channel=payload.playlist_channel,
+        playlist_id=payload.playlist_id,
         status="queued",
     )
 

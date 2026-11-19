@@ -104,3 +104,14 @@ def test_enqueue_downloads_single_commit(db_session_visible: Session) -> None:
     )
     assert [r.quality_cap for r in rows] == [None, "480"]
     assert all(r.id for r in rows)
+
+
+def test_enqueue_stores_playlist_fields(client: TestClient, db_session_visible: Session) -> None:
+    r = _post(
+        client,
+        [{"url": U, "playlist_title": "Mix", "playlist_channel": "Owner", "playlist_id": "PL1"}],
+    )
+    assert r.status_code == 201
+    db_session_visible.expire_all()
+    row = db_session_visible.scalars(select(Download)).one()
+    assert (row.playlist_title, row.playlist_channel, row.playlist_id) == ("Mix", "Owner", "PL1")

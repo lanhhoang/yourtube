@@ -44,6 +44,11 @@ class Download(Base):
         Boolean, nullable=False, default=False, server_default=false()
     )
 
+    # Playlist folder (set only for jobs queued from a playlist)
+    playlist_title: Mapped[str | None] = mapped_column(String, nullable=True)
+    playlist_channel: Mapped[str | None] = mapped_column(String, nullable=True)
+    playlist_id: Mapped[str | None] = mapped_column(String, nullable=True)
+
     # Queue and progress
     status: Mapped[str] = mapped_column(String, nullable=False, default="queued", index=True)
     progress: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
