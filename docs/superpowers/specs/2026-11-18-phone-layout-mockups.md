@@ -29,3 +29,16 @@ Full-bleed player, Save and Delete 44 px side by side in thumb reach.
 - Sheet has one title/Close (panel header hidden in sheet mode): approved
 - Playlist checkbox 44 px hit area: approved
 - Overall approval: approved
+
+## Critique and polish (Task 17, 2026-11-18)
+
+Real screens were screenshotted at 390×844 in both themes (library, settings, watch, playlist, sheet) and checked against the mockups.
+
+Findings, each fixed with a test in `apps/web/e2e/phone.spec.ts`:
+- The top-bar placeholder ("Paste a video or playlist URL…") wrapped and clipped in the narrower field. Now "Paste a link…".
+- The playlist grid was one column; the approved mockup is two-up. Now two columns below md.
+- The theme choice stacked as three tiny rows. Now one row of three 44 px targets.
+
+Contrast (AA, computed from the tokens): tab labels 5.93/6.33 (dark/light), active tab 17.42/19.16, queue badge 4.77/5.27, toast muted text 4.95/5.22, toast title 14.56/15.8. All at or above 4.5:1.
+
+Not checked here (needs the iPhone, installed app): safe areas top and bottom, no focus zoom on the field, the sheet scrolling inside. Left to the owner.

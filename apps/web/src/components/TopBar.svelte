@@ -69,7 +69,7 @@
       onkeydown={onKeydown}
       rows={lines}
       aria-label="Video or playlist URL"
-      placeholder="Paste a video or playlist URL…"
+      placeholder="Paste a link…"
       class="min-h-[44px] min-w-0 flex-1 resize-none rounded-[22px] border border-line-strong bg-surface px-4 py-[11px] text-[16px] leading-[1.3] md:min-h-9 md:rounded-[18px] md:py-[7px] md:text-sm md:leading-[1.4] text-fg placeholder:text-muted"
     ></textarea>
 

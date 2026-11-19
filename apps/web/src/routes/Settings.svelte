@@ -136,6 +136,6 @@
 
   <div class="mt-8 max-w-xl">
     <h2 class="m-0 mb-2 text-lg font-semibold">Theme</h2>
-    <div class="w-32 md:w-24"><ThemeSelect label="Theme (settings)" /></div>
+    <div class="w-full md:w-24"><ThemeSelect label="Theme (settings)" /></div>
   </div>
 {/if}

@@ -204,6 +204,39 @@ test("playlist: no sideways scroll, override opens as a bottom sheet", async ({ 
   await expect(sheet).toBeHidden();
 });
 
+test("playlist cards are two-up", async ({ page }) => {
+  await openPlaylist(page);
+  const a = await page.getByRole("article").filter({ hasText: "Video A" }).boundingBox();
+  const b = await page.getByRole("article").filter({ hasText: "Video B" }).boundingBox();
+  expect(Math.abs((a?.y ?? 0) - (b?.y ?? 99))).toBeLessThan(4);
+  expect(b?.x ?? 0).toBeGreaterThan((a?.x ?? 0) + (a?.width ?? 0) - 1);
+});
+
+test("top-bar placeholder fits the phone field", async ({ page }) => {
+  await page.goto(`${APP}#/`);
+  const fits = await page.getByRole("textbox", { name: "Video or playlist URL" }).evaluate((el) => {
+    const c = document.createElement("canvas").getContext("2d");
+    if (!c) return false;
+    c.font = `${getComputedStyle(el).fontSize} ${getComputedStyle(el).fontFamily}`;
+    const w = c.measureText((el as HTMLTextAreaElement).placeholder).width;
+    const cs = getComputedStyle(el);
+    return (
+      w <= el.clientWidth - Number.parseFloat(cs.paddingLeft) - Number.parseFloat(cs.paddingRight)
+    );
+  });
+  expect(fits).toBe(true);
+});
+
+test("settings theme choice is a full-width row of 44 px targets", async ({ page }) => {
+  await page.goto(`${APP}#/settings`);
+  const radios = page.getByRole("radiogroup", { name: "Theme (settings)" }).locator("label");
+  const boxes = await radios.evaluateAll((els) =>
+    els.map((e) => e.getBoundingClientRect().toJSON()),
+  );
+  expect(new Set(boxes.map((b) => Math.round(b.y))).size).toBe(1);
+  for (const b of boxes) expect(b.height).toBeGreaterThanOrEqual(44);
+});
+
 test.describe("desktop width", () => {
   test.use({ viewport: { width: 1440, height: 900 }, hasTouch: false });
   test("playlist override stays a side panel", async ({ page }) => {

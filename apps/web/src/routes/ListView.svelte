@@ -212,7 +212,9 @@
       {/if}
     </header>
 
-    <div class="grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] gap-x-4 gap-y-6">
+    <div
+      class="grid grid-cols-2 gap-x-3 gap-y-5 md:grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] md:gap-x-4 md:gap-y-6"
+    >
       {#each entries as item, i (i)}
         <EntryCard
           {item}
