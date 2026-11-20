@@ -12,10 +12,18 @@ from app.api.errors import ApiError
 from app.config import resolve_repo_path
 from app.db import get_session
 from app.models import Download
-from app.schemas import BatchOut, EnqueueRequest, EnqueueResult, JobOut, QueueOut
+from app.schemas import (
+    BatchOut,
+    DismissFailedOut,
+    EnqueueRequest,
+    EnqueueResult,
+    JobOut,
+    QueueOut,
+)
 from app.services.push import notify_settled
 from app.services.queue import (
     cancel_job,
+    dismiss_failed,
     dismiss_job,
     enqueue_downloads,
     get_active_jobs,
@@ -36,6 +44,11 @@ def get_queue(session: Session = Depends(get_session)) -> QueueOut:
         completed=[JobOut.from_row(r) for r in get_recent_completed_jobs(session, limit=20)],
         batches=[BatchOut(**asdict(b)) for b in recent_batch_summaries(session)],
     )
+
+
+@router.post("/queue/dismiss-failed")
+def dismiss_all_failed(session: Session = Depends(get_session)) -> DismissFailedOut:
+    return DismissFailedOut(dismissed=dismiss_failed(session))
 
 
 @router.post("/downloads", status_code=201)

@@ -222,6 +222,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/queue/dismiss-failed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dismiss All Failed */
+        post: operations["dismiss_all_failed_api_queue_dismiss_failed_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/settings": {
         parameters: {
             query?: never;
@@ -330,6 +347,11 @@ export interface components {
             messages: string[];
             /** Workers Enabled */
             workers_enabled: boolean;
+        };
+        /** DismissFailedOut */
+        DismissFailedOut: {
+            /** Dismissed */
+            dismissed: number;
         };
         /** EnqueueRequest */
         EnqueueRequest: {
@@ -1054,6 +1076,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QueueOut"];
+                };
+            };
+        };
+    };
+    dismiss_all_failed_api_queue_dismiss_failed_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DismissFailedOut"];
                 };
             };
         };

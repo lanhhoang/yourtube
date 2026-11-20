@@ -245,6 +245,10 @@ class QueueOut(BaseModel):
     batches: list[BatchOut]
 
 
+class DismissFailedOut(BaseModel):
+    dismissed: int
+
+
 class SettingsOut(BaseModel):
     max_concurrent: int
     proxy_url: str
