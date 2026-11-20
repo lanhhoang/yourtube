@@ -1,3 +1,4 @@
+import { shortCodec } from "./codecs.ts";
 import type { JobOut } from "./queue.ts";
 
 export type Chip = "all" | "downloading" | "video" | "audio";
@@ -32,4 +33,18 @@ export function formatSize(bytes: number | null): string {
     i++;
   }
   return `${value.toFixed(1)} ${units[i]}`;
+}
+
+export function watchMeta(job: JobOut): string {
+  return [
+    job.uploader,
+    qualityLabel(job),
+    job.media_kind === "video" ? job.dynamic_range : null,
+    formatSize(job.file_size),
+    shortCodec(job.vcodec),
+    shortCodec(job.acodec),
+    job.media_format,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }

@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { formatSize, libraryItems, qualityLabel } from "../src/lib/library.ts";
+import { formatSize, libraryItems, qualityLabel, watchMeta } from "../src/lib/library.ts";
 import type { JobOut } from "../src/lib/queue.ts";
 
 const job = (id: number, f: Partial<JobOut> = {}) =>
@@ -36,4 +36,34 @@ test("libraryItems drops an active job that is already done", () => {
   const stale = job(5, { status: "active" });
   expect(libraryItems([finished], [stale], "all")).toEqual([finished]);
   expect(libraryItems([finished], [stale], "video")).toEqual([finished]);
+});
+
+test("watchMeta", () => {
+  const v = {
+    uploader: "Chan",
+    media_kind: "video",
+    resolution_height: 1080,
+    dynamic_range: "SDR",
+    file_size: 300 * 1024 ** 2,
+    vcodec: "av01.0.08M.08",
+    acodec: "mp4a.40.2",
+    media_format: "mp4",
+  } as JobOut;
+  expect(watchMeta(v)).toBe("Chan · 1080p · SDR · 300.0 MB · av1 · aac · mp4");
+  expect(watchMeta({ ...v, dynamic_range: "HDR10", resolution_height: 2160 })).toContain(
+    "2160p · HDR10",
+  );
+  const a = {
+    ...v,
+    media_kind: "audio",
+    resolution_height: null,
+    dynamic_range: null,
+    vcodec: null,
+    acodec: "opus",
+    media_format: "webm",
+  } as JobOut;
+  expect(watchMeta(a)).toBe("Chan · Audio · 300.0 MB · opus · webm");
+  expect(watchMeta({ ...v, vcodec: null, acodec: null, dynamic_range: null })).toBe(
+    "Chan · 1080p · 300.0 MB · mp4",
+  );
 });

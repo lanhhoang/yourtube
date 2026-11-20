@@ -12,6 +12,7 @@ test("player opens from the library and reports unplayable files", async ({ page
   await expect(page.locator("video")).toHaveAttribute("src", /file\?inline=1$/);
   await expect(page.getByRole("button", { name: "Delete" })).toBeVisible();
   await expect(page.getByText("Save", { exact: true })).toBeVisible();
+  await expect(page.getByText("E2E · 1080p · SDR · 4 B · h264 · aac · mp4")).toBeVisible();
   await page.locator("video").evaluate((v) => v.dispatchEvent(new Event("error")));
   await expect(
     page.getByText("This device can't play this file. Save it and open it in VLC."),
