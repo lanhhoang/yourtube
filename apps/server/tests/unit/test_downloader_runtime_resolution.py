@@ -22,17 +22,17 @@ from app.services.downloader import (
 )
 
 
-def test_build_ytdlp_options_avoids_youtube_android_vr_403(tmp_path) -> None:
+def test_player_client_excludes_web_embedded(tmp_path) -> None:
+    """With cookies, yt-dlp's default set includes ``web_embedded``, which YouTube now
+    serves SABR-only (warning, issue 12482). ``-web_embedded`` removes it while keeping
+    yt-dlp's age-gate fallback."""
     options = build_ytdlp_options(
         skip_download=True,
         output_dir=str(tmp_path),
         js_runtime="node",
     )
 
-    assert options["extractor_args"]["youtube"]["player_client"] == [
-        "web_embedded",
-        "default",
-    ]
+    assert options["extractor_args"] == {"youtube": {"player_client": ["default", "-web_embedded"]}}
     assert options["js_runtimes"] == {"node": {"path": "node"}}
     assert "remote_components" not in options
 
@@ -123,7 +123,7 @@ def test_build_ytdlp_options_uses_resolved_template_for_downloads(tmp_path: Path
     assert options["writesubtitles"] is True
 
 
-def test_build_ytdlp_options_prefers_srt_english_and_auto_subtitles(tmp_path: Path) -> None:
+def test_build_ytdlp_options_subtitles_skip_translated(tmp_path: Path) -> None:
     options = build_ytdlp_options(
         skip_download=False,
         output_dir=str(tmp_path),
@@ -134,6 +134,7 @@ def test_build_ytdlp_options_prefers_srt_english_and_auto_subtitles(tmp_path: Pa
     assert options["writesubtitles"] is True
     assert options["writeautomaticsub"] is True
     assert options["subtitlesformat"] == "srt/best"
+    assert options["extractor_args"]["youtube"]["skip"] == ["translated_subs"]
     assert "subtitleslangs" not in options
 
 

@@ -71,5 +71,6 @@ def test_default_layout_keeps_progress_hook(tmp_path: Path, fake_ydl: Any) -> No
 def test_custom_template_skips_layout(tmp_path: Path, fake_ydl: Any) -> None:
     fake_ydl.info = {"id": "abc", "title": "t", "ext": "mp4"}
     run_download("u", output_dir=str(tmp_path), output_template="%(title)s.%(ext)s")
-    assert fake_ydl.process_calls == 0
-    assert fake_ydl.extract_downloads == [True]
+    assert fake_ydl.process_calls == 1
+    assert fake_ydl.extract_downloads == [False]
+    assert fake_ydl.outtmpl == str(tmp_path / "%(title)s.%(ext)s")

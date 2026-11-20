@@ -66,10 +66,10 @@ def test_progress_callback_raises_on_cancellation() -> None:
 
 
 def _wire(ydl: MagicMock, download_fn) -> None:
-    """Route a fake download through both call shapes ``run_download`` can use.
+    """Route a fake download through the call shape ``run_download`` uses.
 
-    The default layout resolves info first (``extract_info(download=False)``) and then
-    downloads with ``process_ie_result``; a custom template downloads in ``extract_info``.
+    Both the default layout and a custom template resolve info first
+    (``extract_info(download=False)``) and then download with ``process_ie_result``.
     """
 
     def extract(url, download=True, **_kwargs):

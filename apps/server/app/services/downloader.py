@@ -24,6 +24,9 @@ class DownloadCancelled(Exception):  # noqa: N818 - name fixed by plan contract
     """Raised inside the progress hook when cancellation is requested."""
 
 
+SUBTITLE_WARNING = "Subtitles couldn't be downloaded."
+
+
 @dataclass(frozen=True)
 class DownloadResult:
     """Result of :func:`run_download`: the output path plus file metadata.
@@ -37,6 +40,7 @@ class DownloadResult:
     file_size: int | None
     media_format: str | None
     resolution_height: int | None
+    warning: str | None = None
 
 
 # Type alias for the yt-dlp progress hook. yt-dlp passes a dict to each
@@ -219,15 +223,16 @@ def build_ytdlp_options(
     ignored in that case.
 
     When ``subtitles`` is true, options are added to fetch SRT-formatted
-    captions in English-first order with auto-generated fallback. The
-    resulting ``.srt`` files are normalised by yt-dlp so a downstream
-    pass can derive sibling ``.txt`` transcripts.
+    captions and auto-translated tracks are skipped. The languages are picked
+    per video by ``run_download`` via ``pick_subtitle_langs``. The resulting
+    ``.srt`` files are normalised by yt-dlp so a downstream pass can derive
+    sibling ``.txt`` transcripts.
     """
     options: dict[str, Any] = {
         "quiet": True,
         "noprogress": True,
         "skip_download": skip_download,
-        "extractor_args": {"youtube": {"player_client": ["web_embedded", "default"]}},
+        "extractor_args": {"youtube": {"player_client": ["default", "-web_embedded"]}},
         "js_runtimes": {js_runtime: {"path": js_runtime}},
     }
     if not skip_download:
@@ -246,9 +251,23 @@ def build_ytdlp_options(
         options["writesubtitles"] = True
         options["writeautomaticsub"] = True
         options["subtitlesformat"] = "srt/best"
+        options["extractor_args"]["youtube"]["skip"] = ["translated_subs"]
     if progress_hooks:
         options["progress_hooks"] = progress_hooks
     return options
+
+
+def pick_subtitle_langs(info: dict) -> list[str]:
+    """Pick original-language and real English subtitle keys, never translated auto captions."""
+    auto = info.get("automatic_captions") or {}
+    manual = info.get("subtitles") or {}
+    orig = next((k.removesuffix("-orig") for k in auto if k.endswith("-orig")), None)
+    if orig is None and info.get("language"):
+        orig = re.split(r"[+-]", info["language"])[0]
+    picks = [k for k in manual if k != "live_chat" and k.split("-")[0] in (orig, "en")]
+    if orig and not any(k.split("-")[0] == orig for k in picks) and f"{orig}-orig" in auto:
+        picks.append(f"{orig}-orig")
+    return list(dict.fromkeys(picks))
 
 
 def extract_info(
@@ -596,6 +615,7 @@ def run_download(
     guard = output_dir_guard(output_dir)
     ydl_opts["match_filter"] = guard
     captured_path: dict[str, str | None] = {"path": None}
+    warning: str | None = None
 
     def _wrapped(d: dict[str, Any]) -> None:
         if d.get("status") == "finished" and d.get("filename"):
@@ -609,16 +629,30 @@ def run_download(
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         guard.ydl = ydl
-        if output_template:
-            info = ydl.extract_info(url, download=True)
-        else:
+        resolved = ydl.extract_info(url, download=False) or {}
+        if not output_template:
             # Resolve first so channel and id are known, then download to a fixed path.
-            resolved = ydl.extract_info(url, download=False) or {}
             stem = default_stem(resolved, playlist, Path(output_dir))
             stem.parent.mkdir(parents=True, exist_ok=True)
             # ``%`` in a path would otherwise be read as template syntax.
             ydl.params["outtmpl"]["default"] = str(stem).replace("%", "%%") + ".%(ext)s"
+        if subtitles:
+            langs = pick_subtitle_langs(resolved)
+            if langs:
+                ydl.params["subtitleslangs"] = langs
+            else:
+                ydl.params["writesubtitles"] = False
+                ydl.params["writeautomaticsub"] = False
+        try:
             info = ydl.process_ie_result(resolved, download=True)
+        except yt_dlp.utils.DownloadError as exc:
+            if "Unable to download video subtitles" not in str(exc):
+                raise
+            # Subtitles are written before media, so this retry is the real download.
+            ydl.params["writesubtitles"] = False
+            ydl.params["writeautomaticsub"] = False
+            info = ydl.process_ie_result(resolved, download=True)
+            warning = SUBTITLE_WARNING
 
     if subtitles:
         requested_subtitles = (info or {}).get("requested_subtitles") or {}
@@ -642,4 +676,5 @@ def run_download(
         file_size=file_size,
         media_format=media_format,
         resolution_height=resolution_height,
+        warning=warning,
     )
