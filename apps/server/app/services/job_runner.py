@@ -37,6 +37,10 @@ def _release_and_notify(
     file_size: int | None = None,
     media_format: str | None = None,
     resolution_height: int | None = None,
+    vcodec: str | None = None,
+    acodec: str | None = None,
+    dynamic_range: str | None = None,
+    warning_message: str | None = None,
 ) -> None:
     with SessionLocal() as session:
         released = release_job(
@@ -49,6 +53,10 @@ def _release_and_notify(
             file_size=file_size,
             media_format=media_format,
             resolution_height=resolution_height,
+            vcodec=vcodec,
+            acodec=acodec,
+            dynamic_range=dynamic_range,
+            warning_message=warning_message,
         )
     if released:
         try:
@@ -114,4 +122,8 @@ def run_claimed_job(job_id: int) -> None:
         file_size=result.file_size,
         media_format=result.media_format,
         resolution_height=result.resolution_height,
+        vcodec=result.vcodec,
+        acodec=result.acodec,
+        dynamic_range=result.dynamic_range,
+        warning_message=result.warning,
     )

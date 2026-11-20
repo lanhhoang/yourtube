@@ -414,6 +414,8 @@ export interface components {
          * @description A download job as the web app sees it.
          */
         JobOut: {
+            /** Acodec */
+            acodec: string | null;
             /** Batch Id */
             batch_id: string | null;
             /**
@@ -423,6 +425,8 @@ export interface components {
             created_at: string;
             /** Duration */
             duration: number | null;
+            /** Dynamic Range */
+            dynamic_range: string | null;
             /** Error Code */
             error_code: string | null;
             /** Error Message */
@@ -438,6 +442,10 @@ export interface components {
             /** Media Format */
             media_format: string | null;
             media_kind: components["schemas"]["MediaKind"];
+            /** Playlist Channel */
+            playlist_channel: string | null;
+            /** Playlist Title */
+            playlist_title: string | null;
             /** Progress */
             progress: number;
             quality_cap: components["schemas"]["QualityCap"] | null;
@@ -452,6 +460,10 @@ export interface components {
             uploader: string | null;
             /** Url */
             url: string;
+            /** Vcodec */
+            vcodec: string | null;
+            /** Warning Message */
+            warning_message: string | null;
         };
         /** @enum {string} */
         JobStatus: "queued" | "active" | "done" | "error" | "cancelled";

@@ -309,8 +309,39 @@ def test_run_download_falls_back_to_info_filesize_when_file_missing(tmp_path: Pa
 def test_metadata_uses_short_side(tmp_path: Path) -> None:
     from app.services.downloader import _extract_file_metadata
 
-    _, _, height = _extract_file_metadata({"ext": "mp4", "width": 1080, "height": 1920}, "")
-    assert height == 1080
+    meta = _extract_file_metadata({"ext": "mp4", "width": 1080, "height": 1920}, "")
+    assert meta.resolution_height == 1080
+
+
+def test_extract_file_metadata_codecs() -> None:
+    from app.services.downloader import _extract_file_metadata
+
+    meta = _extract_file_metadata(
+        {
+            "ext": "mp4",
+            "width": 1920,
+            "height": 1080,
+            "vcodec": "av01.0.08M.08",
+            "acodec": "mp4a.40.2",
+            "dynamic_range": "SDR",
+        },
+        "",
+    )
+    assert (meta.vcodec, meta.acodec, meta.dynamic_range) == ("av01.0.08M.08", "mp4a.40.2", "SDR")
+
+    meta = _extract_file_metadata({"vcodec": "none", "acodec": "opus", "dynamic_range": None}, "")
+    assert (meta.vcodec, meta.acodec, meta.dynamic_range) == (None, "opus", None)
+
+    meta = _extract_file_metadata(
+        {
+            "requested_formats": [
+                {"vcodec": "vp09.00.51.08", "dynamic_range": "HDR10", "acodec": "none"},
+                {"vcodec": "none", "acodec": "opus"},
+            ]
+        },
+        "",
+    )
+    assert (meta.vcodec, meta.acodec, meta.dynamic_range) == ("vp09.00.51.08", "opus", "HDR10")
 
 
 def _captured_opts(

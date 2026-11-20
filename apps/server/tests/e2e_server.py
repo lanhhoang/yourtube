@@ -37,7 +37,7 @@ def _run_download(
     path.write_bytes(b"data")
     if progress_hook is not None:
         progress_hook({"status": "finished", "filename": str(path)})
-    return DownloadResult(str(path), 4, "mp4", 1080)
+    return DownloadResult(str(path), 4, "mp4", 1080, "avc1.640028", "mp4a.40.2", "SDR")
 
 
 _VIDEO_URLS = {
@@ -143,6 +143,9 @@ def _seed() -> None:
                 file_size=4,
                 media_format="mp4",
                 resolution_height=1080,
+                vcodec="avc1.640028",
+                acodec="mp4a.40.2",
+                dynamic_range="SDR",
                 finished_at=datetime.now(),
             )
         )

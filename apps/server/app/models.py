@@ -69,6 +69,10 @@ class Download(Base):
     file_size: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     media_format: Mapped[str | None] = mapped_column(String, nullable=True)
     resolution_height: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    vcodec: Mapped[str | None] = mapped_column(String, nullable=True)
+    acodec: Mapped[str | None] = mapped_column(String, nullable=True)
+    dynamic_range: Mapped[str | None] = mapped_column(String, nullable=True)
+    warning_message: Mapped[str | None] = mapped_column(String, nullable=True)
 
     # Timestamps
     claimed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

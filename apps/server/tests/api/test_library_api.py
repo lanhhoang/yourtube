@@ -145,5 +145,22 @@ def test_get_job(client: TestClient, db_session_visible: Session) -> None:
     job = _add(db_session_visible, "queued")
     r = client.get(f"/api/downloads/{job}")
     assert r.status_code == 200 and r.json()["id"] == job
+    full = _add(
+        db_session_visible,
+        vcodec="avc1",
+        acodec="opus",
+        dynamic_range="SDR",
+        warning_message="w",
+        playlist_title="PL",
+        playlist_channel="Ch",
+    )
+    body = client.get(f"/api/downloads/{full}").json()
+    assert (body["vcodec"], body["acodec"], body["dynamic_range"], body["warning_message"]) == (
+        "avc1",
+        "opus",
+        "SDR",
+        "w",
+    )
+    assert (body["playlist_title"], body["playlist_channel"]) == ("PL", "Ch")
     r = client.get("/api/downloads/999999")
     assert r.status_code == 404 and r.json()["error"]["code"] == "not_found"

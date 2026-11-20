@@ -93,6 +93,12 @@ class JobOut(BaseModel):
     file_size: int | None
     media_format: str | None
     resolution_height: int | None
+    playlist_title: str | None
+    playlist_channel: str | None
+    vcodec: str | None
+    acodec: str | None
+    dynamic_range: str | None
+    warning_message: str | None
     batch_id: str | None
     created_at: datetime
     finished_at: datetime | None
@@ -122,6 +128,12 @@ class JobOut(BaseModel):
                 "file_size": row.file_size,
                 "media_format": row.media_format,
                 "resolution_height": row.resolution_height,
+                "playlist_title": row.playlist_title,
+                "playlist_channel": row.playlist_channel,
+                "vcodec": row.vcodec,
+                "acodec": row.acodec,
+                "dynamic_range": row.dynamic_range,
+                "warning_message": row.warning_message,
                 "batch_id": row.batch_id,
                 "created_at": row.created_at,
                 "finished_at": row.finished_at,

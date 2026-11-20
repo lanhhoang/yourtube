@@ -38,11 +38,13 @@ def test_retry_resets_failed_job(db_session: Session) -> None:
         cancel_requested=True,
         batch_id="b1",
         batch_notified=True,
+        warning_message="w",
         finished_at=datetime(2026, 1, 1),
         claimed_at=datetime(2026, 1, 1),
     )
     assert retry_job(db_session, row.id) is True
     db_session.refresh(row)
+    assert row.warning_message is None
     assert (
         row.status,
         row.progress,
