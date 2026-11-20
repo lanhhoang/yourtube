@@ -15,7 +15,7 @@ Success: a playlist download finishes without errors or warnings caused by our o
 3. Queue: one action dismisses all failed jobs.
 4. Library: Select mode with multi-select delete.
 5. Library: sort and filter controls. Remove the All / Downloading / Video / Audio only chips.
-6. Watch: metadata line `Channel · 1080p · 300 MB · av01 · aac · mp4`.
+6. Watch: metadata line `Channel · 1080p · SDR · 300 MB · av1 · aac · mp4` (dynamic range added 2026-11-19 at the owner's request).
 7. Watch: downloaded subtitles available in the native player, off by default.
 
 ## Non-goals
@@ -59,7 +59,7 @@ All rows were picked by the user.
 
 ### 1. yt-dlp options (`apps/server/app/services/downloader.py`)
 
-- `build_ytdlp_options`: `extractor_args.youtube.player_client` → `["default"]`. Also add `"skip": ["translated_subs"]` under `youtube` extractor args. This only drops translations of *manual* tracks. Auto-caption translations are still listed, which is why the language picking below is needed. Update `test_build_ytdlp_options_avoids_youtube_android_vr_403` to match (the yt-dlp default no longer uses android_vr).
+- `build_ytdlp_options`: `extractor_args.youtube.player_client` → `["default", "-web_embedded"]`. Plain `default` isn't enough: with cookies, yt-dlp's default set is `web_embedded, tv_samsung, web` (`_DEFAULT_AUTHED_CLIENTS`), so the warning would return for cookie users. The `-` exclusion only removes it from the requested list. yt-dlp's own age-gate/made-for-kids fallback (`append_client('web_embedded')`) still works. Verified 2026-11-19: 47 formats, 1080p, no warning. Also add `"skip": ["translated_subs"]` under `youtube` extractor args. This only drops translations of *manual* tracks. Auto-caption translations are still listed, which is why the language picking below is needed. Update `test_build_ytdlp_options_avoids_youtube_android_vr_403` to match (the yt-dlp default no longer uses android_vr).
   - Verified 2026-11-19: `QaVuJI6Mkv0` gives 1080p max with and without `web_embedded`.
 - Subtitle language: when `subtitles=True`, pick exact keys from the resolved info so nothing auto-translated is ever requested. A pure function `pick_subtitle_langs(resolved) -> list[str]`:
   - `orig` = the language of the key ending in `-orig` in `resolved["automatic_captions"]` (yt-dlp marks the original-language auto caption this way). Fall back to `resolved["language"]` (note: that's the chosen audio format's language and may be `None` or `"en+fr"`-style; take the part before `+`/`-`).
@@ -77,9 +77,10 @@ All rows were picked by the user.
 
 - Migration `20261119120000_add_codecs_and_warning`: add nullable `vcodec`, `acodec`, `warning_message` (String) to `downloads`. Use the `op.batch_alter_table` pattern.
 - At download time: `_extract_file_metadata` also returns `vcodec`/`acodec` from the final `info` (for merged formats use `requested_formats`; `none` maps to null). The job runner stores them.
-- `JobOut` gains `vcodec`, `acodec` (raw strings) and `warning_message`. Run `pnpm typegen` afterwards.
+- Dynamic range: a nullable `dynamic_range` column next to the codecs, filled from yt-dlp's `dynamic_range` (`SDR`, `HDR10`, `HLG`, …; for merged downloads it comes from the video stream). Shown after the resolution for video items only: `1080p · SDR` or `2160p · HDR10`. yt-dlp's label is shown as stored, so HDR variants keep their name.
+- `JobOut` gains `vcodec`, `acodec`, `dynamic_range` (raw strings) and `warning_message`. Run `pnpm typegen` afterwards.
 - Display shortening happens on the client, in `apps/web/src/lib/codecs.ts`: `avc1*`→`h264`, `hev1|hvc1*`→`h265`, `vp09|vp9*`→`vp9`, `av01*`→`av1`, `mp4a*`→`aac`, `opus`→`opus`, `ac-3`→`ac3`, `ec-3`→`eac3`, `flac`, `mp3`; anything else passes through. **Note:** the user's example wrote `av01`. Showing `av1` is the builder's call; either is fine. Default: `av1`.
-- Backfill: startup step `backfill_codecs(session)` next to `migrate_library_layout` in `main.py` lifespan. For `done` rows with null `vcodec` and `acodec` and an existing file, run `ffprobe -v error -show_streams -of json` and take the first video and audio `codec_name` (already short: `h264`, `av1`, `aac`…). Skip video streams with `disposition.attached_pic=1` (cover art in audio files). Store ffprobe names. Map them through the same client table, which passes short names through.
+- Backfill: startup step `backfill_codecs(session)` next to `migrate_library_layout` in `main.py` lifespan. For `done` rows with null `vcodec` and `acodec` and an existing file, run `ffprobe -v error -show_streams -of json` and take the first video and audio `codec_name` (already short: `h264`, `av1`, `aac`…). Skip video streams with `disposition.attached_pic=1` (cover art in audio files). Dynamic range comes from the video stream's `color_transfer`: `smpte2084` → `HDR10`, `arib-std-b67` → `HLG`, anything else → `SDR`. Store ffprobe names. Map them through the same client table, which passes short names through.
   - Runs in the background thread or after startup so a large library doesn't block serving. A missing ffprobe or failure logs and leaves nulls, and it's retried next start. Rows with no file are skipped.
 
 ### 3. Subtitles in the player
@@ -129,7 +130,7 @@ All rows were picked by the user.
 - Server unit: player_client/skip args; `pick_subtitle_langs` table (fr auto-only → `fr-orig`; manual fr+en → `fr, en`; en manual → `en`; translated keys never picked; nothing available → `[]`); subtitle 429 → retry without subs → `done` + warning; media error still fails; SRT→VTT conversion; subtitle discovery; codec extraction incl. merged formats; ffprobe backfill (mock subprocess); bulk delete partial failure; dismiss-failed.
 - API tests for the new endpoints. Migration upgrade/downgrade test if the existing pattern has one.
 - Web unit: `codecs.ts` mapping; library sort/filter/selection functions in `lib/library.ts`.
-- E2E: `library.spec.ts` (sort, filter, select-delete on desktop and phone viewports), `queue.spec.ts` (dismiss all), `video.spec.ts`/watch (metadata line with codecs; `<track>` elements present, none default).
+- E2E: `library.spec.ts` (sort, filter, select-delete on desktop and phone viewports), `queue.spec.ts` (dismiss all), `video.spec.ts`/watch (metadata line with dynamic range and codecs; `<track>` elements present, none default).
 - Manual: download playlist `QaVuJI6Mkv0`'s list. No SABR warning, no 429, French subs show in the player when picked.
 
 ## Left to the builder
