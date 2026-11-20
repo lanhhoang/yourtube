@@ -434,8 +434,9 @@ Extraction rules: `vcodec`/`acodec` come from the final info. yt-dlp's merge alr
   - `test_job_runner.py`: extend the done-path test so the fake returns `vcodec="avc1.640028", acodec="mp4a.40.2", dynamic_range="SDR", warning="Subtitles couldn't be downloaded."`, and assert all four land on the row (`warning_message`).
   - `test_queue_retry_dismiss.py::test_retry_resets_failed_job`: seed `warning_message="w"` and assert it's `None` after the retry.
   - `test_library_api.py::test_get_job` (extend): a row with `vcodec`, `acodec`, `dynamic_range`, `warning_message`, `playlist_title` and `playlist_channel` round-trips through `GET /api/downloads/{id}`.
+  - `test_downloader_progress.py::test_metadata_uses_short_side` (existing): it unpacks `_, _, height = _extract_file_metadata(...)`, which breaks once the return is `MediaMeta`. Change it to `_extract_file_metadata(...).resolution_height`.
 - [ ] **Step 2: Run them and see them fail.**
-- [ ] **Step 3: Implement.** The migration copies the `20261118120000_add_playlist_folder.py` pattern (a `_COLUMNS` tuple, `batch_alter_table`). Add `warning_message=None` to `retry_job`'s `.values(...)`. Update the e2e stub `_run_download` to return `DownloadResult(str(path), 4, "mp4", 1080, "avc1.640028", "mp4a.40.2", "SDR")`. Seed the `Seeded video` row with the same three values.
+- [ ] **Step 3: Implement.** The migration copies the `20261118120000_add_playlist_folder.py` pattern (a `_COLUMNS` tuple, `batch_alter_table`). Add the four `Mapped[str | None]` columns to `Download` next to the output file metadata. In `JobOut.from_row`, add the six new keys (`row.playlist_title`, `row.playlist_channel`, `row.vcodec`, `row.acodec`, `row.dynamic_range`, `row.warning_message`) to the `model_validate` dict; the fields are required (no default), like the existing nullable ones. `run_download` passes `meta.vcodec`, `meta.acodec`, `meta.dynamic_range` into `DownloadResult`, and `run_claimed_job` passes them plus `warning_message=result.warning` to `_release_and_notify`. Add `warning_message=None` to `retry_job`'s `.values(...)`. Update the e2e stub `_run_download` to return `DownloadResult(str(path), 4, "mp4", 1080, "avc1.640028", "mp4a.40.2", "SDR")`. Seed the `Seeded video` row with the same three values.
 - [ ] **Step 4: Run `uv run pytest -q`, then `pnpm typegen`.**
 - [ ] **Step 5: Commit.** `git commit -m "feat: store codecs, dynamic range and job warnings"`
 
@@ -445,7 +446,7 @@ Extraction rules: `vcodec`/`acodec` come from the final info. yt-dlp's merge alr
 
 - Create: `apps/server/app/services/media_probe.py`
 - Modify: `apps/server/app/main.py` (lifespan)
-- Test: `apps/server/tests/unit/test_media_probe.py` (new)
+- Test: `apps/server/tests/unit/test_media_probe.py` (new), `apps/server/tests/integration/test_startup_recovery.py`, `apps/server/tests/conftest.py` (autouse stub)
 
 **Interfaces:**
 
@@ -455,7 +456,7 @@ Extraction rules: `vcodec`/`acodec` come from the final info. yt-dlp's merge alr
   - `backfill_media_info(session: Session) -> int` (rows updated).
   - `start_media_backfill() -> threading.Thread`: a daemon thread that opens its own `SessionLocal()` and logs the count or the exception.
 
-Rules: run `["ffprobe", "-v", "error", "-show_streams", "-of", "json", str(path)]` via `subprocess.run(capture_output=True, timeout=30, check=False)`, looked up with `shutil.which("ffprobe")`. `vcodec` is the first `codec_type == "video"` stream whose `disposition.attached_pic != 1`. `acodec` is the first `codec_type == "audio"`. `dynamic_range` is only set when there's a video stream, from its `color_transfer`: `smpte2084` → `HDR10`, `arib-std-b67` → `HLG`, else `SDR`. Backfill selects `done` rows where `vcodec IS NULL AND acodec IS NULL AND file_path IS NOT NULL`. It resolves the path with `resolve_repo_path` and skips missing files. On `None` from the probe it leaves the row alone (retried next start), and it commits per row.
+Rules: run `["ffprobe", "-v", "error", "-show_streams", "-of", "json", str(path)]` via `subprocess.run(capture_output=True, timeout=30, check=False)`, looked up with `shutil.which("ffprobe")`. `vcodec` is the first `codec_type == "video"` stream whose `disposition.attached_pic != 1`. `acodec` is the first `codec_type == "audio"`. `dynamic_range` is only set when there's a video stream, from its `color_transfer`: `smpte2084` → `HDR10`, `arib-std-b67` → `HLG`, else `SDR`. Backfill selects `done` rows where `vcodec IS NULL AND acodec IS NULL AND file_path IS NOT NULL`, reading `(id, file_path)` pairs up front. It resolves the path with `resolve_repo_path` and skips missing files. On `None` from the probe it leaves the row alone (retried next start). Otherwise it writes with a conditional Core `update(Download).where(Download.id == id, Download.status == "done", Download.vcodec.is_(None), Download.acodec.is_(None)).values(...)` and commits per row, counting `rowcount`. A row deleted from the Library mid-pass then updates nothing instead of raising `StaleDataError` from an ORM flush.
 
 - [ ] **Step 1: Write the failing tests.** Monkeypatch `subprocess.run` and `shutil.which` in `app.services.media_probe`:
   - `test_probe_video_sdr`: streams `[{codec_type:video, codec_name:h264, color_transfer:bt709}, {codec_type:audio, codec_name:aac}]` → `("h264","aac","SDR")`
@@ -464,8 +465,9 @@ Rules: run `["ffprobe", "-v", "error", "-show_streams", "-of", "json", str(path)
   - `test_backfill_missing_ffprobe`: `which` → `None`. A `done` row with an existing file stays all-null, and the return is `0`.
   - `test_backfill_updates_only_unprobed_done_rows`: rows = done+null+file (updated), done+already `vcodec` (untouched), done+missing file (untouched), error+file (untouched) → returns `1`.
   - `test_backfill_runs_off_thread`: `start_media_backfill()` returns a started daemon `Thread`. Join it with a timeout.
+  - `tests/integration/test_startup_recovery.py::test_startup_starts_media_backfill`: monkeypatch `app.main.start_media_backfill` to record calls; `with TestClient(app): pass` → called once. `test_startup_survives_backfill_start_failure`: patch it to raise `RuntimeError`; `TestClient(app)` still starts and `/health` is 200.
 - [ ] **Step 2: Run them and see them fail.**
-- [ ] **Step 3: Implement** `media_probe.py`. In `lifespan`, after the layout move's `try` block, call `start_media_backfill()` inside `try/except Exception: logger.exception("media backfill failed to start")`. It runs whether or not workers are enabled, because it doesn't depend on them. No test-only guard is needed: the API test DB has no `done` rows with files at startup, so the thread finds nothing to do.
+- [ ] **Step 3: Implement** `media_probe.py`. In `lifespan`, after the layout move's `try` block, call `start_media_backfill()` inside `try/except Exception: logger.exception("media backfill failed to start")`. Import it into `app.main` by name (`from app.services.media_probe import start_media_backfill`) so tests can patch `app.main.start_media_backfill`. It runs whether or not workers are enabled, because it doesn't depend on them. **Test guard:** every `TestClient(app)` runs the lifespan, and `test_startup_moves_library` commits a `done` row with a real file, so a live thread would probe it and race the `db_session_visible` cleanup. Add an autouse fixture to `tests/conftest.py` that does `monkeypatch.setattr("app.main.start_media_backfill", lambda: None)` (import `app.main` lazily inside the fixture). The unit tests call `app.services.media_probe.start_media_backfill` directly, and the two lifespan tests above override the patch, so neither is affected.
 - [ ] **Step 4: Run `uv run pytest -q`.**
 - [ ] **Step 5: Commit.** `git commit -m "feat: backfill codecs and dynamic range with ffprobe on startup"`
 
@@ -532,8 +534,8 @@ test("watchMeta", () => {
 
 E2E: extend `"player opens from the library…"` with `await expect(page.getByText("E2E · 1080p · SDR · 4 B · h264 · aac · mp4")).toBeVisible()` (the seeded row from Task 6).
 
-- [ ] **Step 2: Run them and see them fail.** `pnpm test`, `pnpm e2e -- library.spec.ts`
-- [ ] **Step 3: Implement.** `Watch.svelte`: `meta = $derived(job ? watchMeta(job) : "")`. Under the meta line, when `job.warning_message`, add `<p class="m-0 mt-1 text-sm text-warn">{job.warning_message}</p>`, which is text, so it's never colour alone. Read `craft-floor.md` before editing.
+- [ ] **Step 2: Run them and see them fail.** `pnpm test`, `pnpm e2e library.spec.ts`
+- [ ] **Step 3: Implement.** `watchMeta` reuses `qualityLabel` and `formatSize` from `library.ts`. `Watch.svelte`: `meta = $derived(job ? watchMeta(job) : "")`, and change the import to `{ watchMeta }` (`formatSize`/`qualityLabel` would otherwise be unused and fail `pnpm lint`). Under the meta line, when `job.warning_message`, add `<p class="m-0 mt-1 text-sm text-warn">{job.warning_message}</p>`, which is text, so it's never colour alone. Read `craft-floor.md` before editing.
 - [ ] **Step 4: Run them and see them pass. Run `pnpm check`.**
 - [ ] **Step 5: Commit.** `git commit -m "feat: show dynamic range and codecs on the watch page"`
 
