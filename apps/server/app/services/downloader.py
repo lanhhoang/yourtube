@@ -33,7 +33,10 @@ class DownloadResult:
 
     ``file_size``, ``media_format``, and ``resolution_height`` are best-effort
     — any of them may be ``None`` if yt-dlp didn't report the value and the
-    output file is unavailable for stat-ing.
+    output file is unavailable for stat-ing. ``vcodec``, ``acodec`` and
+    ``dynamic_range`` are likewise best-effort (yt-dlp's ``"none"`` becomes
+    ``None``), and ``warning`` carries a non-fatal message such as a failed
+    subtitle download.
     """
 
     path: str
@@ -577,6 +580,12 @@ def _extract_file_metadata(info: dict, output_path: str) -> MediaMeta:
     ``filesize_approx`` from the info dict only when stat-ing the output
     fails. ``media_format`` and ``resolution_height`` come straight from
     the info dict and may be ``None`` when not reported.
+
+    ``vcodec``, ``acodec`` and ``dynamic_range`` come from the info dict,
+    with yt-dlp's ``"none"`` mapped to ``None``. For merged downloads where
+    the top-level values are missing, they fall back to the first matching
+    stream in ``requested_formats``. ``dynamic_range`` is ``None`` when no
+    video codec is known.
     """
     media_format = _safe_str(info.get("ext"))
     resolution_height = short_side(_safe_int(info.get("width")), _safe_int(info.get("height")))

@@ -38,7 +38,7 @@ def probe_media(path: Path) -> ProbeResult | None:
         return None
     try:
         proc = subprocess.run(
-            ["ffprobe", "-v", "error", "-show_streams", "-of", "json", str(path)],
+            [ffprobe, "-v", "error", "-show_streams", "-of", "json", str(path)],
             capture_output=True,
             timeout=PROBE_TIMEOUT_SECONDS,
             check=False,
@@ -64,6 +64,8 @@ def probe_media(path: Path) -> ProbeResult | None:
     audio = next(
         (s for s in streams if isinstance(s, dict) and s.get("codec_type") == "audio"), None
     )
+    if video is None and audio is None:
+        return None
     dynamic_range = None
     if video is not None:
         transfer = video.get("color_transfer")

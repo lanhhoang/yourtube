@@ -50,8 +50,9 @@ def test_migration_downgrade_and_upgrade(tmp_path, monkeypatch):
     assert "quality_cap" in cols()
     command.upgrade(cfg, "head")
     assert "hdr" in cols()
-    assert "vcodec" in cols()
+    new_cols = {"vcodec", "acodec", "dynamic_range", "warning_message"}
+    assert new_cols <= cols()
     command.downgrade(cfg, "20261118130000")
-    assert "vcodec" not in cols()
+    assert not (new_cols & cols())
     command.upgrade(cfg, "head")
-    assert "vcodec" in cols()
+    assert new_cols <= cols()

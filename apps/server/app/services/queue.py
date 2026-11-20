@@ -134,7 +134,8 @@ def release_job(
     """Transition a claimed job to its terminal state.
 
     Sets ``finished_at`` to now. For ``status="done"``, populates file
-    metadata columns. For ``"error"``, sets ``error_code`` and
+    metadata columns (size, format, resolution, ``vcodec``, ``acodec``,
+    ``dynamic_range``) and ``warning_message``. For ``"error"``, sets ``error_code`` and
     ``error_message``. Returns ``True`` if the row was updated.
     """
     values: dict = {

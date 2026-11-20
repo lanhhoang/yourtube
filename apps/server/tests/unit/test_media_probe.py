@@ -73,6 +73,38 @@ def test_probe_failures_return_none(monkeypatch: pytest.MonkeyPatch) -> None:
         assert probe_media(Path("x.mp4")) is None
 
 
+def test_probe_argv_uses_which_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(media_probe.shutil, "which", lambda _name: "/opt/bin/ffprobe")
+    seen: list[list[str]] = []
+
+    def run(cmd: list[str], **_kwargs: Any) -> subprocess.CompletedProcess[str]:
+        seen.append(cmd)
+        return subprocess.CompletedProcess(cmd, 0, json.dumps({"streams": []}), "")
+
+    monkeypatch.setattr(media_probe.subprocess, "run", run)
+    probe_media(Path("x.mp4"))
+    assert seen[0][0] == "/opt/bin/ffprobe"
+
+
+@pytest.mark.parametrize("streams", [[], [{"codec_type": "data", "codec_name": "bin"}]])
+def test_probe_no_av_streams_returns_none(
+    monkeypatch: pytest.MonkeyPatch, db_session_visible, tmp_path, streams
+) -> None:
+    _fake_ffprobe(monkeypatch, streams)
+    assert probe_media(Path("x.bin")) is None
+    f = tmp_path / "a.bin"
+    f.write_bytes(b"x")
+    row = Download(url="https://e.com/1", status="done", file_path=str(f))
+    db_session_visible.add(row)
+    db_session_visible.commit()
+
+    assert backfill_media_info(db_session_visible) == 0
+    db_session_visible.expire_all()
+    got = db_session_visible.get(Download, row.id)
+    assert got is not None
+    assert (got.vcodec, got.acodec, got.dynamic_range) == (None, None, None)
+
+
 def test_backfill_missing_ffprobe(monkeypatch: pytest.MonkeyPatch, db_session_visible, tmp_path):
     monkeypatch.setattr(media_probe.shutil, "which", lambda _name: None)
     f = tmp_path / "a.mp4"

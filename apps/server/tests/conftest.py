@@ -137,4 +137,4 @@ def stub_media_backfill(monkeypatch: pytest.MonkeyPatch) -> None:
     """Keep lifespan startups from spawning a live ffprobe backfill thread."""
     import app.main  # noqa: F401
 
-    monkeypatch.setattr("app.main.start_media_backfill", lambda: None, raising=False)
+    monkeypatch.setattr("app.main.start_media_backfill", lambda: None)
