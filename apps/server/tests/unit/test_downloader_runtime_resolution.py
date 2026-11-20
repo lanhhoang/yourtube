@@ -22,17 +22,17 @@ from app.services.downloader import (
 )
 
 
-def test_build_ytdlp_options_avoids_youtube_android_vr_403(tmp_path) -> None:
+def test_player_client_excludes_web_embedded(tmp_path) -> None:
+    """With cookies, yt-dlp's default set includes ``web_embedded``, which YouTube now
+    serves SABR-only (warning, issue 12482). ``-web_embedded`` removes it while keeping
+    yt-dlp's age-gate fallback."""
     options = build_ytdlp_options(
         skip_download=True,
         output_dir=str(tmp_path),
         js_runtime="node",
     )
 
-    assert options["extractor_args"]["youtube"]["player_client"] == [
-        "web_embedded",
-        "default",
-    ]
+    assert options["extractor_args"] == {"youtube": {"player_client": ["default", "-web_embedded"]}}
     assert options["js_runtimes"] == {"node": {"path": "node"}}
     assert "remote_components" not in options
 

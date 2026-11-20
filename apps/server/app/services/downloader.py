@@ -227,7 +227,7 @@ def build_ytdlp_options(
         "quiet": True,
         "noprogress": True,
         "skip_download": skip_download,
-        "extractor_args": {"youtube": {"player_client": ["web_embedded", "default"]}},
+        "extractor_args": {"youtube": {"player_client": ["default", "-web_embedded"]}},
         "js_runtimes": {js_runtime: {"path": js_runtime}},
     }
     if not skip_download:
