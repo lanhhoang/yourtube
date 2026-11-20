@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, Response
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
@@ -11,6 +11,7 @@ from app.config import resolve_repo_path
 from app.db import get_session
 from app.models import Download
 from app.schemas import EnqueueRequest, EnqueueResult, JobOut, QueueOut
+from app.services.push import notify_settled
 from app.services.queue import (
     cancel_job,
     dismiss_job,
@@ -40,9 +41,15 @@ def enqueue(body: EnqueueRequest, session: Session = Depends(get_session)) -> En
 
 
 @router.post("/downloads/{job_id}/cancel", status_code=204, response_class=Response)
-def cancel(job_id: int, session: Session = Depends(get_session)) -> Response:
+def cancel(
+    job_id: int, background: BackgroundTasks, session: Session = Depends(get_session)
+) -> Response:
     if not cancel_job(session, job_id):
         raise ApiError(409, "not_cancellable", "This download can't be cancelled.")
+    session.expire_all()
+    row = session.get(Download, job_id)
+    if row is not None and row.status == "cancelled":
+        background.add_task(notify_settled, job_id)
     return Response(status_code=204)
 
 

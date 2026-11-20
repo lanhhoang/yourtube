@@ -115,3 +115,25 @@ def test_retry_missing_404(client: TestClient) -> None:
 def test_dismiss_missing_404(client: TestClient) -> None:
     r = client.post("/api/downloads/999999/dismiss")
     assert r.status_code == 404
+
+
+def test_cancel_last_queued_of_batch_sends_summary(
+    monkeypatch, client: TestClient, db_session_visible: Session
+) -> None:
+    import json
+
+    from app.models import PushSubscription
+    from app.services import push
+
+    sent: list[dict] = []
+    monkeypatch.setattr(push, "webpush", lambda **kw: sent.append(json.loads(kw["data"])))
+    monkeypatch.setattr(push, "load_vapid_keys", lambda *_a: push.VapidKeys("p", "q"))
+    db_session_visible.add(
+        PushSubscription(endpoint="https://web.push.apple.com/x", p256dh="p", auth="a")
+    )
+    _add(db_session_visible, "done", batch_id="b1", playlist_title="Mix")
+    last = _add(db_session_visible, "queued", batch_id="b1", playlist_title="Mix")
+    assert client.post(f"/api/downloads/{last}/cancel").status_code == 204
+    assert len(sent) == 1
+    assert sent[0]["title"] == "Mix"
+    assert sent[0]["body"] == "1 downloaded, 1 cancelled"
