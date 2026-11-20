@@ -123,7 +123,7 @@ def test_build_ytdlp_options_uses_resolved_template_for_downloads(tmp_path: Path
     assert options["writesubtitles"] is True
 
 
-def test_build_ytdlp_options_prefers_srt_english_and_auto_subtitles(tmp_path: Path) -> None:
+def test_build_ytdlp_options_subtitles_skip_translated(tmp_path: Path) -> None:
     options = build_ytdlp_options(
         skip_download=False,
         output_dir=str(tmp_path),
@@ -134,6 +134,7 @@ def test_build_ytdlp_options_prefers_srt_english_and_auto_subtitles(tmp_path: Pa
     assert options["writesubtitles"] is True
     assert options["writeautomaticsub"] is True
     assert options["subtitlesformat"] == "srt/best"
+    assert options["extractor_args"]["youtube"]["skip"] == ["translated_subs"]
     assert "subtitleslangs" not in options
 
 
