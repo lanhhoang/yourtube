@@ -93,6 +93,7 @@ class JobOut(BaseModel):
     file_size: int | None
     media_format: str | None
     resolution_height: int | None
+    batch_id: str | None
     created_at: datetime
     finished_at: datetime | None
 
@@ -121,6 +122,7 @@ class JobOut(BaseModel):
                 "file_size": row.file_size,
                 "media_format": row.media_format,
                 "resolution_height": row.resolution_height,
+                "batch_id": row.batch_id,
                 "created_at": row.created_at,
                 "finished_at": row.finished_at,
             }

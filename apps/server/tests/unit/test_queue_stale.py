@@ -29,7 +29,7 @@ def test_detect_stale_jobs_marks_old_active_rows_as_error(db_session: Session) -
         .values(status="active", claimed_at=far_past)
     )
     affected = detect_stale_jobs(db_session, timeout_minutes=10)
-    assert affected == 1
+    assert affected == [row.id]
     db_session.refresh(row)
     assert row.status == "error"
     assert row.error_code == "stale_worker"
@@ -45,7 +45,7 @@ def test_detect_stale_jobs_ignores_recent_active_rows(db_session: Session) -> No
         .values(status="active", claimed_at=datetime.now(timezone.utc))
     )
     affected = detect_stale_jobs(db_session, timeout_minutes=10)
-    assert affected == 0
+    assert affected == []
     db_session.refresh(row)
     assert row.status == "active"
 

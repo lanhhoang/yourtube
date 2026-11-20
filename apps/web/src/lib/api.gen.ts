@@ -342,6 +342,8 @@ export interface components {
          * @description A download job as the web app sees it.
          */
         JobOut: {
+            /** Batch Id */
+            batch_id: string | null;
             /**
              * Created At
              * Format: date-time

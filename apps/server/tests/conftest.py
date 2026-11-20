@@ -117,6 +117,7 @@ def db_session_visible(db_engine: Engine) -> Generator[Session, None, None]:
 
             session.execute(text("DELETE FROM downloads"))
             session.execute(text("DELETE FROM settings"))
+            session.execute(text("DELETE FROM push_subscriptions"))
             session.commit()
         except Exception:  # noqa: BLE001 - best-effort cleanup
             session.rollback()

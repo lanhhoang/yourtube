@@ -7,9 +7,11 @@ Claims are transaction-safe: ``claim_next`` uses a conditional UPDATE with
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from uuid import uuid4
 
-from sqlalchemy import Select, delete, func, select, update
+from sqlalchemy import Select, case, delete, exists, func, select, update
 from sqlalchemy.orm import Session
 
 from app.models import Download
@@ -76,6 +78,10 @@ def enqueue_download(session: Session, payload: DownloadCreate) -> Download:
 def enqueue_downloads(session: Session, payloads: list[DownloadCreate]) -> list[Download]:
     """Insert one ``queued`` row per payload in a single transaction."""
     rows = [_row_from_payload(p) for p in payloads]
+    if len(rows) > 1:
+        batch_id = str(uuid4())
+        for row in rows:
+            row.batch_id = batch_id
     session.add_all(rows)
     session.commit()
     for row in rows:
@@ -192,10 +198,10 @@ def get_active_jobs(session: Session) -> list[Download]:
     return list(session.execute(stmt).scalars())
 
 
-def detect_stale_jobs(session: Session, timeout_minutes: int = 10) -> int:
+def detect_stale_jobs(session: Session, timeout_minutes: int = 10) -> list[int]:
     """Mark ``active`` rows older than ``timeout_minutes`` as ``error`` with code ``stale_worker``.
 
-    Returns the number of rows affected.
+    Returns the ids of the reaped rows.
     """
     cutoff = datetime.now(timezone.utc) - timedelta(minutes=timeout_minutes)
     # SQLite stores naive datetimes by default; compare against a naive cutoff.
@@ -213,10 +219,12 @@ def detect_stale_jobs(session: Session, timeout_minutes: int = 10) -> int:
             error_message="Worker did not complete within the timeout.",
             finished_at=func.current_timestamp(),
         )
+        .returning(Download.id)
+        .execution_options(synchronize_session=False)
     )
-    result = session.execute(stmt)
+    ids = [int(i) for i in session.execute(stmt).scalars()]
     session.commit()
-    return int(result.rowcount or 0)
+    return ids
 
 
 def requeue_active_on_startup(session: Session) -> int:
@@ -275,6 +283,8 @@ def retry_job(session: Session, job_id: int) -> bool:
             cancel_requested=False,
             claimed_at=None,
             finished_at=None,
+            batch_id=None,
+            batch_notified=False,
         )
     )
     result = session.execute(stmt)
@@ -289,3 +299,84 @@ def dismiss_job(session: Session, job_id: int) -> bool:
     )
     session.commit()
     return bool(result.rowcount)
+
+
+@dataclass(frozen=True)
+class BatchSummary:
+    """Settled counts for one batch of downloads."""
+
+    batch_id: str
+    name: str
+    done: int
+    failed: int
+    cancelled: int
+    finished_at: datetime | None
+
+
+def _batch_summary(session: Session, batch_id: str) -> BatchSummary:
+    def count(status: str):
+        return func.coalesce(func.sum(case_status(status)), 0)
+
+    row = session.execute(
+        select(
+            func.count(Download.id),
+            count("done"),
+            count("error"),
+            count("cancelled"),
+            func.max(Download.finished_at),
+        ).where(Download.batch_id == batch_id)
+    ).one()
+    title = session.execute(
+        select(Download.playlist_title)
+        .where(Download.batch_id == batch_id)
+        .order_by(Download.id)
+        .limit(1)
+    ).scalar_one_or_none()
+    return BatchSummary(
+        batch_id=batch_id,
+        name=title or f"{row[0]} videos",
+        done=int(row[1]),
+        failed=int(row[2]),
+        cancelled=int(row[3]),
+        finished_at=row[4],
+    )
+
+
+def case_status(status: str):
+    return case((Download.status == status, 1), else_=0)
+
+
+def claim_batch_summary(session: Session, batch_id: str) -> BatchSummary | None:
+    """Atomically claim the one summary of a settled batch.
+
+    Marks every row of the batch ``batch_notified`` in a single UPDATE that
+    only matches when no row is queued/active and none is already marked.
+    Returns the counts to the one caller that won, else ``None``.
+    """
+    unsettled = exists().where(
+        Download.batch_id == batch_id, Download.status.in_(("queued", "active"))
+    )
+    notified = exists().where(Download.batch_id == batch_id, Download.batch_notified.is_(True))
+    result = session.execute(
+        update(Download)
+        .where(Download.batch_id == batch_id, ~unsettled, ~notified)
+        .values(batch_notified=True)
+        .execution_options(synchronize_session=False)
+    )
+    if not result.rowcount:
+        session.rollback()
+        return None
+    session.commit()
+    return _batch_summary(session, batch_id)
+
+
+def recent_batch_summaries(session: Session, limit: int = 5) -> list[BatchSummary]:
+    """Return summarised batches, newest ``finished_at`` first."""
+    ids = session.execute(
+        select(Download.batch_id)
+        .where(Download.batch_id.is_not(None), Download.batch_notified.is_(True))
+        .group_by(Download.batch_id)
+        .order_by(func.max(Download.finished_at).desc(), func.max(Download.id).desc())
+        .limit(limit)
+    ).scalars()
+    return [_batch_summary(session, b) for b in list(ids) if b is not None]

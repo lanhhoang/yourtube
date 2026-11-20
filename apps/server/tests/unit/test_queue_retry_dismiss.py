@@ -30,6 +30,8 @@ def test_retry_resets_failed_job(db_session: Session) -> None:
         error_code="timeout",
         error_message="slow",
         cancel_requested=True,
+        batch_id="b1",
+        batch_notified=True,
         finished_at=datetime(2026, 1, 1),
         claimed_at=datetime(2026, 1, 1),
     )
@@ -45,6 +47,7 @@ def test_retry_resets_failed_job(db_session: Session) -> None:
         row.cancel_requested,
         row.video_format_id,
     ) == ("queued", 0.0, None, None, None, None, False, "137")
+    assert (row.batch_id, row.batch_notified) == (None, False)
 
 
 def test_retry_twice_conflicts(db_session: Session) -> None:

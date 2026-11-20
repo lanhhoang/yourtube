@@ -77,7 +77,7 @@ def test_stale_detection_marks_old_active_row_as_error(db_session: Session) -> N
     )
 
     affected = detect_stale_jobs(db_session, timeout_minutes=10)
-    assert affected == 1
+    assert affected == [enqueued.id]
     db_session.refresh(enqueued)
     assert enqueued.status == "error"
     assert enqueued.error_code == "stale_worker"

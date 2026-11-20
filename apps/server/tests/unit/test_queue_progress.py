@@ -45,6 +45,6 @@ def test_update_progress_refreshes_claim_heartbeat(db_session: Session) -> None:
     db_session.commit()
 
     assert update_progress(db_session, row.id, 10.0) is True
-    assert detect_stale_jobs(db_session, timeout_minutes=10) == 0
+    assert detect_stale_jobs(db_session, timeout_minutes=10) == []
     db_session.refresh(row)
     assert row.status == "active"

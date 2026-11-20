@@ -12,6 +12,7 @@ def test_migrations_create_expected_tables(db_inspector):
     table_names = set(db_inspector.get_table_names())
     assert "downloads" in table_names
     assert "settings" in table_names
+    assert "push_subscriptions" in table_names
 
 
 def test_downloads_has_quality_cap_column(db_inspector):
