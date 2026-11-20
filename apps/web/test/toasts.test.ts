@@ -32,7 +32,7 @@ test("first poll is silent but marks every key seen", () => {
 test("a new completed job toasts once", () => {
   const q = queue({ completed: [job(2)] });
   const r = newEvents(new Set(["done:1"]), q, false);
-  expect(r.toasts).toEqual([{ key: "done:2", kind: "done", title: "t2", body: "Downloaded" }]);
+  expect(r.toasts).toEqual([{ key: "done:2", kind: "done", title: "Downloaded", body: "t2" }]);
   expect(newEvents(r.seen, q, false).toasts).toEqual([]);
 });
 

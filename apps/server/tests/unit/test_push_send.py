@@ -50,6 +50,12 @@ def test_job_messages() -> None:
     assert job_message(_row(status="cancelled")) is None
 
 
+def test_job_message_error_without_message() -> None:
+    msg = job_message(_row(status="error", title="T", error_message=None))
+    assert msg is not None
+    assert msg.body == "T: Unknown error"
+
+
 def test_body_cut_to_200() -> None:
     msg = job_message(_row(status="error", title="T", error_message="x" * 500))
     assert msg is not None

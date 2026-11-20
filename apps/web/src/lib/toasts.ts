@@ -42,7 +42,12 @@ export function newEvents(
   };
   for (const job of queue.completed) {
     if (job.batch_id != null) continue;
-    add({ key: `done:${job.id}`, kind: "done", title: job.title ?? job.url, body: "Downloaded" });
+    add({
+      key: `done:${job.id}`,
+      kind: "done",
+      title: "Downloaded",
+      body: job.title ?? job.url,
+    });
   }
   for (const job of queue.failed) {
     if (job.batch_id != null) continue;

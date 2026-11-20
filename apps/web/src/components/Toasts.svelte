@@ -46,7 +46,7 @@
           {LABEL[t.kind]}
         </p>
         <p class="m-0 truncate text-base font-semibold">
-          {t.kind === "failed" ? t.body : t.title}
+          {t.kind === "batch" ? t.title : t.body}
         </p>
         {#if t.kind === "batch"}
           <p class="m-0 truncate text-sm text-muted">{t.body}</p>

@@ -134,7 +134,7 @@ def job_message(row: Download) -> PushMessage | None:
     if row.status == "error":
         return PushMessage(
             "Download failed",
-            _cut(f"{title}: {row.error_message}"),
+            _cut(f"{title}: {row.error_message or 'Unknown error'}"),
             f"job-{row.id}",
             "/#/queue",
         )
