@@ -23,6 +23,7 @@
 - Bulk delete touches only `done` rows and their own files and sidecars, and always confirms first.
 - Database changes go through one new Alembic revision, `20261119120000`, whose `down_revision` is `20261118130000`. Never edit an existing revision.
 - Follow the existing test layout: pytest `tests/unit`, `tests/api`, `tests/test_db.py`; Vitest `apps/web/test`; Playwright `apps/web/e2e` (stubbed server `apps/server/tests/e2e_server.py`).
+- Pass e2e file filters without `--`: `pnpm e2e queue.spec.ts`. `pnpm e2e -- queue.spec.ts` forwards a literal `--` to Playwright, which then runs all 51 tests. If Playwright's bundled browser is missing, prefix `PW_CHANNEL=chrome` (uses installed Google Chrome) or run `pnpm --filter @app/web exec playwright install chromium` once.
 
 ## Review Focus
 
@@ -34,33 +35,37 @@
 ### Task 1: `POST /api/queue/dismiss-failed`
 
 **Files:**
+
 - Modify: `apps/server/app/services/queue.py`, `apps/server/app/api/jobs.py`, `apps/server/app/schemas.py`
 - Test: `apps/server/tests/unit/test_queue_retry_dismiss.py`, `apps/server/tests/api/test_queue_api.py`
 
 **Interfaces:**
+
 - Produces: `dismiss_failed(session: Session) -> int` (rows deleted). `class DismissFailedOut(BaseModel): dismissed: int`. Route `POST /api/queue/dismiss-failed -> DismissFailedOut` (200).
 
 - [ ] **Step 1: Write the failing tests.**
   - `test_dismiss_failed_removes_only_error_rows` (unit): one row each in `error`, `error`, `done`, `queued`, `active` → returns `2`. The `done`/`queued`/`active` rows remain.
   - `test_dismiss_failed_endpoint` (api): two failed rows → `{"dismissed": 2}`, and `GET /api/queue` `failed == []`. Calling it again → `{"dismissed": 0}`.
-- [ ] **Step 2: Run them and see them fail.**
+- [ ] **Step 2: Run them and see them fail.** `cd apps/server && uv run pytest -q tests/unit/test_queue_retry_dismiss.py tests/api/test_queue_api.py` (unit: `ImportError` on `dismiss_failed`; api: 404/405).
 - [ ] **Step 3: Implement.** One `delete(Download).where(Download.status == "error")` plus a commit. The route lives next to `dismiss`.
-- [ ] **Step 4: Run them and see them pass. Run `pnpm typegen`.**
+- [ ] **Step 4: Run them and see them pass** (same command). **Run `pnpm typegen`**, then `pnpm check`.
 - [ ] **Step 5: Commit** (with `api.gen.ts`). `git commit -m "feat: dismiss all failed downloads endpoint"`
 
 ### Task 2: "Dismiss all" on the Queue page
 
 **Files:**
+
 - Modify: `apps/web/src/routes/Queue.svelte`
 - Test: `apps/web/e2e/queue.spec.ts`
 
 **Interfaces:**
+
 - Consumes: `POST /api/queue/dismiss-failed` (Task 1)
 
 UI: the "Failed" `<h2>` row becomes a flex row: `Failed` on the left and a `Dismiss all` button (same `btn` class) on the right. It's shown only when `queue.failed.length >= 2`. Click → disable it → call → `refresh()`. On error, show `messageFor(err)` under the heading (text-danger, `role="alert"`). There's no confirm, because dismissing removes no files. No toast either: the list emptying is the feedback.
 
 - [ ] **Step 1: Write the failing e2e test** `"dismiss all clears failed downloads"`. Use `page.route("**/api/queue", …)` to serve two failed jobs (copy the job shape from the toasts test) until the dismiss call is seen, then `failed: []`. Use `page.route("**/api/queue/dismiss-failed", …)` and fulfil `{dismissed: 2}`. Click `Dismiss all` and expect both rows to have count 0. A second test, `"dismiss all is hidden for one failure"`, serves one failed job and expects the button to have count 0.
-- [ ] **Step 2: Run it and see it fail.** `pnpm e2e -- queue.spec.ts`
+- [ ] **Step 2: Run it and see it fail.** `pnpm e2e queue.spec.ts`
 - [ ] **Step 3: Implement.** Read `craft-floor.md` first (Global Constraints). The button must be a 44 px target on phones (the `btn` class already is).
 - [ ] **Step 4: Run it and see it pass. Run `pnpm check`.**
 - [ ] **Step 5: Commit.** `git commit -m "feat: Dismiss all on the queue page"`

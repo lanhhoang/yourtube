@@ -88,10 +88,12 @@ README.md                                (modify: subtitles, codecs, library too
 ### Task 1: `POST /api/queue/dismiss-failed`
 
 **Files:**
+
 - Modify: `apps/server/app/services/queue.py`, `apps/server/app/api/jobs.py`, `apps/server/app/schemas.py`
 - Test: `apps/server/tests/unit/test_queue_retry_dismiss.py`, `apps/server/tests/api/test_queue_api.py`
 
 **Interfaces:**
+
 - Produces: `dismiss_failed(session: Session) -> int` (rows deleted). `class DismissFailedOut(BaseModel): dismissed: int`. Route `POST /api/queue/dismiss-failed -> DismissFailedOut` (200).
 
 - [ ] **Step 1: Write the failing tests.**
@@ -105,16 +107,18 @@ README.md                                (modify: subtitles, codecs, library too
 ### Task 2: "Dismiss all" on the Queue page
 
 **Files:**
+
 - Modify: `apps/web/src/routes/Queue.svelte`
 - Test: `apps/web/e2e/queue.spec.ts`
 
 **Interfaces:**
+
 - Consumes: `POST /api/queue/dismiss-failed` (Task 1)
 
 UI: the "Failed" `<h2>` row becomes a flex row: `Failed` on the left and a `Dismiss all` button (same `btn` class) on the right. It's shown only when `queue.failed.length >= 2`. Click → disable it → call → `refresh()`. On error, show `messageFor(err)` under the heading (text-danger, `role="alert"`). There's no confirm, because dismissing removes no files. No toast either: the list emptying is the feedback.
 
 - [ ] **Step 1: Write the failing e2e test** `"dismiss all clears failed downloads"`. Use `page.route("**/api/queue", …)` to serve two failed jobs (copy the job shape from the toasts test) until the dismiss call is seen, then `failed: []`. Use `page.route("**/api/queue/dismiss-failed", …)` and fulfil `{dismissed: 2}`. Click `Dismiss all` and expect both rows to have count 0. A second test, `"dismiss all is hidden for one failure"`, serves one failed job and expects the button to have count 0.
-- [ ] **Step 2: Run it and see it fail.** `pnpm e2e -- queue.spec.ts`
+- [ ] **Step 2: Run it and see it fail.** `pnpm e2e queue.spec.ts`
 - [ ] **Step 3: Implement.** Read `craft-floor.md` first (Global Constraints). The button must be a 44 px target on phones (the `btn` class already is).
 - [ ] **Step 4: Run it and see it pass. Run `pnpm check`.**
 - [ ] **Step 5: Commit.** `git commit -m "feat: Dismiss all on the queue page"`
@@ -126,10 +130,12 @@ UI: the "Failed" `<h2>` row becomes a flex row: `Failed` on the left and a `Dism
 ### Task 3: Drop `web_embedded` from the player clients
 
 **Files:**
+
 - Modify: `apps/server/app/services/downloader.py:230`
 - Test: `apps/server/tests/unit/test_downloader_runtime_resolution.py:25-38`
 
 **Interfaces:**
+
 - Produces: `build_ytdlp_options(...)["extractor_args"] == {"youtube": {"player_client": ["default", "-web_embedded"]}}`
 
 - [ ] **Step 1: Rewrite the failing test.** Rename `test_build_ytdlp_options_avoids_youtube_android_vr_403` to `test_player_client_excludes_web_embedded` and assert:
@@ -150,13 +156,16 @@ Add a docstring line: with cookies, yt-dlp's default set includes `web_embedded`
 ### Task 4: `pick_subtitle_langs` — original language and real English only
 
 **Files:**
+
 - Modify: `apps/server/app/services/downloader.py`
 - Test: `apps/server/tests/unit/test_subtitle_langs.py` (new)
 
 **Interfaces:**
+
 - Produces: `pick_subtitle_langs(info: dict) -> list[str]` in `app.services.downloader`
 
 Rules (from the spec, §1):
+
 - `orig` = the first `automatic_captions` key ending in `-orig`, with that suffix removed. Otherwise, the part of `info["language"]` before any `+` or `-`. Otherwise `None`.
 - `base(key)` = `key.split("-")[0]`.
 - Manual picks = `subtitles` keys (in dict order) whose `base` is `orig` or `"en"`. Skip `live_chat`.
@@ -206,14 +215,17 @@ def test_pick_nothing_available():
 ### Task 5: Apply the picks; a subtitle failure no longer fails the job
 
 **Files:**
+
 - Modify: `apps/server/app/services/downloader.py` (`build_ytdlp_options` subtitle block, `run_download`)
 - Test: `apps/server/tests/unit/test_downloader_subtitles.py` (new); update `test_downloader_runtime_resolution.py::test_build_ytdlp_options_prefers_srt_english_and_auto_subtitles` and `test_downloader_layout.py::test_custom_template_skips_layout`
 
 **Interfaces:**
+
 - Consumes: `pick_subtitle_langs` (Task 4)
 - Produces: `DownloadResult.warning: str | None = None` (new last field with a default, so existing positional constructions keep working). `SUBTITLE_WARNING = "Subtitles couldn't be downloaded."` in `app.services.downloader`.
 
 Behaviour:
+
 - `build_ytdlp_options(subtitles=True)` adds `"youtube": {"skip": ["translated_subs"], ...}` to the extractor args and keeps `writesubtitles`, `writeautomaticsub` and `subtitlesformat="srt/best"`. It never sets `subtitleslangs` itself.
 - `run_download` always resolves first: `resolved = ydl.extract_info(url, download=False)`. Both the default layout and `output_template` branches then call `ydl.process_ie_result(resolved, download=True)`. Only the default branch rewrites `outtmpl`. When `subtitles`, set `ydl.params["subtitleslangs"] = pick_subtitle_langs(resolved)`. If that list is empty, set `writesubtitles` and `writeautomaticsub` to `False` instead.
 - Wrap `process_ie_result` in `try/except yt_dlp.utils.DownloadError as exc`. If `"Unable to download video subtitles" in str(exc)` (yt-dlp prefixes the message with `ERROR: `), set `writesubtitles = writeautomaticsub = False` on `ydl.params`, call `process_ie_result(resolved, download=True)` once more, and set `warning = SUBTITLE_WARNING`. Re-raise any other error.
@@ -258,6 +270,7 @@ def test_custom_template_also_resolves_first(tmp_path, fake_ydl):
 ```
 
 Update the existing tests:
+
 - `test_build_ytdlp_options_prefers_srt_english_and_auto_subtitles` → rename to `test_build_ytdlp_options_subtitles_skip_translated`, and also assert `options["extractor_args"]["youtube"]["skip"] == ["translated_subs"]` and `"subtitleslangs" not in options`.
 - `test_custom_template_skips_layout` → assert `fake_ydl.process_calls == 1` and `fake_ydl.extract_downloads == [False]`, and that `outtmpl` is still the custom template.
 
@@ -283,11 +296,13 @@ Expect: no SABR warning, a `*.fr-orig.srt` next to the file, and `warning=None`.
 ### Task 6: Store vcodec, acodec, dynamic range and the job warning
 
 **Files:**
+
 - Create: `apps/server/alembic/versions/20261119120000_add_media_info.py`
 - Modify: `apps/server/app/models.py`, `app/schemas.py` (`JobOut`), `app/services/downloader.py` (`DownloadResult`, `_extract_file_metadata`, `run_download` return), `app/services/queue.py` (`release_job`, `retry_job`), `app/services/job_runner.py` (`_release_and_notify`, `run_claimed_job`), `apps/server/tests/e2e_server.py` (`_run_download` stub, `_seed`)
 - Test: `tests/test_db.py`, `tests/unit/test_downloader_progress.py`, `tests/unit/test_job_runner.py`, `tests/unit/test_queue_retry_dismiss.py`, `tests/api/test_library_api.py`
 
 **Interfaces:**
+
 - Produces:
   - Columns `downloads.vcodec`, `acodec`, `dynamic_range`, `warning_message`: `String`, nullable.
   - `DownloadResult(path, file_size, media_format, resolution_height, vcodec: str | None = None, acodec: str | None = None, dynamic_range: str | None = None, warning: str | None = None)`. Task 5's `warning` field moves to the end of this order.
@@ -311,11 +326,13 @@ Extraction rules: `vcodec`/`acodec` come from the final info. yt-dlp's merge alr
 ### Task 7: ffprobe backfill for existing library items
 
 **Files:**
+
 - Create: `apps/server/app/services/media_probe.py`
 - Modify: `apps/server/app/main.py` (lifespan)
 - Test: `apps/server/tests/unit/test_media_probe.py` (new)
 
 **Interfaces:**
+
 - Consumes: the columns from Task 6
 - Produces:
   - `probe_media(path: Path) -> ProbeResult | None`, where `ProbeResult` is a frozen dataclass `(vcodec: str | None, acodec: str | None, dynamic_range: str | None)`. It returns `None` when ffprobe is missing, exits non-zero, times out (30 s) or prints invalid JSON.
@@ -339,10 +356,12 @@ Rules: run `["ffprobe", "-v", "error", "-show_streams", "-of", "json", str(path)
 ### Task 8: Watch metadata line and subtitle warning
 
 **Files:**
+
 - Create: `apps/web/src/lib/codecs.ts`; `apps/web/test/codecs.test.ts`
 - Modify: `apps/web/src/lib/library.ts` (add `watchMeta`), `apps/web/src/routes/Watch.svelte`, `apps/web/test/library.test.ts`, `apps/web/e2e/library.spec.ts`
 
 **Interfaces:**
+
 - Consumes: `JobOut.vcodec`, `acodec`, `dynamic_range`, `warning_message` (Task 6)
 - Produces: `shortCodec(codec: string | null): string` and `watchMeta(job: JobOut): string`
 
@@ -365,17 +384,38 @@ test("shortCodec", () => {
   expect(shortCodec(null)).toBe("");
 });
 test("watchMeta", () => {
-  const v = { uploader: "Chan", media_kind: "video", resolution_height: 1080, dynamic_range: "SDR",
-    file_size: 300 * 1024 ** 2, vcodec: "av01.0.08M.08", acodec: "mp4a.40.2", media_format: "mp4" } as JobOut;
+  const v = {
+    uploader: "Chan",
+    media_kind: "video",
+    resolution_height: 1080,
+    dynamic_range: "SDR",
+    file_size: 300 * 1024 ** 2,
+    vcodec: "av01.0.08M.08",
+    acodec: "mp4a.40.2",
+    media_format: "mp4",
+  } as JobOut;
   expect(watchMeta(v)).toBe("Chan · 1080p · SDR · 300.0 MB · av1 · aac · mp4");
-  expect(watchMeta({ ...v, dynamic_range: "HDR10", resolution_height: 2160 })).toContain("2160p · HDR10");
-  const a = { ...v, media_kind: "audio", resolution_height: null, dynamic_range: null, vcodec: null, acodec: "opus", media_format: "webm" } as JobOut;
+  expect(
+    watchMeta({ ...v, dynamic_range: "HDR10", resolution_height: 2160 }),
+  ).toContain("2160p · HDR10");
+  const a = {
+    ...v,
+    media_kind: "audio",
+    resolution_height: null,
+    dynamic_range: null,
+    vcodec: null,
+    acodec: "opus",
+    media_format: "webm",
+  } as JobOut;
   expect(watchMeta(a)).toBe("Chan · Audio · 300.0 MB · opus · webm");
-  expect(watchMeta({ ...v, vcodec: null, acodec: null, dynamic_range: null })).toBe("Chan · 1080p · 300.0 MB · mp4");
+  expect(
+    watchMeta({ ...v, vcodec: null, acodec: null, dynamic_range: null }),
+  ).toBe("Chan · 1080p · 300.0 MB · mp4");
 });
 ```
 
-  E2E: extend `"player opens from the library…"` with `await expect(page.getByText("E2E · 1080p · SDR · 4 B · h264 · aac · mp4")).toBeVisible()` (the seeded row from Task 6).
+E2E: extend `"player opens from the library…"` with `await expect(page.getByText("E2E · 1080p · SDR · 4 B · h264 · aac · mp4")).toBeVisible()` (the seeded row from Task 6).
+
 - [ ] **Step 2: Run them and see them fail.** `pnpm test`, `pnpm e2e -- library.spec.ts`
 - [ ] **Step 3: Implement.** `Watch.svelte`: `meta = $derived(job ? watchMeta(job) : "")`. Under the meta line, when `job.warning_message`, add `<p class="m-0 mt-1 text-sm text-warn">{job.warning_message}</p>`, which is text, so it's never colour alone. Read `craft-floor.md` before editing.
 - [ ] **Step 4: Run them and see them pass. Run `pnpm check`.**
@@ -388,10 +428,12 @@ test("watchMeta", () => {
 ### Task 9: Subtitle discovery and the VTT endpoint
 
 **Files:**
+
 - Create: `apps/server/app/services/subtitles.py`; `tests/unit/test_subtitles.py`; `tests/api/test_subtitles_api.py`
 - Modify: `apps/server/app/api/jobs.py`, `app/schemas.py`, `app/services/library_layout.py` (reuse the sidecar rule, no behaviour change)
 
 **Interfaces:**
+
 - Produces:
   - `subtitle_sidecars(media: Path, siblings: Iterable[Path] | None = None) -> dict[str, Path]`: lang → file, for `<stem>.<lang>.srt|vtt` next to `media`. When both exist for a lang, `.vtt` wins. Skips files that belong to a longer sibling stem: same rule as `library_layout._sidecars` (a file is excluded if another media file in the folder has a longer stem that the file's name starts with, followed by `.`). `siblings` defaults to the folder's other files whose suffix is a media extension (`mp4, mkv, webm, m4a, mp3, opus, ogg, flac, wav`).
   - `srt_to_vtt(text: str) -> str`: strips a BOM, normalises `\r\n`, prepends `WEBVTT\n\n`, and replaces `,` with `.` only on timestamp lines (`HH:MM:SS,mmm --> HH:MM:SS,mmm`). Cue numbers are kept (VTT allows them as identifiers).
@@ -415,10 +457,12 @@ test("watchMeta", () => {
 ### Task 10: Tracks in the player; delete removes sidecars
 
 **Files:**
+
 - Create: `apps/web/src/lib/subtitles.ts`; `apps/web/test/subtitles.test.ts`
 - Modify: `apps/web/src/routes/Watch.svelte`, `apps/server/app/services/library.py`, `apps/server/tests/unit/test_library.py`, `apps/server/tests/e2e_server.py` (seed `seeded.en.srt` and `seeded.fr-orig.srt` next to `seeded.mp4`, before the layout move, which carries them along), `apps/web/e2e/library.spec.ts`
 
 **Interfaces:**
+
 - Consumes: `GET /api/downloads/{id}/subtitles` and `subtitle_sidecars` (Task 9)
 - Produces: `trackLabel(lang: string, locale?: string): string`
 
@@ -445,10 +489,12 @@ Server: `delete_from_library` also removes `subtitle_sidecars(media)` files plus
 ### Task 11: `POST /api/library/delete`
 
 **Files:**
+
 - Modify: `apps/server/app/services/library.py`, `apps/server/app/api/library.py`, `apps/server/app/schemas.py`
 - Test: `tests/unit/test_library.py`, `tests/api/test_library_api.py`
 
 **Interfaces:**
+
 - Consumes: `delete_from_library(session, job_id) -> tuple[bool, str]` (with Task 10's sidecar removal)
 - Produces:
   - `delete_many(session: Session, ids: list[int]) -> tuple[list[int], list[tuple[int, str]]]`: `(deleted, failed)`. It deduplicates while keeping order, calls `delete_from_library` per id (that function commits per row), and puts `ok` ids, including `file_missing`, in `deleted`.
@@ -469,16 +515,19 @@ Server: `delete_from_library` also removes `subtitle_sidecars(media)` files plus
 ### Task 12: Select mode, action bar and bulk delete UI
 
 **Files:**
+
 - Modify: `apps/web/src/routes/Library.svelte`, `apps/web/src/components/JobCard.svelte`, `apps/web/src/lib/library.ts`
 - Test: `apps/web/test/library.test.ts`, `apps/web/e2e/library.spec.ts`, `apps/web/e2e/phone.spec.ts`
 
 **Interfaces:**
+
 - Consumes: `POST /api/library/delete` (Task 11)
 - Produces:
   - `JobCard` props: `{ job, ondeleted, selecting?: boolean = false, selected?: boolean = false, ontoggle?: (id: number) => void }`
   - `lib/library.ts`: `toggle(selected: Set<number>, id: number): Set<number>`, `bulkResultText(deleted: number, failed: number): string` → `"Deleted 3"`, `"Deleted 2, 1 failed"`, `"Couldn't delete 2"` (when `deleted === 0`)
 
 Behaviour:
+
 - The toolbar gets a `Select` button (pill, same style as other secondary buttons), shown when `done.length > 0`. In Select mode it reads `Done`, and `Esc` also exits. Exiting clears the selection.
 - In Select mode, each card renders a visible checkbox at the top-left of the thumbnail (a native `<input type="checkbox">`, `accent-(--color-action)`, inside a ≥44 px label on phone). The whole card toggles: the title link's `after:` overlay is replaced by a `<label>` overlay for the checkbox, so tapping anywhere toggles and nothing navigates. The hover menu is hidden. A selected card gets a 2 px `fg` ring on the thumbnail. Selection is shown by the checkbox and the ring, never colour alone.
 - Sticky action bar (`role="region"`, `aria-label="Selection"`): `sticky bottom-0` inside `main`, so on phones it sits above the tab bar. `bg-surface border-t border-line`, padding `p-3`, plus `pb-[calc(0.75rem+env(safe-area-inset-bottom))]` only if it ever ends up at the screen edge (it doesn't, because the tab bar is below). Contents: `{n} selected` (tabular, `aria-live="polite"`) · `Select all` (selects every visible item; reads `Clear` when all visible are selected) · `Delete` (primary danger style used elsewhere: check `Watch.svelte`'s `button`; disabled at 0).
@@ -502,10 +551,12 @@ Behaviour:
 ### Task 13: Library shows finished items only; chips removed
 
 **Files:**
+
 - Modify: `apps/web/src/lib/library.ts`, `apps/web/src/routes/Library.svelte`, `apps/web/test/library.test.ts`
 - Delete: `apps/web/src/components/Chips.svelte`
 
 **Interfaces:**
+
 - Produces: `lib/library.ts` no longer exports `Chip` or `libraryItems`. `qualityLabel`, `formatSize` and `watchMeta` stay.
 
 `Library.svelte` keeps the `queue` prop and its reload-on-finish effect (that's how new downloads appear), but renders `done` only. Empty states: `searching && done.length === 0` → `Nothing matches “q”.` `done.length === 0` → `No downloads yet. Paste a URL above.` In-progress work is in the Queue tab (badge count), so nothing replaces "Downloading".
@@ -519,29 +570,45 @@ Behaviour:
 ### Task 14: Sort and filter logic
 
 **Files:**
+
 - Modify: `apps/web/src/lib/library.ts`; `apps/web/test/library.test.ts`
 
 **Interfaces:**
+
 - Consumes: `JobOut.playlist_title`, `playlist_channel`, `uploader`, `media_kind`, `finished_at`, `created_at`, `title`, `duration`, `file_size`
 - Produces:
 
 ```ts
-export type SortKey = "added-desc" | "added-asc" | "title" | "duration" | "size";
+export type SortKey =
+  | "added-desc"
+  | "added-asc"
+  | "title"
+  | "duration"
+  | "size";
 export type KindFilter = "any" | "video" | "audio";
-export type LibraryView = { sort: SortKey; kind: KindFilter; channel: string | null; playlist: string | null };
-export const DEFAULT_VIEW: LibraryView;               // { sort: "added-desc", kind: "any", channel: null, playlist: null }
+export type LibraryView = {
+  sort: SortKey;
+  kind: KindFilter;
+  channel: string | null;
+  playlist: string | null;
+};
+export const DEFAULT_VIEW: LibraryView; // { sort: "added-desc", kind: "any", channel: null, playlist: null }
 export const SORT_OPTIONS: { value: SortKey; label: string }[];
 // labels: "Newest first", "Oldest first", "Title A–Z", "Longest first", "Largest first"
-export function sortItems(items: JobOut[], sort: SortKey): JobOut[];   // new array, stable
+export function sortItems(items: JobOut[], sort: SortKey): JobOut[]; // new array, stable
 export function filterItems(items: JobOut[], view: LibraryView): JobOut[];
 export type Facet = { value: string; count: number };
-export function facets(items: JobOut[]): { channels: Facet[]; playlists: Facet[] };
+export function facets(items: JobOut[]): {
+  channels: Facet[];
+  playlists: Facet[];
+};
 export function activeFilterCount(view: LibraryView): number;
 export const VIEW_KEY = "yt.library.view";
-export function readView(raw: string | null): LibraryView;   // tolerant: bad JSON or unknown values → defaults per field
+export function readView(raw: string | null): LibraryView; // tolerant: bad JSON or unknown values → defaults per field
 ```
 
 Rules:
+
 - "added" = `finished_at ?? created_at`. Title sort uses `localeCompare(…, undefined, { sensitivity: "base", numeric: true })`, with a null title sorting last. Duration and size sort descending, with nulls last. Ties keep the input order.
 - Channel = `uploader`. Playlist = `playlist_title`. Facets are distinct, non-empty values with counts, sorted by `localeCompare`, and built from the **unfiltered** list so options never vanish while picking.
 - `filterItems` applies kind, channel and playlist (AND). A channel or playlist value not present in the items is ignored (stale stored value), so `filterItems` returns the kind-filtered list as if that field were null. The component also drops it from the view.
@@ -555,14 +622,17 @@ Rules:
 ### Task 15: Toolbar, filter panel, pills and persistence
 
 **Files:**
+
 - Create: `apps/web/src/components/LibraryFilters.svelte`
 - Modify: `apps/web/src/routes/Library.svelte`, `apps/server/tests/e2e_server.py` (seed one audio row and one playlist row with a different uploader), `apps/web/e2e/library.spec.ts`, `apps/web/e2e/phone.spec.ts`, `README.md`
 
 **Interfaces:**
+
 - Consumes: Task 14's exports; `BottomSheet` (`{ open, title, onclose, children }`)
 - Produces: `LibraryFilters` props `{ view: LibraryView (bindable), channels: Facet[], playlists: Facet[] }`. It renders the form fields only. The container (popover or sheet) belongs to `Library.svelte`.
 
 Layout:
+
 - Desktop toolbar row: `Library` heading · (right side) search · `Sort` select (labelled visually-hidden "Sort", native `<select>` styled like `QualitySelect`) · `Filter` button (pill; shows `Filter · 2` when filters are active) · `Select`. The Filter button opens a popover anchored under it (`<div role="dialog" aria-label="Filters">`, `bg-surface border border-line-strong rounded-control p-4`, closes on Esc or an outside click, focus moves into it and back).
 - Phone: the search fills the first row. The second row is `Sort` select · `Filter` · `Select`, each ≥ 44 px. `Filter` opens `BottomSheet` titled "Filters".
 - `LibraryFilters` fields: Type as a radiogroup (Any / Video / Audio). Channel as a `<select>` ("Any channel" plus `name (count)`). Playlist as a `<select>` ("Any playlist" plus `name (count)`), hidden when there are no playlists. Changes apply immediately (no Apply button), and `Clear filters` resets kind, channel and playlist.
@@ -587,18 +657,18 @@ Layout:
 
 ## Spec coverage
 
-| Spec item | Task |
-|---|---|
-| Goal 1 / §1 player_client | 3 |
-| Goal 2 / §1 subtitle languages, translated skip | 4, 5 |
-| Goal 2 / §1 subtitle failure non-fatal, warning | 5 (behaviour), 6 (stored), 8 (shown) |
-| Goal 3 / §7 dismiss all failed | 1, 2 |
-| Goal 6 / §2 codecs, dynamic range, backfill | 6, 7, 8 |
-| Goal 7 / §3 subtitles in player, off by default | 9, 10 |
-| §4 delete removes sidecars | 10 |
-| Goal 4 / §5 bulk delete, Select mode | 11, 12 |
-| Goal 5 / §6 chips removed, sort, filter, pills, persistence | 13, 14, 15 |
-| `JobOut.playlist_title/playlist_channel` | 6 |
-| Anti-goal: hiding real failures | 5 (`test_media_error_is_not_retried`) |
-| Anti-goal: data loss | 11, 12 (two-step confirm, done-only) |
-| Anti-goal: UI slop | 2, 8, 12, 15 (skills read + screenshots) |
+| Spec item                                                   | Task                                     |
+| ----------------------------------------------------------- | ---------------------------------------- |
+| Goal 1 / §1 player_client                                   | 3                                        |
+| Goal 2 / §1 subtitle languages, translated skip             | 4, 5                                     |
+| Goal 2 / §1 subtitle failure non-fatal, warning             | 5 (behaviour), 6 (stored), 8 (shown)     |
+| Goal 3 / §7 dismiss all failed                              | 1, 2                                     |
+| Goal 6 / §2 codecs, dynamic range, backfill                 | 6, 7, 8                                  |
+| Goal 7 / §3 subtitles in player, off by default             | 9, 10                                    |
+| §4 delete removes sidecars                                  | 10                                       |
+| Goal 4 / §5 bulk delete, Select mode                        | 11, 12                                   |
+| Goal 5 / §6 chips removed, sort, filter, pills, persistence | 13, 14, 15                               |
+| `JobOut.playlist_title/playlist_channel`                    | 6                                        |
+| Anti-goal: hiding real failures                             | 5 (`test_media_error_is_not_retried`)    |
+| Anti-goal: data loss                                        | 11, 12 (two-step confirm, done-only)     |
+| Anti-goal: UI slop                                          | 2, 8, 12, 15 (skills read + screenshots) |
