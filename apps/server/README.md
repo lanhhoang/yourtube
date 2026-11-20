@@ -27,6 +27,9 @@ All settings are environment variables prefixed with `YT_`, read from the proces
 | `YT_DATABASE_URL`  | _(derived from `YT_DATA_DIR`)_ | SQLAlchemy URL; relative `sqlite:///` paths resolve against the repo root |
 | `YT_WEB_DIST_DIR`  | `apps/web/dist`                | Built web app directory                                                   |
 | `YT_LOG_LEVEL`     | `INFO`                         | Logging level                                                             |
+| `YT_VAPID_PRIVATE_KEY` | _(generated in data dir)_  | Web Push signing key                                                      |
+| `YT_VAPID_PUBLIC_KEY`  | _(generated in data dir)_  | Web Push public key                                                       |
+| `YT_VAPID_SUBJECT`     | `mailto:yourtube@example.com` | Push contact; use a real `mailto:` or `https:` URL                     |
 
 Downloads folder, cookies path and proxy can also be changed on the Settings page; saved relative paths resolve against the repo root too. The number of download threads is "Max concurrent downloads" on the Settings page.
 
