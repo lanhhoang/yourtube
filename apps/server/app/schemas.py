@@ -93,6 +93,7 @@ class JobOut(BaseModel):
     file_size: int | None
     media_format: str | None
     resolution_height: int | None
+    batch_id: str | None
     created_at: datetime
     finished_at: datetime | None
 
@@ -121,6 +122,7 @@ class JobOut(BaseModel):
                 "file_size": row.file_size,
                 "media_format": row.media_format,
                 "resolution_height": row.resolution_height,
+                "batch_id": row.batch_id,
                 "created_at": row.created_at,
                 "finished_at": row.finished_at,
             }
@@ -227,10 +229,20 @@ class SourcesResult(BaseModel):
     skipped: int
 
 
+class BatchOut(BaseModel):
+    batch_id: str
+    name: str
+    done: int
+    failed: int
+    cancelled: int
+    finished_at: datetime | None
+
+
 class QueueOut(BaseModel):
     active: list[JobOut]
     failed: list[JobOut]
     completed: list[JobOut]
+    batches: list[BatchOut]
 
 
 class SettingsOut(BaseModel):
@@ -252,3 +264,33 @@ class DiagnosticsOut(BaseModel):
     messages: list[str]
     js_runtime_ready: bool
     workers_enabled: bool
+
+
+class PushKey(BaseModel):
+    """The VAPID public key used as ``applicationServerKey``."""
+
+    public_key: str
+
+
+class PushSubscriptionKeys(BaseModel):
+    p256dh: str = Field(..., min_length=1)
+    auth: str = Field(..., min_length=1)
+
+
+def _require_https(value: str) -> str:
+    if not value.startswith("https://"):
+        raise ValueError("endpoint must start with https://")
+    return value
+
+
+class PushSubscriptionIn(BaseModel):
+    """Browser ``PushSubscription.toJSON()`` payload; the endpoint stays byte-exact."""
+
+    endpoint: str
+    keys: PushSubscriptionKeys
+
+    _check_endpoint = field_validator("endpoint")(_require_https)
+
+
+class PushSubscriptionDelete(BaseModel):
+    endpoint: str

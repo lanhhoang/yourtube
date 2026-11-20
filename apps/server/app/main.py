@@ -28,6 +28,7 @@ from app.config import settings
 from app.db import SessionLocal, engine
 from app.services.job_runner import run_claimed_job
 from app.services.library_layout import migrate_library_layout
+from app.services.push import notify_settled
 from app.services.queue import claim_next, detect_stale_jobs, requeue_active_on_startup
 from app.services.settings import resolve_runtime_settings
 
@@ -116,7 +117,9 @@ class WorkerPool:
         while not self._stop_event.wait(self._stale_check_interval_seconds):
             try:
                 with SessionLocal() as session:
-                    detect_stale_jobs(session, timeout_minutes=self._stale_timeout_minutes)
+                    reaped = detect_stale_jobs(session, timeout_minutes=self._stale_timeout_minutes)
+                for job_id in reaped:
+                    notify_settled(job_id)
             except Exception:  # noqa: BLE001 - keep the loop alive across transient errors
                 logger.exception("stale job check failed")
 

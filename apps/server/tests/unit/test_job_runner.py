@@ -198,3 +198,70 @@ def test_job_runner_passes_no_playlist_for_plain_job(
     monkeypatch, db_session_visible, tmp_path
 ) -> None:
     assert _seen_playlist(monkeypatch, db_session_visible, tmp_path) is None
+
+
+def _push_setup(monkeypatch, session, tmp_path: Path, n: int, batch: str | None):
+    import json
+
+    from app.models import PushSubscription
+    from app.services import push
+
+    sent: list[dict] = []
+    monkeypatch.setattr(push, "webpush", lambda **kw: sent.append(json.loads(kw["data"])))
+    monkeypatch.setattr(push, "load_vapid_keys", lambda *_a: push.VapidKeys("p", "q"))
+    session.add(PushSubscription(endpoint="https://web.push.apple.com/x", p256dh="p", auth="a"))
+    ids = []
+    for i in range(n):
+        row = Download(
+            url=f"https://example.com/{i}", title=f"V{i}", status="active", batch_id=batch
+        )
+        session.add(row)
+        session.flush()
+        ids.append(row.id)
+    set_settings_batch(session, {"downloads_dir": str(tmp_path)})
+    session.commit()
+    monkeypatch.setattr(
+        "app.services.job_runner.run_download",
+        lambda **_k: DownloadResult(path="", file_size=1, media_format="mp4", resolution_height=1),
+    )
+    return sent, ids
+
+
+def test_single_job_pushes_once(monkeypatch, db_session_visible, tmp_path: Path) -> None:
+    sent, ids = _push_setup(monkeypatch, db_session_visible, tmp_path, 1, None)
+    run_claimed_job(ids[0])
+    assert [m["title"] for m in sent] == ["Downloaded"]
+
+
+def test_batch_pushes_once_after_last(monkeypatch, db_session_visible, tmp_path: Path) -> None:
+    sent, ids = _push_setup(monkeypatch, db_session_visible, tmp_path, 3, "b1")
+    run_claimed_job(ids[0])
+    run_claimed_job(ids[1])
+    assert sent == []
+    run_claimed_job(ids[2])
+    assert len(sent) == 1
+    assert sent[0]["body"] == "3 downloaded"
+
+
+def test_notify_raise_keeps_job_done(monkeypatch, db_session_visible, tmp_path: Path) -> None:
+    _sent, ids = _push_setup(monkeypatch, db_session_visible, tmp_path, 1, None)
+
+    def boom(_id):
+        raise RuntimeError("x")
+
+    monkeypatch.setattr("app.services.job_runner.notify_settled", boom)
+    run_claimed_job(ids[0])
+    db_session_visible.expire_all()
+    assert db_session_visible.get(Download, ids[0]).status == "done"
+
+
+def test_reaped_job_sends_nothing_from_worker(
+    monkeypatch, db_session_visible, tmp_path: Path
+) -> None:
+    sent, ids = _push_setup(monkeypatch, db_session_visible, tmp_path, 1, None)
+    db_session_visible.execute(
+        Download.__table__.update().where(Download.id == ids[0]).values(status="error")
+    )
+    db_session_visible.commit()
+    run_claimed_job(ids[0])
+    assert sent == []

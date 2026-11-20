@@ -89,13 +89,14 @@ test("toast sits at the top, under the top bar", async ({ page }) => {
     file_size: 4,
     media_format: "mp4",
     resolution_height: 1080,
+    batch_id: null,
     created_at: "2026-11-18T00:00:00",
     finished_at: "2026-11-18T00:00:01",
   };
   await page.route("**/api/queue", (route) => {
     polls += 1;
     return route.fulfill({
-      json: { active: [], failed: [], completed: polls === 1 ? [] : [job] },
+      json: { active: [], failed: [], completed: polls === 1 ? [] : [job], batches: [] },
     });
   });
   await page.goto(`${APP}#/`);

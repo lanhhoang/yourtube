@@ -79,6 +79,45 @@
   textarea {
     caret-color: var(--color-accent);
   }
+  .switch {
+    appearance: none;
+    position: relative;
+    flex: none;
+    width: 44px;
+    height: 24px;
+    margin: 0;
+    cursor: pointer;
+    border: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-pill);
+    background: var(--color-surface);
+    transition: background-color var(--duration-fast) var(--ease-out);
+  }
+  .switch::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 2.5px;
+    width: 17px;
+    height: 17px;
+    border-radius: 50%;
+    background: var(--color-fg);
+    transform: translateY(-50%);
+    transition:
+      transform var(--duration-fast) var(--ease-out),
+      background-color var(--duration-fast) var(--ease-out);
+  }
+  .switch:checked {
+    border-color: var(--color-accent-fill);
+    background: var(--color-accent-fill);
+  }
+  .switch:checked::before {
+    background: var(--color-on-accent);
+    transform: translate(20px, -50%);
+  }
+  .switch:disabled {
+    cursor: default;
+    opacity: 0.5;
+  }
   .tabular {
     font-variant-numeric: tabular-nums;
   }

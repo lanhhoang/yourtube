@@ -170,6 +170,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/push/key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Key */
+        get: operations["get_key_api_push_key_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/push/subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Subscribe */
+        post: operations["subscribe_api_push_subscriptions_post"];
+        /** Unsubscribe */
+        delete: operations["unsubscribe_api_push_subscriptions_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/queue": {
         parameters: {
             query?: never;
@@ -267,6 +302,21 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** BatchOut */
+        BatchOut: {
+            /** Batch Id */
+            batch_id: string;
+            /** Cancelled */
+            cancelled: number;
+            /** Done */
+            done: number;
+            /** Failed */
+            failed: number;
+            /** Finished At */
+            finished_at: string | null;
+            /** Name */
+            name: string;
+        };
         /** DiagnosticsOut */
         DiagnosticsOut: {
             /** Js Runtime Ready */
@@ -342,6 +392,8 @@ export interface components {
          * @description A download job as the web app sees it.
          */
         JobOut: {
+            /** Batch Id */
+            batch_id: string | null;
             /**
              * Created At
              * Format: date-time
@@ -398,12 +450,43 @@ export interface components {
         };
         /** @enum {string} */
         MediaKind: "video" | "audio";
+        /**
+         * PushKey
+         * @description The VAPID public key used as ``applicationServerKey``.
+         */
+        PushKey: {
+            /** Public Key */
+            public_key: string;
+        };
+        /** PushSubscriptionDelete */
+        PushSubscriptionDelete: {
+            /** Endpoint */
+            endpoint: string;
+        };
+        /**
+         * PushSubscriptionIn
+         * @description Browser ``PushSubscription.toJSON()`` payload; the endpoint stays byte-exact.
+         */
+        PushSubscriptionIn: {
+            /** Endpoint */
+            endpoint: string;
+            keys: components["schemas"]["PushSubscriptionKeys"];
+        };
+        /** PushSubscriptionKeys */
+        PushSubscriptionKeys: {
+            /** Auth */
+            auth: string;
+            /** P256Dh */
+            p256dh: string;
+        };
         /** @enum {string} */
         QualityCap: "best" | "2160" | "1440" | "1080" | "720" | "480" | "audio";
         /** QueueOut */
         QueueOut: {
             /** Active */
             active: components["schemas"]["JobOut"][];
+            /** Batches */
+            batches: components["schemas"]["BatchOut"][];
             /** Completed */
             completed: components["schemas"]["JobOut"][];
             /** Failed */
@@ -859,6 +942,90 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["VideoDetails"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_key_api_push_key_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushKey"];
+                };
+            };
+        };
+    };
+    subscribe_api_push_subscriptions_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "user-agent"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PushSubscriptionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unsubscribe_api_push_subscriptions_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PushSubscriptionDelete"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

@@ -49,6 +49,12 @@ class Download(Base):
     playlist_channel: Mapped[str | None] = mapped_column(String, nullable=True)
     playlist_id: Mapped[str | None] = mapped_column(String, nullable=True)
 
+    # Batch (set only when several jobs were queued together)
+    batch_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    batch_notified: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=false()
+    )
+
     # Queue and progress
     status: Mapped[str] = mapped_column(String, nullable=False, default="queued", index=True)
     progress: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
@@ -94,4 +100,19 @@ class Setting(Base):
         nullable=False,
         server_default=func.current_timestamp(),
         onupdate=func.current_timestamp(),
+    )
+
+
+class PushSubscription(Base):
+    """A Web Push subscription registered by a browser."""
+
+    __tablename__ = "push_subscriptions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    endpoint: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    p256dh: Mapped[str] = mapped_column(String, nullable=False)
+    auth: Mapped[str] = mapped_column(String, nullable=False)
+    user_agent: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp()
     )

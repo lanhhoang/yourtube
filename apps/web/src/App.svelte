@@ -1,7 +1,7 @@
 <script lang="ts">
   import LeftRail from "./components/LeftRail.svelte";
   import TabBar from "./components/TabBar.svelte";
-  import Toasts, { type Toast } from "./components/Toasts.svelte";
+  import Toasts from "./components/Toasts.svelte";
   import TopBar from "./components/TopBar.svelte";
   import { api, call } from "./lib/api.ts";
   import { latest } from "./lib/latest.ts";
@@ -10,7 +10,7 @@
   import { router } from "./lib/router.svelte.ts";
   import { section } from "./lib/router.ts";
   import { watchSystemTheme } from "./lib/theme.ts";
-  import { newCompletions, readSeen, SEEN_KEY } from "./lib/toasts.ts";
+  import { newEvents, readSeen, SEEN_KEY, type Toast } from "./lib/toasts.ts";
   import Fetch from "./routes/Fetch.svelte";
   import Library from "./routes/Library.svelte";
   import Queue from "./routes/Queue.svelte";
@@ -24,8 +24,8 @@
   let firstPoll = true;
   const ticket = latest();
 
-  function closeToast(id: number) {
-    toasts = toasts.filter((t) => t.id !== id);
+  function closeToast(key: string) {
+    toasts = toasts.filter((t) => t.key !== key);
   }
 
   async function refreshQueue(): Promise<void> {
@@ -38,16 +38,12 @@
     }
     if (!current()) return;
     queue = next;
-    const result = newCompletions(
-      readSeen(sessionStorage.getItem(SEEN_KEY)),
-      next.completed,
-      firstPoll,
-    );
+    const result = newEvents(readSeen(sessionStorage.getItem(SEEN_KEY)), next, firstPoll);
     firstPoll = false;
     sessionStorage.setItem(SEEN_KEY, JSON.stringify([...result.seen]));
-    for (const job of result.toasts) {
-      toasts = [...toasts, { id: job.id, title: job.title ?? job.url }];
-      setTimeout(() => closeToast(job.id), TOAST_MS);
+    for (const toast of result.toasts) {
+      toasts = [...toasts, toast];
+      setTimeout(() => closeToast(toast.key), TOAST_MS);
     }
   }
 

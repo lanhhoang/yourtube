@@ -175,8 +175,8 @@ Events:
 - Recipients: every subscribed device gets every push (owner's choice). A job queued from Safari still notifies the home-screen app.
 - Summary counts come from the database (`batch_id` group), not from the queue endpoint, which only returns the 20 most recent finished jobs. A multi-URL batch is named "N videos" in its push.
 - App in the foreground: the service worker always shows the push (iOS requires a visible notification for every push or it may revoke the subscription). The in-app toast still shows too. A duplicate on the device that is open is accepted (my call).
-- Delivery: `pywebpush` from the worker thread after `release_job` commits. Failures are logged and never fail the job. `404/410` responses delete the subscription.
-- VAPID keys: generated on first start and stored in `YT_DATA_DIR/vapid.json` (or overridden by `YT_VAPID_PRIVATE_KEY`/`YT_VAPID_PUBLIC_KEY`); subject `mailto:` from `YT_VAPID_SUBJECT`, default a placeholder.
+- Delivery: `pywebpush` from the worker thread after `release_job` commits (a job failed by the stale check notifies from the stale check instead). Failures are logged and never fail the job. `404/410` responses delete the subscription.
+- VAPID keys: generated on first start and stored in `YT_DATA_DIR/vapid.json` (or overridden by `YT_VAPID_PRIVATE_KEY`/`YT_VAPID_PUBLIC_KEY`); subject `mailto:` from `YT_VAPID_SUBJECT`, default the placeholder `mailto:yourtube@example.com` (Apple rejects a `localhost` subject).
 - API: `GET /api/push/key`, `POST /api/push/subscriptions` (upsert by endpoint), `DELETE /api/push/subscriptions` (by endpoint).
 - Table `push_subscriptions(id, endpoint unique, p256dh, auth, user_agent, created_at)` (Alembic).
 - Settings page: "Notifications on this device" toggle. Turning it on asks permission (must be a user tap; iOS requirement) and subscribes. If the app isn't installed on iOS, the toggle explains "Add YourTube to your Home Screen first".

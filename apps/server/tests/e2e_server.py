@@ -16,6 +16,7 @@ from app.config import settings
 from app.db import SessionLocal
 from app.models import Download
 from app.services import downloader, job_runner
+from app.services import push as push_module
 from app.services.downloader import DownloadResult
 
 
@@ -119,6 +120,7 @@ def _stub_full(url: str, **_kwargs: Any) -> dict[str, Any]:
 downloader.extract_info = _stub_full
 downloader.extract_flat_info = _stub_flat
 job_runner.run_download = _run_download
+push_module.webpush = lambda **_kwargs: None  # fake subscriptions never reach the network
 
 import app.main as app_main  # noqa: E402
 from app.main import app  # noqa: E402

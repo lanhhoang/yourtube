@@ -31,12 +31,12 @@ YourTube is a self-hosted YouTube downloader with a web UI, a persistent queue a
 - Quality is a per-job cap: `best`, `2160`, `1440`, `1080`, `720`, `480`, `audio`. Default "Up to 1080p". The cap compares the short side of the video. Exact format ids override the cap. An opt-in HDR choice keeps HDR where the video offers it at the capped resolution; off by default.
 - Playlists: one cap for all selected videos, per-video override, every selected video checked before "Add to queue" is enabled. A video must never silently download below the chosen quality without being flagged first.
 - Terms: "cap" (quality limit), "Library" (finished downloads), "Queue" (queued, active and failed jobs).
-- Finished files play in the app (`#/watch/<id>`) and can be saved to the phone.
-- Not in scope: translation, offline use, live push, server-side playlist checking.
+- Finished files play in the app (`#/watch/<id>`) and can be saved to the phone. The app installs to a phone's Home Screen and can push a notification when a download or batch finishes or fails; each device opts in from Settings, and a batch sends one summary, not one per video.
+- Not in scope: translation, offline use, server-side playlist checking.
 
 ## Brand Commitments
 
-Name: YourTube. Tagline: "There are many video-sharing platforms, but this one is yours." Layout grammar borrowed from YouTube (top bar, left rail, chips, thumbnail grid) without its clutter: no recommendations, avatars, view counts or notification bells. Red is the only accent.
+Name: YourTube. Tagline: "There are many video-sharing platforms, but this one is yours." Layout grammar borrowed from YouTube (top bar, left rail, chips, thumbnail grid) without its clutter: no recommendations, avatars, view counts or notification bells. The per-device notification switch in Settings is a setting, not a bell: there is no unread badge or notification list. Red is the only accent.
 
 ## Evidence on Hand
 

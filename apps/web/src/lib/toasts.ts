@@ -1,4 +1,4 @@
-import type { JobOut } from "./queue.ts";
+import type { QueueOut } from "./queue.ts";
 
 export const SEEN_KEY = "yt-seen-completed-jobs";
 
@@ -12,18 +12,54 @@ export function readSeen(stored: string | null): Set<string> {
   }
 }
 
-// Every completed id joins `seen`. Jobs not seen before become toasts, unless `silent`.
-export function newCompletions(
+export type ToastKind = "done" | "failed" | "batch";
+export type Toast = { key: string; kind: ToastKind; title: string; body: string };
+
+type BatchOut = QueueOut["batches"][number];
+
+// Same words as the push body (app/services/push.py batch_message).
+function batchBody(b: BatchOut): string {
+  const parts = [
+    b.done ? `${b.done} downloaded` : "",
+    b.failed ? `${b.failed} failed` : "",
+    b.cancelled ? `${b.cancelled} cancelled` : "",
+  ].filter(Boolean);
+  return parts.length ? parts.join(", ") : "0 downloaded";
+}
+
+// Every event key joins `seen`. Events not seen before become toasts, unless `silent`.
+// Jobs in a batch never toast on their own; the batch does.
+export function newEvents(
   seen: Set<string>,
-  completed: JobOut[],
+  queue: QueueOut,
   silent: boolean,
-): { toasts: JobOut[]; seen: Set<string> } {
+): { toasts: Toast[]; seen: Set<string> } {
   const next = new Set(seen);
-  const toasts: JobOut[] = [];
-  for (const job of completed) {
-    const id = String(job.id);
-    if (!next.has(id) && !silent) toasts.push(job);
-    next.add(id);
+  const toasts: Toast[] = [];
+  const add = (toast: Toast) => {
+    if (!next.has(toast.key) && !silent) toasts.push(toast);
+    next.add(toast.key);
+  };
+  for (const job of queue.completed) {
+    if (job.batch_id != null) continue;
+    add({
+      key: `done:${job.id}`,
+      kind: "done",
+      title: "Downloaded",
+      body: job.title ?? job.url,
+    });
+  }
+  for (const job of queue.failed) {
+    if (job.batch_id != null) continue;
+    add({
+      key: `failed:${job.id}`,
+      kind: "failed",
+      title: "Download failed",
+      body: `${job.title ?? job.url}: ${job.error_message ?? "Unknown error"}`,
+    });
+  }
+  for (const b of queue.batches) {
+    add({ key: `batch:${b.batch_id}`, kind: "batch", title: b.name, body: batchBody(b) });
   }
   return { toasts, seen: next };
 }

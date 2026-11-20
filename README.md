@@ -62,7 +62,7 @@ tailscale serve --bg 8000           # https://<host>.<tailnet>.ts.net
 
 Tailscale ends TLS and passes plain HTTP to the app on `127.0.0.1:8000`, so keep `YT_HOST` at its default. Only devices on your tailnet can reach it; never expose the app to the public internet.
 
-HTTPS is required for installing the app, Save to Photos and, later, push notifications. `YT_HOST=0.0.0.0` in `.env` listens on the LAN over plain http, which is fine for browsing only. The Docker Compose setup already binds `0.0.0.0`.
+HTTPS is required for installing the app, Save to Photos and push notifications. `YT_HOST=0.0.0.0` in `.env` listens on the LAN over plain http, which is fine for browsing only. The Docker Compose setup already binds `0.0.0.0`.
 
 ### Install it on your phone
 
@@ -74,6 +74,10 @@ HTTPS is required for installing the app, Save to Photos and, later, push notifi
 Copy the link in the YouTube app, open YourTube, and tap Paste next to the URL field. It fills the field from your clipboard (iOS asks you to confirm). If reading the clipboard fails, the field gets focus so you can long-press and paste. Then tap Fetch; pasting never fetches by itself.
 
 Optional: an iOS Shortcut "Send to YourTube" skips the paste. Build it as Receive URLs from Share Sheet → URL Encode → Open URL `https://<host>/#/fetch/<encoded>`. No app code depends on it.
+
+### Notifications
+
+YourTube can push a notification when a download finishes or fails. On iPhone, install it to the Home Screen first (iOS 16.4 or later); Safari tabs can't receive pushes. Then open Settings and turn on "Notifications on this device". Each device turns it on separately. Set `YT_VAPID_SUBJECT` to a real `mailto:` address you own in `.env` (the default `mailto:yourtube@example.com` is a placeholder; Apple rejects `localhost` subjects). A playlist or multi-URL batch sends one summary push, not one per video. Keys are generated into the data directory on first start; to pin your own, set `YT_VAPID_PRIVATE_KEY` and `YT_VAPID_PUBLIC_KEY` (see `.env.example`).
 
 ## Layout
 
