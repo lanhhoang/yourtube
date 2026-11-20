@@ -130,3 +130,11 @@ def db_session_visible(db_engine: Engine) -> Generator[Session, None, None]:
 def db_inspector(db_engine: Engine):
     """Convenience fixture exposing a SQLAlchemy ``Inspector`` for the test DB."""
     return inspect(db_engine)
+
+
+@pytest.fixture(autouse=True)
+def stub_media_backfill(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep lifespan startups from spawning a live ffprobe backfill thread."""
+    import app.main  # noqa: F401
+
+    monkeypatch.setattr("app.main.start_media_backfill", lambda: None, raising=False)
