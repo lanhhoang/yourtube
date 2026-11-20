@@ -70,20 +70,30 @@
   let pushKey = $state("");
   let pushError = $state("");
   let pushBusy = $state(false);
+  let pushUnreachable = $state(false);
 
-  async function initPush() {
-    if (support === "install-first" || support === "unsupported") return;
+  const READY_TIMEOUT_MS = 5000;
+
+  async function initSubscription() {
     try {
-      const sub = await currentSubscription();
+      const sub = await Promise.race([
+        currentSubscription(),
+        new Promise<never>((_, reject) => setTimeout(reject, READY_TIMEOUT_MS)),
+      ]);
       pushOn = sub !== null;
       if (sub) await syncSubscription(sub);
     } catch {
-      // the switch stays off
+      pushUnreachable = true;
     }
+  }
+
+  async function initPush() {
+    if (support === "install-first" || support === "unsupported") return;
+    void initSubscription();
     try {
       pushKey = (await call(api.GET("/api/push/key"))).public_key;
     } catch {
-      // the switch stays disabled
+      pushUnreachable = true;
     }
   }
   void initPush();
@@ -222,6 +232,11 @@
       </p>
     {:else if support === "unsupported"}
       <p class="m-0 mt-1 text-sm text-muted">This browser can't show notifications.</p>
+    {/if}
+    {#if pushUnreachable && support === "ready" && (!pushKey || !pushOn)}
+      <p class="m-0 mt-1 text-sm text-muted" role="status">
+        Couldn't reach the server. Try again later.
+      </p>
     {/if}
     {#if pushError}
       <p class="m-0 mt-1 text-sm text-danger" role="status">{pushError}</p>

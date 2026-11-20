@@ -77,7 +77,7 @@ Optional: an iOS Shortcut "Send to YourTube" skips the paste. Build it as Receiv
 
 ### Notifications
 
-YourTube can push a notification when a download finishes or fails. On iPhone, install it to the Home Screen first (iOS 16.4 or later); Safari tabs can't receive pushes. Then open Settings and turn on "Notifications on this device". Each device turns it on separately. Set `YT_VAPID_SUBJECT` to a real `mailto:` address in `.env`; Apple rejects the placeholder default. Keys are generated into the data directory on first start; to pin your own, set `YT_VAPID_PRIVATE_KEY` and `YT_VAPID_PUBLIC_KEY` (see `.env.example`).
+YourTube can push a notification when a download finishes or fails. On iPhone, install it to the Home Screen first (iOS 16.4 or later); Safari tabs can't receive pushes. Then open Settings and turn on "Notifications on this device". Each device turns it on separately. Set `YT_VAPID_SUBJECT` to a real `mailto:` address you own in `.env` (the default `mailto:yourtube@example.com` is a placeholder; Apple rejects `localhost` subjects). A playlist or multi-URL batch sends one summary push, not one per video. Keys are generated into the data directory on first start; to pin your own, set `YT_VAPID_PRIVATE_KEY` and `YT_VAPID_PUBLIC_KEY` (see `.env.example`).
 
 ## Layout
 

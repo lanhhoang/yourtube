@@ -334,7 +334,7 @@ def _batch_summary(session: Session, batch_id: str) -> BatchSummary:
     ).scalar_one_or_none()
     return BatchSummary(
         batch_id=batch_id,
-        name=title or f"{row[0]} videos",
+        name=title or ("1 video" if row[0] == 1 else f"{row[0]} videos"),
         done=int(row[1]),
         failed=int(row[2]),
         cancelled=int(row[3]),

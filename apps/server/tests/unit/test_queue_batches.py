@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import threading
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
@@ -71,6 +71,16 @@ def test_unnamed_batch_name(db_session_visible: Session) -> None:
     assert summary is not None
     assert summary.name == "3 videos"
     assert summary.cancelled == 1
+
+
+def test_unnamed_single_video_batch_name(db_session_visible: Session) -> None:
+    rows = enqueue_downloads(db_session_visible, _payloads(2))
+    _settle(db_session_visible, rows, ["done", "done"])
+    db_session_visible.execute(delete(Download).where(Download.id == rows[1].id))
+    db_session_visible.commit()
+    summary = claim_batch_summary(db_session_visible, _bid(rows))
+    assert summary is not None
+    assert summary.name == "1 video"
 
 
 def test_claim_race_has_one_winner(db_session_visible: Session) -> None:

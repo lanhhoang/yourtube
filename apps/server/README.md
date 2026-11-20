@@ -29,7 +29,7 @@ All settings are environment variables prefixed with `YT_`, read from the proces
 | `YT_LOG_LEVEL`     | `INFO`                         | Logging level                                                             |
 | `YT_VAPID_PRIVATE_KEY` | _(generated in data dir)_  | Web Push signing key                                                      |
 | `YT_VAPID_PUBLIC_KEY`  | _(generated in data dir)_  | Web Push public key                                                       |
-| `YT_VAPID_SUBJECT`     | `mailto:yourtube@example.com` | Push contact; use a real `mailto:` or `https:` URL                     |
+| `YT_VAPID_SUBJECT`     | `mailto:yourtube@example.com` | Push contact: a `mailto:` address (or an https URL without a path)                     |
 
 Downloads folder, cookies path and proxy can also be changed on the Settings page; saved relative paths resolve against the repo root too. The number of download threads is "Max concurrent downloads" on the Settings page.
 
