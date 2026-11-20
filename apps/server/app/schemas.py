@@ -254,3 +254,33 @@ class DiagnosticsOut(BaseModel):
     messages: list[str]
     js_runtime_ready: bool
     workers_enabled: bool
+
+
+class PushKey(BaseModel):
+    """The VAPID public key used as ``applicationServerKey``."""
+
+    public_key: str
+
+
+class PushSubscriptionKeys(BaseModel):
+    p256dh: str = Field(..., min_length=1)
+    auth: str = Field(..., min_length=1)
+
+
+def _require_https(value: str) -> str:
+    if not value.startswith("https://"):
+        raise ValueError("endpoint must start with https://")
+    return value
+
+
+class PushSubscriptionIn(BaseModel):
+    """Browser ``PushSubscription.toJSON()`` payload; the endpoint stays byte-exact."""
+
+    endpoint: str
+    keys: PushSubscriptionKeys
+
+    _check_endpoint = field_validator("endpoint")(_require_https)
+
+
+class PushSubscriptionDelete(BaseModel):
+    endpoint: str

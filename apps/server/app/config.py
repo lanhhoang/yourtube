@@ -60,6 +60,9 @@ class Settings(BaseSettings):
     workers: int = 1
     web_dist_dir: Path = REPO_ROOT / "apps/web/dist"
     database_url: str = ""
+    vapid_private_key: str | None = None
+    vapid_public_key: str | None = None
+    vapid_subject: str = "mailto:yourtube@example.com"
     # When False, the FastAPI lifespan skips starting the worker pool.
     # Tests set this so the lifespan can run without spawning threads
     # that would race with the test's own database assertions.

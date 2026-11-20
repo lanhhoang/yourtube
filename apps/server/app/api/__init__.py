@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.api import fetch, jobs, library, settings
+from app.api import fetch, jobs, library, push, settings
 from app.api.errors import ApiError
 
 api_router = APIRouter(prefix="/api")
@@ -16,6 +16,7 @@ api_router = APIRouter(prefix="/api")
 api_router.include_router(fetch.router)
 api_router.include_router(jobs.router)
 api_router.include_router(library.router)
+api_router.include_router(push.router)
 api_router.include_router(settings.router)
 
 
