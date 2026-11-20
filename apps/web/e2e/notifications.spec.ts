@@ -29,7 +29,7 @@ test.beforeEach(async ({ page }) => {
 
 test("turn notifications on and off for this device", async ({ page }) => {
   await page.goto(`${APP}#/settings`);
-  const toggle = page.getByRole("switch", { name: "Notifications on this device" });
+  const toggle = page.getByRole("switch", { name: "Notifications on this device", exact: true });
   await expect(toggle).toBeEnabled();
   await expect(toggle).not.toBeChecked();
 
@@ -41,15 +41,17 @@ test("turn notifications on and off for this device", async ({ page }) => {
   await expect(toggle).toBeChecked();
 
   await page.reload();
-  await expect(page.getByRole("switch", { name: "Notifications on this device" })).toBeChecked();
+  await expect(
+    page.getByRole("switch", { name: "Notifications on this device", exact: true }),
+  ).toBeChecked();
 
   const deleted = page.waitForResponse(
     (r) => r.url().endsWith("/api/push/subscriptions") && r.request().method() === "DELETE",
   );
-  await page.getByRole("switch", { name: "Notifications on this device" }).uncheck();
+  await page.getByRole("switch", { name: "Notifications on this device", exact: true }).uncheck();
   expect((await deleted).status()).toBe(204);
   await expect(
-    page.getByRole("switch", { name: "Notifications on this device" }),
+    page.getByRole("switch", { name: "Notifications on this device", exact: true }),
   ).not.toBeChecked();
 });
 
@@ -64,6 +66,8 @@ test.describe("iPhone, not installed", () => {
   test("asks to add to the Home Screen first", async ({ page }) => {
     await page.goto(`${APP}#/settings`);
     await expect(page.getByText("Add YourTube to your Home Screen first.")).toBeVisible();
-    await expect(page.getByRole("switch", { name: "Notifications on this device" })).toBeDisabled();
+    await expect(
+      page.getByRole("switch", { name: "Notifications on this device", exact: true }),
+    ).toBeDisabled();
   });
 });

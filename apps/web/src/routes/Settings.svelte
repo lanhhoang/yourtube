@@ -69,6 +69,7 @@
   let pushOn = $state(false);
   let pushKey = $state("");
   let pushError = $state("");
+  let pushBusy = $state(false);
 
   async function initPush() {
     if (support === "install-first" || support === "unsupported") return;
@@ -91,6 +92,7 @@
     const box = e.currentTarget as HTMLInputElement;
     const want = box.checked;
     pushError = "";
+    pushBusy = true;
     try {
       if (want) {
         const result = await enablePush(pushKey);
@@ -106,8 +108,10 @@
         pushOn = false;
       }
     } catch {
-      pushError = "Couldn't turn on notifications. Try again.";
+      pushError = `Couldn't turn ${want ? "on" : "off"} notifications. Try again.`;
       box.checked = pushOn;
+    } finally {
+      pushBusy = false;
     }
   }
 
@@ -198,14 +202,14 @@
     <label class="flex min-h-[44px] cursor-pointer items-center justify-between gap-3">
       <span class="text-sm font-medium">Notifications on this device</span>
       <span class="flex items-center gap-2">
-        <span class="text-sm text-muted">{pushOn ? "On" : "Off"}</span>
+        <span class="text-sm text-muted" aria-hidden="true">{pushOn ? "On" : "Off"}</span>
         <input
           type="checkbox"
           role="switch"
           class="switch"
           checked={pushOn}
           aria-checked={pushOn}
-          disabled={support !== "ready" || !pushKey}
+          disabled={support !== "ready" || !pushKey || pushBusy}
           onchange={togglePush}
         >
       </span>
