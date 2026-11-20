@@ -8,7 +8,13 @@ from sqlalchemy.orm import Session
 
 from app.models import Download
 from app.schemas import DownloadCreate
-from app.services.queue import dismiss_job, enqueue_download, get_failed_jobs, retry_job
+from app.services.queue import (
+    dismiss_failed,
+    dismiss_job,
+    enqueue_download,
+    get_failed_jobs,
+    retry_job,
+)
 
 
 def _row(session: Session, status: str, **fields: object) -> Download:
@@ -73,6 +79,16 @@ def test_dismiss_deletes_only_failed(db_session: Session) -> None:
     assert dismiss_job(db_session, done_id) is False
     assert db_session.get(Download, failed_id) is None
     assert db_session.get(Download, done_id) is not None
+
+
+def test_dismiss_failed_removes_only_error_rows(db_session: Session) -> None:
+    errors = [_row(db_session, "error"), _row(db_session, "error")]
+    keep = [_row(db_session, s) for s in ("done", "queued", "active")]
+    error_ids = [r.id for r in errors]
+    keep_ids = [r.id for r in keep]
+    assert dismiss_failed(db_session) == 2
+    assert all(db_session.get(Download, i) is None for i in error_ids)
+    assert all(db_session.get(Download, i) is not None for i in keep_ids)
 
 
 def test_get_failed_jobs_newest_first(db_session: Session) -> None:

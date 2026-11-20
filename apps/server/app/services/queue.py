@@ -301,6 +301,13 @@ def dismiss_job(session: Session, job_id: int) -> bool:
     return bool(result.rowcount)
 
 
+def dismiss_failed(session: Session) -> int:
+    """Delete every failed job's row. Only ``error`` rows are removed."""
+    result = session.execute(delete(Download).where(Download.status == "error"))
+    session.commit()
+    return result.rowcount
+
+
 @dataclass(frozen=True)
 class BatchSummary:
     """Settled counts for one batch of downloads."""

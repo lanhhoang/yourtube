@@ -106,6 +106,16 @@ def test_dismiss_done_job_conflicts(client: TestClient, db_session_visible: Sess
     assert _status(db_session_visible, job) == "done"
 
 
+def test_dismiss_failed_endpoint(client: TestClient, db_session_visible: Session) -> None:
+    _add(db_session_visible, "error")
+    _add(db_session_visible, "error")
+    r = client.post("/api/queue/dismiss-failed")
+    assert r.status_code == 200
+    assert r.json() == {"dismissed": 2}
+    assert client.get("/api/queue").json()["failed"] == []
+    assert client.post("/api/queue/dismiss-failed").json() == {"dismissed": 0}
+
+
 def test_retry_missing_404(client: TestClient) -> None:
     r = client.post("/api/downloads/999999/retry")
     assert r.status_code == 404
