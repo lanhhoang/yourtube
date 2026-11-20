@@ -126,11 +126,16 @@ def release_job(
     file_size: int | None = None,
     media_format: str | None = None,
     resolution_height: int | None = None,
+    vcodec: str | None = None,
+    acodec: str | None = None,
+    dynamic_range: str | None = None,
+    warning_message: str | None = None,
 ) -> bool:
     """Transition a claimed job to its terminal state.
 
     Sets ``finished_at`` to now. For ``status="done"``, populates file
-    metadata columns. For ``"error"``, sets ``error_code`` and
+    metadata columns (size, format, resolution, ``vcodec``, ``acodec``,
+    ``dynamic_range``) and ``warning_message``. For ``"error"``, sets ``error_code`` and
     ``error_message``. Returns ``True`` if the row was updated.
     """
     values: dict = {
@@ -149,6 +154,14 @@ def release_job(
         values["media_format"] = media_format
     if resolution_height is not None:
         values["resolution_height"] = resolution_height
+    if vcodec is not None:
+        values["vcodec"] = vcodec
+    if acodec is not None:
+        values["acodec"] = acodec
+    if dynamic_range is not None:
+        values["dynamic_range"] = dynamic_range
+    if warning_message is not None:
+        values["warning_message"] = warning_message
 
     stmt = (
         update(Download).where(Download.id == job_id, Download.status == "active").values(**values)
@@ -280,6 +293,7 @@ def retry_job(session: Session, job_id: int) -> bool:
             progress=0.0,
             error_code=None,
             error_message=None,
+            warning_message=None,
             cancel_requested=False,
             claimed_at=None,
             finished_at=None,

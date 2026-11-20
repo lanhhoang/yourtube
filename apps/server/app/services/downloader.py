@@ -33,14 +33,32 @@ class DownloadResult:
 
     ``file_size``, ``media_format``, and ``resolution_height`` are best-effort
     — any of them may be ``None`` if yt-dlp didn't report the value and the
-    output file is unavailable for stat-ing.
+    output file is unavailable for stat-ing. ``vcodec``, ``acodec`` and
+    ``dynamic_range`` are likewise best-effort (yt-dlp's ``"none"`` becomes
+    ``None``), and ``warning`` carries a non-fatal message such as a failed
+    subtitle download.
     """
 
     path: str
     file_size: int | None
     media_format: str | None
     resolution_height: int | None
+    vcodec: str | None = None
+    acodec: str | None = None
+    dynamic_range: str | None = None
     warning: str | None = None
+
+
+@dataclass(frozen=True)
+class MediaMeta:
+    """File metadata derived from yt-dlp's final info dict."""
+
+    file_size: int | None
+    media_format: str | None
+    resolution_height: int | None
+    vcodec: str | None
+    acodec: str | None
+    dynamic_range: str | None
 
 
 # Type alias for the yt-dlp progress hook. yt-dlp passes a dict to each
@@ -549,16 +567,25 @@ def write_transcript_sidecar(subtitle_path: str | Path) -> Path:
     return transcript_path
 
 
-def _extract_file_metadata(
-    info: dict, output_path: str
-) -> tuple[int | None, str | None, int | None]:
-    """Derive ``(file_size, media_format, resolution_height)`` for a finished download.
+def _codec(value: object) -> str | None:
+    text = _safe_str(value)
+    return None if text is None or text == "none" else text
+
+
+def _extract_file_metadata(info: dict, output_path: str) -> MediaMeta:
+    """Derive :class:`MediaMeta` for a finished download.
 
     Prefers the on-disk file size for accuracy (yt-dlp's ``filesize`` is
     often missing for merged formats). Falls back to ``filesize`` or
     ``filesize_approx`` from the info dict only when stat-ing the output
     fails. ``media_format`` and ``resolution_height`` come straight from
     the info dict and may be ``None`` when not reported.
+
+    ``vcodec``, ``acodec`` and ``dynamic_range`` come from the info dict,
+    with yt-dlp's ``"none"`` mapped to ``None``. For merged downloads where
+    the top-level values are missing, they fall back to the first matching
+    stream in ``requested_formats``. ``dynamic_range`` is ``None`` when no
+    video codec is known.
     """
     media_format = _safe_str(info.get("ext"))
     resolution_height = short_side(_safe_int(info.get("width")), _safe_int(info.get("height")))
@@ -570,7 +597,20 @@ def _extract_file_metadata(
             file_size = None
     if file_size is None:
         file_size = _safe_int(info.get("filesize") or info.get("filesize_approx"))
-    return file_size, media_format, resolution_height
+    streams = [s for s in (info.get("requested_formats") or []) if isinstance(s, dict)]
+    vcodec = _codec(info.get("vcodec"))
+    dynamic_range = _safe_str(info.get("dynamic_range"))
+    if vcodec is None:
+        video = next((s for s in streams if _codec(s.get("vcodec"))), None)
+        if video is not None:
+            vcodec = _codec(video.get("vcodec"))
+            dynamic_range = _safe_str(video.get("dynamic_range"))
+    acodec = _codec(info.get("acodec"))
+    if acodec is None:
+        acodec = next((c for s in streams if (c := _codec(s.get("acodec")))), None)
+    if vcodec is None:
+        dynamic_range = None
+    return MediaMeta(file_size, media_format, resolution_height, vcodec, acodec, dynamic_range)
 
 
 def run_download(
@@ -670,11 +710,14 @@ def run_download(
     requested = (info or {}).get("requested_downloads") or []
     merged = next((d["filepath"] for d in reversed(requested) if d.get("filepath")), None)
     output_path = merged or captured_path["path"] or ""
-    file_size, media_format, resolution_height = _extract_file_metadata(info or {}, output_path)
+    meta = _extract_file_metadata(info or {}, output_path)
     return DownloadResult(
         path=output_path,
-        file_size=file_size,
-        media_format=media_format,
-        resolution_height=resolution_height,
+        file_size=meta.file_size,
+        media_format=meta.media_format,
+        resolution_height=meta.resolution_height,
+        vcodec=meta.vcodec,
+        acodec=meta.acodec,
+        dynamic_range=meta.dynamic_range,
         warning=warning,
     )

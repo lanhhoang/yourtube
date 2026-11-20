@@ -1,7 +1,7 @@
 <script lang="ts">
   import { api, call } from "../lib/api.ts";
   import { ApiError, messageFor } from "../lib/errors.ts";
-  import { formatSize, qualityLabel } from "../lib/library.ts";
+  import { watchMeta } from "../lib/library.ts";
   import type { JobOut } from "../lib/queue.ts";
   import { navigate } from "../lib/router.svelte.ts";
   import { canShareFiles, fetchBlob, fileName, saveMode } from "../lib/save.ts";
@@ -22,13 +22,7 @@
   const abort = new AbortController();
 
   const src = $derived(`/api/downloads/${id}/file?inline=1`);
-  const meta = $derived(
-    job
-      ? [job.uploader, qualityLabel(job), formatSize(job.file_size), job.media_format]
-          .filter(Boolean)
-          .join(" · ")
-      : "",
-  );
+  const meta = $derived(job ? watchMeta(job) : "");
   const mode = $derived(
     job && save !== "failed"
       ? saveMode(job.file_size, canShareFiles() && matchMedia("(pointer: coarse)").matches)
@@ -141,6 +135,9 @@
       <h1 class="m-0 text-xl font-bold tracking-[-0.01em]">{job.title ?? job.url}</h1>
       {#if meta}
         <p class="m-0 mt-1 text-sm text-muted">{meta}</p>
+      {/if}
+      {#if job.warning_message}
+        <p class="m-0 mt-1 text-sm text-warn">{job.warning_message}</p>
       {/if}
     </div>
     <div class="flex flex-wrap items-center gap-2">

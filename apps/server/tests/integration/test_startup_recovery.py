@@ -53,3 +53,23 @@ def test_startup_moves_library(db_session_visible, tmp_path) -> None:
     assert new.exists() and not old.exists()
     assert db_session_visible.get(Download, row.id).file_path == str(new)
     assert get_setting(db_session_visible, "library_layout") == "v2"
+
+
+def test_startup_starts_media_backfill(monkeypatch) -> None:
+    calls: list[int] = []
+    monkeypatch.setattr("app.main.start_media_backfill", lambda: calls.append(1))
+
+    with TestClient(app):
+        pass
+
+    assert calls == [1]
+
+
+def test_startup_survives_backfill_start_failure(monkeypatch) -> None:
+    def boom() -> None:
+        raise RuntimeError("nope")
+
+    monkeypatch.setattr("app.main.start_media_backfill", boom)
+
+    with TestClient(app) as client:
+        assert client.get("/health").status_code == 200

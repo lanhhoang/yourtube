@@ -30,6 +30,10 @@ def test_run_claimed_job_marks_done_and_persists_progress(
             file_size=2048,
             media_format="mp4",
             resolution_height=720,
+            vcodec="avc1.640028",
+            acodec="mp4a.40.2",
+            dynamic_range="SDR",
+            warning="Subtitles couldn't be downloaded.",
         )
 
     monkeypatch.setattr("app.services.job_runner.run_download", fake_run_download)
@@ -43,6 +47,8 @@ def test_run_claimed_job_marks_done_and_persists_progress(
     assert row.file_size == 2048
     assert row.media_format == "mp4"
     assert row.resolution_height == 720
+    assert (row.vcodec, row.acodec, row.dynamic_range) == ("avc1.640028", "mp4a.40.2", "SDR")
+    assert row.warning_message == "Subtitles couldn't be downloaded."
 
 
 def test_run_claimed_job_marks_cancelled_when_download_is_cancelled(

@@ -19,6 +19,11 @@ def test_downloads_has_quality_cap_column(db_inspector):
     assert "quality_cap" in {c["name"] for c in db_inspector.get_columns("downloads")}
 
 
+def test_downloads_has_media_info_columns(db_inspector):
+    names = {c["name"] for c in db_inspector.get_columns("downloads")}
+    assert {"vcodec", "acodec", "dynamic_range", "warning_message"} <= names
+
+
 def test_downloads_has_hdr_column(db_inspector):
     assert "hdr" in {c["name"] for c in db_inspector.get_columns("downloads")}
 
@@ -45,3 +50,9 @@ def test_migration_downgrade_and_upgrade(tmp_path, monkeypatch):
     assert "quality_cap" in cols()
     command.upgrade(cfg, "head")
     assert "hdr" in cols()
+    new_cols = {"vcodec", "acodec", "dynamic_range", "warning_message"}
+    assert new_cols <= cols()
+    command.downgrade(cfg, "20261118130000")
+    assert not (new_cols & cols())
+    command.upgrade(cfg, "head")
+    assert new_cols <= cols()
