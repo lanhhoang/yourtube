@@ -3,6 +3,14 @@
   import { api, call } from "../lib/api.ts";
   import type { components } from "../lib/api.gen.ts";
   import { messageFor } from "../lib/errors.ts";
+  import {
+    currentSubscription,
+    disablePush,
+    enablePush,
+    pushEnv,
+    pushSupport,
+    syncSubscription,
+  } from "../lib/push.ts";
 
   type SettingsOut = components["schemas"]["SettingsOut"];
   type DiagnosticsOut = components["schemas"]["DiagnosticsOut"];
@@ -54,6 +62,52 @@
       status = { ok: true, text: "Settings reset to defaults." };
     } catch (err) {
       status = { ok: false, text: messageFor(err) };
+    }
+  }
+
+  let support = $state(pushSupport(pushEnv()));
+  let pushOn = $state(false);
+  let pushKey = $state("");
+  let pushError = $state("");
+
+  async function initPush() {
+    if (support === "install-first" || support === "unsupported") return;
+    try {
+      const sub = await currentSubscription();
+      pushOn = sub !== null;
+      if (sub) await syncSubscription(sub);
+    } catch {
+      // the switch stays off
+    }
+    try {
+      pushKey = (await call(api.GET("/api/push/key"))).public_key;
+    } catch {
+      // the switch stays disabled
+    }
+  }
+  void initPush();
+
+  async function togglePush(e: Event) {
+    const box = e.currentTarget as HTMLInputElement;
+    const want = box.checked;
+    pushError = "";
+    try {
+      if (want) {
+        const result = await enablePush(pushKey);
+        if (result === "blocked") {
+          support = pushSupport(pushEnv());
+          pushOn = false;
+          box.checked = false;
+          return;
+        }
+        pushOn = true;
+      } else {
+        await disablePush();
+        pushOn = false;
+      }
+    } catch {
+      pushError = "Couldn't turn on notifications. Try again.";
+      box.checked = pushOn;
     }
   }
 
@@ -137,5 +191,36 @@
   <div class="mt-8 max-w-xl">
     <h2 class="m-0 mb-2 text-lg font-semibold">Theme</h2>
     <div class="w-full md:w-24"><ThemeSelect label="Theme (settings)" /></div>
+  </div>
+
+  <div class="mt-8 max-w-xl">
+    <h2 class="m-0 mb-2 text-lg font-semibold">Notifications</h2>
+    <label class="flex min-h-[44px] cursor-pointer items-center justify-between gap-3">
+      <span class="text-sm font-medium">Notifications on this device</span>
+      <span class="flex items-center gap-2">
+        <span class="text-sm text-muted">{pushOn ? "On" : "Off"}</span>
+        <input
+          type="checkbox"
+          role="switch"
+          class="switch"
+          checked={pushOn}
+          aria-checked={pushOn}
+          disabled={support !== "ready" || !pushKey}
+          onchange={togglePush}
+        >
+      </span>
+    </label>
+    {#if support === "install-first"}
+      <p class="m-0 mt-1 text-sm text-muted">Add YourTube to your Home Screen first.</p>
+    {:else if support === "blocked"}
+      <p class="m-0 mt-1 text-sm text-muted">
+        Notifications are blocked for YourTube in your browser settings.
+      </p>
+    {:else if support === "unsupported"}
+      <p class="m-0 mt-1 text-sm text-muted">This browser can't show notifications.</p>
+    {/if}
+    {#if pushError}
+      <p class="m-0 mt-1 text-sm text-danger" role="status">{pushError}</p>
+    {/if}
   </div>
 {/if}

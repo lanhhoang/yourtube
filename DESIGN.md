@@ -67,3 +67,7 @@ Below 768 px (`md`) every screen uses the phone layout; at 768 px and up nothing
 - Inputs: 16 px text, so iOS does not zoom on focus.
 - Toasts: full width at the top, below the status bar.
 - Theme: the control lives in Settings only.
+
+## Switch
+
+A native `<input type="checkbox" role="switch">` drawn as a 44 × 24 px pill track with a 17 px round knob, inside a label row at least 44 px tall (label left, state right). Off: `surface` track, `line-strong` border, `fg` knob. On: `accent-fill` track and border, `on-accent` knob that slides 20 px, with the knob moving in 120 ms. The row also says "On" or "Off" in `muted` text, so state is never knob position or colour alone. Focus is the standard 2 px `fg` outline; disabled is 50% opacity.
