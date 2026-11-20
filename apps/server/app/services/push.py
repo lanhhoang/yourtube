@@ -11,6 +11,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from cryptography.hazmat.primitives import serialization
 from py_vapid import Vapid01
@@ -181,9 +182,9 @@ def send_to_all(
             if status in (404, 410):
                 delete_subscription(session, endpoint)
             else:
-                logger.warning("push to %s failed: %s", endpoint, exc)
+                logger.warning("push to %s failed: %s", urlsplit(endpoint).netloc, exc)
         except Exception:  # noqa: BLE001 - one bad endpoint must not stop the rest
-            logger.warning("push to %s failed", endpoint, exc_info=True)
+            logger.warning("push to %s failed", urlsplit(endpoint).netloc, exc_info=True)
 
 
 def notify_settled(job_id: int) -> None:

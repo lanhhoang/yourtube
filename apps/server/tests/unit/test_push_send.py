@@ -10,6 +10,7 @@ import requests
 from pywebpush import WebPushException
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.models import Download, PushSubscription
 from app.services import push
 from app.services.push import PushMessage, batch_message, job_message, send_to_all
@@ -29,7 +30,7 @@ class _Resp:
 
 def _recorder(calls: list[dict], fail: dict | None = None):
     def send(**kwargs):
-        calls.append({**kwargs, "vapid_claims": kwargs["vapid_claims"]})
+        calls.append({**kwargs, "vapid_claims": dict(kwargs["vapid_claims"])})
         exc = (fail or {}).get(kwargs["subscription_info"]["endpoint"])
         if exc is not None:
             raise exc
@@ -79,7 +80,35 @@ def test_two_services_get_own_claims_and_ttl(db_session: Session) -> None:
     assert len(calls) == 2
     assert calls[0]["vapid_claims"] is not calls[1]["vapid_claims"]
     assert all(c["ttl"] == 86400 for c in calls)
+    assert all(c["timeout"] == 10 for c in calls)
+    assert all(c["vapid_claims"] == {"sub": settings.vapid_subject} for c in calls)
+    assert all(c["vapid_private_key"] for c in calls)
     assert json.loads(calls[0]["data"]) == {"title": "t", "body": "b", "tag": "tag", "url": "/u"}
+
+
+def test_custom_timeout_passed(db_session: Session) -> None:
+    _subs(db_session, APPLE)
+    calls: list[dict] = []
+    send_to_all(db_session, PushMessage("t", "b", "tag", "/u"), send=_recorder(calls), timeout=3)
+    assert calls[0]["timeout"] == 3
+
+
+def test_404_deletes_subscription(db_session: Session) -> None:
+    _subs(db_session, APPLE, FCM)
+    calls: list[dict] = []
+    fail = {APPLE: WebPushException("nf", response=_Resp(404))}
+    send_to_all(db_session, PushMessage("t", "b", "tag", "/u"), send=_recorder(calls, fail))
+    assert len(calls) == 2
+    assert [s.endpoint for s in push.list_subscriptions(db_session)] == [FCM]
+
+
+def test_500_keeps_subscription_and_sends_others(db_session: Session) -> None:
+    _subs(db_session, APPLE, FCM)
+    calls: list[dict] = []
+    fail = {APPLE: WebPushException("err", response=_Resp(500))}
+    send_to_all(db_session, PushMessage("t", "b", "tag", "/u"), send=_recorder(calls, fail))
+    assert [c["subscription_info"]["endpoint"] for c in calls] == [APPLE, FCM]
+    assert len(push.list_subscriptions(db_session)) == 2
 
 
 def test_dead_endpoint_deleted(db_session: Session) -> None:

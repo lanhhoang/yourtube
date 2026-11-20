@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import cast
 
@@ -13,6 +14,8 @@ from app.services.push import notify_settled
 from app.services.queue import is_cancel_requested, release_job, update_progress
 from app.services.settings import resolve_runtime_settings
 
+logger = logging.getLogger(__name__)
+
 
 def _persist_progress(job_id: int, percent: float) -> None:
     with SessionLocal() as session:
@@ -24,14 +27,34 @@ def _cancel_requested(job_id: int) -> bool:
         return is_cancel_requested(session, job_id)
 
 
-def _release_and_notify(job_id: int, **kwargs) -> None:
+def _release_and_notify(
+    job_id: int,
+    *,
+    status: str,
+    error_code: str | None = None,
+    error_message: str | None = None,
+    file_path: str | None = None,
+    file_size: int | None = None,
+    media_format: str | None = None,
+    resolution_height: int | None = None,
+) -> None:
     with SessionLocal() as session:
-        released = release_job(session, job_id, **kwargs)
+        released = release_job(
+            session,
+            job_id,
+            status=status,
+            error_code=error_code,
+            error_message=error_message,
+            file_path=file_path,
+            file_size=file_size,
+            media_format=media_format,
+            resolution_height=resolution_height,
+        )
     if released:
         try:
             notify_settled(job_id)
         except Exception:  # noqa: BLE001 - a push failure never changes the job outcome
-            pass
+            logger.exception("push notification failed for job %s", job_id)
 
 
 def run_claimed_job(job_id: int) -> None:
