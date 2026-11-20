@@ -315,7 +315,7 @@ class BatchSummary:
 
 def _batch_summary(session: Session, batch_id: str) -> BatchSummary:
     def count(status: str):
-        return func.coalesce(func.sum(case_status(status)), 0)
+        return func.coalesce(func.sum(_case_status(status)), 0)
 
     row = session.execute(
         select(
@@ -342,7 +342,7 @@ def _batch_summary(session: Session, batch_id: str) -> BatchSummary:
     )
 
 
-def case_status(status: str):
+def _case_status(status: str):
     return case((Download.status == status, 1), else_=0)
 
 
@@ -352,6 +352,7 @@ def claim_batch_summary(session: Session, batch_id: str) -> BatchSummary | None:
     Marks every row of the batch ``batch_notified`` in a single UPDATE that
     only matches when no row is queued/active and none is already marked.
     Returns the counts to the one caller that won, else ``None``.
+    A losing call rolls back the session, so pass one with no pending work.
     """
     unsettled = exists().where(
         Download.batch_id == batch_id, Download.status.in_(("queued", "active"))
@@ -366,8 +367,9 @@ def claim_batch_summary(session: Session, batch_id: str) -> BatchSummary | None:
     if not result.rowcount:
         session.rollback()
         return None
+    summary = _batch_summary(session, batch_id)
     session.commit()
-    return _batch_summary(session, batch_id)
+    return summary
 
 
 def recent_batch_summaries(session: Session, limit: int = 5) -> list[BatchSummary]:

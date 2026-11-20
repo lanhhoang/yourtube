@@ -80,17 +80,23 @@ def test_claim_race_has_one_winner(db_session_visible: Session) -> None:
         _settle(db_session_visible, rows, ["done", "error"])
         barrier = threading.Barrier(2)
         results: list[object] = []
+        errors: list[BaseException] = []
 
         def worker() -> None:
-            with SessionLocal() as s:
-                barrier.wait()
-                results.append(claim_batch_summary(s, batch_id))
+            try:
+                with SessionLocal() as s:
+                    barrier.wait()
+                    results.append(claim_batch_summary(s, batch_id))
+            except BaseException as exc:  # noqa: BLE001
+                errors.append(exc)
 
         threads = [threading.Thread(target=worker) for _ in range(2)]
         for t in threads:
             t.start()
         for t in threads:
             t.join()
+        assert not errors, errors
+        assert len(results) == 2
         assert len([r for r in results if r is not None]) == 1
 
 
