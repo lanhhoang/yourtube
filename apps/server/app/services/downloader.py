@@ -251,6 +251,19 @@ def build_ytdlp_options(
     return options
 
 
+def pick_subtitle_langs(info: dict) -> list[str]:
+    """Pick original-language and real English subtitle keys, never translated auto captions."""
+    auto = info.get("automatic_captions") or {}
+    manual = info.get("subtitles") or {}
+    orig = next((k.removesuffix("-orig") for k in auto if k.endswith("-orig")), None)
+    if orig is None and info.get("language"):
+        orig = re.split(r"[+-]", info["language"])[0]
+    picks = [k for k in manual if k != "live_chat" and k.split("-")[0] in (orig, "en")]
+    if orig and not any(k.split("-")[0] == orig for k in picks) and f"{orig}-orig" in auto:
+        picks.append(f"{orig}-orig")
+    return list(dict.fromkeys(picks))
+
+
 def extract_info(
     url: str,
     *,
