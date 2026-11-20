@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict
+
 from fastapi import APIRouter, BackgroundTasks, Depends, Response
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
@@ -10,7 +12,7 @@ from app.api.errors import ApiError
 from app.config import resolve_repo_path
 from app.db import get_session
 from app.models import Download
-from app.schemas import EnqueueRequest, EnqueueResult, JobOut, QueueOut
+from app.schemas import BatchOut, EnqueueRequest, EnqueueResult, JobOut, QueueOut
 from app.services.push import notify_settled
 from app.services.queue import (
     cancel_job,
@@ -19,6 +21,7 @@ from app.services.queue import (
     get_active_jobs,
     get_failed_jobs,
     get_recent_completed_jobs,
+    recent_batch_summaries,
     retry_job,
 )
 
@@ -31,6 +34,7 @@ def get_queue(session: Session = Depends(get_session)) -> QueueOut:
         active=[JobOut.from_row(r) for r in get_active_jobs(session)],
         failed=[JobOut.from_row(r) for r in get_failed_jobs(session)],
         completed=[JobOut.from_row(r) for r in get_recent_completed_jobs(session, limit=20)],
+        batches=[BatchOut(**asdict(b)) for b in recent_batch_summaries(session)],
     )
 
 

@@ -1,16 +1,71 @@
 import { expect, test } from "vitest";
-import type { JobOut } from "../src/lib/queue.ts";
-import { newCompletions, readSeen } from "../src/lib/toasts.ts";
+import type { JobOut, QueueOut } from "../src/lib/queue.ts";
+import { newEvents, readSeen } from "../src/lib/toasts.ts";
 
-const job = (id: number) => ({ id, title: `t${id}` }) as JobOut;
+const job = (id: number, extra: Partial<JobOut> = {}) =>
+  ({ id, title: `t${id}`, url: `u${id}`, batch_id: null, ...extra }) as JobOut;
 
-test("first poll is silent, later polls toast only new ids", () => {
-  const r1 = newCompletions(new Set(), [job(1), job(2)], true);
+const queue = (q: Partial<QueueOut>): QueueOut => ({
+  active: [],
+  failed: [],
+  completed: [],
+  batches: [],
+  ...q,
+});
+
+test("first poll is silent but marks every key seen", () => {
+  const r1 = newEvents(
+    new Set(),
+    queue({
+      completed: [job(1), job(2)],
+      failed: [job(3)],
+      batches: [
+        { batch_id: "b", name: "Mix", done: 1, failed: 0, cancelled: 0, finished_at: null },
+      ],
+    }),
+    true,
+  );
   expect(r1.toasts).toEqual([]);
-  expect([...r1.seen]).toEqual(["1", "2"]);
-  const r2 = newCompletions(r1.seen, [job(2), job(3)], false);
-  expect(r2.toasts.map((j) => j.id)).toEqual([3]);
-  expect([...r2.seen]).toEqual(["1", "2", "3"]);
+  expect([...r1.seen].sort()).toEqual(["batch:b", "done:1", "done:2", "failed:3"]);
+});
+
+test("a new completed job toasts once", () => {
+  const q = queue({ completed: [job(2)] });
+  const r = newEvents(new Set(["done:1"]), q, false);
+  expect(r.toasts).toEqual([{ key: "done:2", kind: "done", title: "t2", body: "Downloaded" }]);
+  expect(newEvents(r.seen, q, false).toasts).toEqual([]);
+});
+
+test("a new failed single job toasts as failed", () => {
+  const r = newEvents(new Set(), queue({ failed: [job(4, { error_message: "Nope" })] }), false);
+  expect(r.toasts).toEqual([
+    { key: "failed:4", kind: "failed", title: "Download failed", body: "t4: Nope" },
+  ]);
+});
+
+test("jobs in a batch never toast on their own", () => {
+  const r = newEvents(
+    new Set(),
+    queue({ completed: [job(5, { batch_id: "b" })], failed: [job(6, { batch_id: "b" })] }),
+    false,
+  );
+  expect(r.toasts).toEqual([]);
+});
+
+test("a new batch toasts with the push wording", () => {
+  const b = { batch_id: "b", name: "Mix", done: 2, failed: 0, cancelled: 0, finished_at: null };
+  const q = queue({ batches: [b] });
+  const r = newEvents(new Set(), q, false);
+  expect(r.toasts).toEqual([{ key: "batch:b", kind: "batch", title: "Mix", body: "2 downloaded" }]);
+  expect(newEvents(r.seen, q, false).toasts).toEqual([]);
+  const mixed = newEvents(
+    new Set(),
+    queue({ batches: [{ ...b, done: 0, failed: 1, cancelled: 3 }] }),
+    false,
+  );
+  expect(mixed.toasts[0].body).toBe("1 failed, 3 cancelled");
+  const none = newEvents(new Set(), queue({ batches: [{ ...b, done: 0 }] }), false);
+  expect(none.toasts[0].body).toBe("0 downloaded");
 });
 
 test("readSeen tolerates bad input", () => {

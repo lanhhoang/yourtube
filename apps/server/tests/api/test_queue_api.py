@@ -137,3 +137,28 @@ def test_cancel_last_queued_of_batch_sends_summary(
     assert len(sent) == 1
     assert sent[0]["title"] == "Mix"
     assert sent[0]["body"] == "1 downloaded, 1 cancelled"
+
+
+def test_queue_lists_settled_batches(client: TestClient, db_session_visible: Session) -> None:
+    from app.services.queue import claim_batch_summary
+
+    _add(
+        db_session_visible,
+        "done",
+        batch_id="b1",
+        playlist_title="Mix",
+        finished_at=datetime(2026, 1, 1),
+    )
+    _add(
+        db_session_visible,
+        "error",
+        batch_id="b1",
+        playlist_title="Mix",
+        finished_at=datetime(2026, 1, 2),
+    )
+    assert claim_batch_summary(db_session_visible, "b1") is not None
+    batches = client.get("/api/queue").json()["batches"]
+    assert len(batches) == 1
+    assert batches[0]["batch_id"] == "b1"
+    assert batches[0]["name"] == "Mix"
+    assert (batches[0]["done"], batches[0]["failed"], batches[0]["cancelled"]) == (1, 1, 0)

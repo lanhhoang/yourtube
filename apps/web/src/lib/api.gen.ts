@@ -302,6 +302,21 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** BatchOut */
+        BatchOut: {
+            /** Batch Id */
+            batch_id: string;
+            /** Cancelled */
+            cancelled: number;
+            /** Done */
+            done: number;
+            /** Failed */
+            failed: number;
+            /** Finished At */
+            finished_at: string | null;
+            /** Name */
+            name: string;
+        };
         /** DiagnosticsOut */
         DiagnosticsOut: {
             /** Js Runtime Ready */
@@ -470,6 +485,8 @@ export interface components {
         QueueOut: {
             /** Active */
             active: components["schemas"]["JobOut"][];
+            /** Batches */
+            batches: components["schemas"]["BatchOut"][];
             /** Completed */
             completed: components["schemas"]["JobOut"][];
             /** Failed */

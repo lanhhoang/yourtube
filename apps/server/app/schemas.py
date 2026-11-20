@@ -229,10 +229,20 @@ class SourcesResult(BaseModel):
     skipped: int
 
 
+class BatchOut(BaseModel):
+    batch_id: str
+    name: str
+    done: int
+    failed: int
+    cancelled: int
+    finished_at: datetime | None
+
+
 class QueueOut(BaseModel):
     active: list[JobOut]
     failed: list[JobOut]
     completed: list[JobOut]
+    batches: list[BatchOut]
 
 
 class SettingsOut(BaseModel):
