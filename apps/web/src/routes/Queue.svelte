@@ -24,6 +24,23 @@
     }
   }
 
+  let dismissingAll = $state(false);
+  let dismissAllError = $state("");
+
+  async function dismissAll() {
+    if (dismissingAll) return;
+    dismissingAll = true;
+    dismissAllError = "";
+    try {
+      await call(api.POST("/api/queue/dismiss-failed"));
+      await refresh();
+    } catch (err) {
+      dismissAllError = messageFor(err);
+    } finally {
+      dismissingAll = false;
+    }
+  }
+
   const params = (job: JobOut) => ({ params: { path: { job_id: job.id } } });
   const cancel = (j: JobOut) =>
     act(j, () => call(api.POST("/api/downloads/{job_id}/cancel", params(j))));
@@ -99,7 +116,17 @@
   {/if}
 
   {#if queue.failed.length > 0}
-    <h2 class="m-0 mt-8 mb-3 text-lg font-semibold">Failed</h2>
+    <div class="mt-8 mb-3 flex items-center justify-between gap-3">
+      <h2 class="m-0 text-lg font-semibold">Failed</h2>
+      {#if queue.failed.length >= 2}
+        <button type="button" class={btn} disabled={dismissingAll} onclick={dismissAll}>
+          Dismiss all
+        </button>
+      {/if}
+    </div>
+    {#if dismissAllError}
+      <p class="m-0 mb-3 text-sm text-danger" role="alert">{dismissAllError}</p>
+    {/if}
     <ul class="m-0 flex list-none flex-col gap-4 p-0">
       {#each queue.failed as job (job.id)}
         <li class="flex flex-wrap items-center gap-x-4 gap-y-2 md:flex-nowrap">
