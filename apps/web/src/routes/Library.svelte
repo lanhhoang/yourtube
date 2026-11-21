@@ -1,10 +1,29 @@
 <script lang="ts">
   import { untrack } from "svelte";
+  import { MediaQuery } from "svelte/reactivity";
+  import { fly } from "svelte/transition";
+  import { cubicOut } from "svelte/easing";
+  import BottomSheet from "../components/BottomSheet.svelte";
   import JobCard from "../components/JobCard.svelte";
+  import LibraryFilters from "../components/LibraryFilters.svelte";
   import { api, call } from "../lib/api.ts";
   import { messageFor } from "../lib/errors.ts";
   import { latest } from "../lib/latest.ts";
-  import { bulkResultText, toggle } from "../lib/library.ts";
+  import {
+    activeFilterCount,
+    bulkResultText,
+    dropStale,
+    type Facets,
+    facets,
+    filterItems,
+    readView,
+    SORT_OPTIONS,
+    sameFilters,
+    saveView,
+    sortItems,
+    toggle,
+    VIEW_KEY,
+  } from "../lib/library.ts";
   import type { Toast } from "../lib/toasts.ts";
   import { type JobOut, leftActive, newlyCompleted, type QueueOut } from "../lib/queue.ts";
 
@@ -13,6 +32,11 @@
 
   let q = $state("");
   let done = $state<JobOut[]>([]);
+  // Facets of the unsearched list: a channel a search hides is not stale.
+  let fullFacets = $state<Facets | null>(null);
+  // Never mutate in place: readView can hand back the shared DEFAULT_VIEW.
+  let view = $state(readView(localStorage.getItem(VIEW_KEY)));
+  const wide = new MediaQuery("(min-width: 768px)");
   let loaded = $state(false);
   let error = $state("");
   const ticket = latest();
@@ -25,6 +49,7 @@
       );
       if (!current()) return;
       done = rows;
+      if (!query.trim()) fullFacets = facets(rows);
       error = "";
     } catch (err) {
       if (!current()) return;
@@ -59,11 +84,57 @@
   });
 
   const searching = $derived(q.trim() !== "");
-  const items = $derived(done);
+  const items = $derived(sortItems(filterItems(done, view), view.sort));
+  const filterCount = $derived(activeFilterCount(view));
+
+  $effect(() => {
+    saveView(view);
+  });
+
+  $effect(() => {
+    if (!fullFacets) return;
+    const next = dropStale(
+      untrack(() => view),
+      fullFacets,
+    );
+    if (next !== untrack(() => view)) view = next;
+  });
 
   function removed(id: number) {
     done = done.filter((j) => j.id !== id);
+    if (!searching) fullFacets = facets(done);
   }
+
+  let filtersOpen = $state(false);
+  let filterBtn = $state<HTMLButtonElement>();
+  let popover = $state<HTMLDivElement>();
+
+  function closeFilters(refocus = true) {
+    filtersOpen = false;
+    if (refocus) filterBtn?.focus();
+  }
+
+  function toggleFilters() {
+    if (filtersOpen) closeFilters();
+    else filtersOpen = true;
+  }
+
+  $effect(() => {
+    if (!filtersOpen || !wide.current || !popover) return;
+    popover.querySelector<HTMLElement>("input, select, button")?.focus();
+  });
+
+  $effect(() => {
+    if (!filtersOpen || !wide.current) return;
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (!popover?.contains(t) && !filterBtn?.contains(t)) closeFilters(false);
+    };
+    window.addEventListener("pointerdown", onDown);
+    return () => window.removeEventListener("pointerdown", onDown);
+  });
+
+  const slide = (node: Element) => fly(node, { y: -4, duration: 120, easing: cubicOut });
 
   let selecting = $state(false);
   let selected = $state(new Set<number>());
@@ -97,6 +168,19 @@
     });
   });
 
+  let seenView = untrack(() => view);
+  $effect(() => {
+    const now = view;
+    if (sameFilters(seenView, now)) {
+      seenView = now;
+      return;
+    }
+    seenView = now;
+    untrack(() => {
+      selected = new Set();
+    });
+  });
+
   // Any change to the selection cancels a pending "Delete n?".
   $effect(() => {
     void selected;
@@ -109,7 +193,12 @@
   }
 
   function onKey(e: KeyboardEvent) {
-    if (e.key === "Escape" && selecting) endSelecting();
+    if (e.key !== "Escape") return;
+    if (filtersOpen) {
+      if (wide.current) closeFilters();
+      return;
+    }
+    if (selecting) endSelecting();
   }
 
   function pick(id: number) {
@@ -161,6 +250,7 @@
       }
       // Moves the ticket on (drops stale loads) and drops rows that were already gone.
       void load(q);
+      if (!searching) fullFacets = facets(done);
     } finally {
       deleting = false;
     }
@@ -179,16 +269,116 @@
       placeholder="Search title or uploader"
       class="min-h-[44px] w-full rounded-pill border border-line-strong bg-surface px-4 py-1.5 text-[16px] text-fg placeholder:text-muted md:ml-auto md:min-h-0 md:w-72 md:text-base"
     >
-    {#if done.length > 0 || selecting}
+    <div class="flex w-full items-center gap-2 md:w-auto md:gap-4">
+      {#if done.length > 0}
+        <label for="library-sort" class="sr-only">Sort</label>
+        <select
+          id="library-sort"
+          value={view.sort}
+          onchange={(e) => (view = { ...view, sort: e.currentTarget.value as typeof view.sort })}
+          class="min-h-[44px] min-w-0 flex-1 cursor-pointer rounded-pill border border-line-strong bg-surface px-3 py-1 text-[16px] text-fg md:min-h-0 md:flex-none md:text-sm"
+        >
+          {#each SORT_OPTIONS as o (o.value)}
+            <option value={o.value}>{o.label}</option>
+          {/each}
+        </select>
+        <div class="relative">
+          <button
+            type="button"
+            bind:this={filterBtn}
+            aria-expanded={filtersOpen}
+            aria-haspopup="dialog"
+            class="min-h-[44px] cursor-pointer rounded-pill border border-line-strong bg-transparent px-5 py-1 text-[16px] font-medium whitespace-nowrap text-fg hover:bg-raised md:min-h-0 md:text-sm"
+            onclick={toggleFilters}
+          >
+            {filterCount > 0 ? `Filter · ${filterCount}` : "Filter"}
+          </button>
+          {#if filtersOpen && wide.current}
+            <div
+              bind:this={popover}
+              role="dialog"
+              aria-label="Filters"
+              transition:slide
+              class="absolute top-[calc(100%+8px)] right-0 z-20 rounded-control border border-line-strong bg-surface p-4 shadow-[0_8px_24px_rgb(0_0_0/0.4)]"
+            >
+              <LibraryFilters
+                bind:view
+                channels={fullFacets?.channels ?? []}
+                playlists={fullFacets?.playlists ?? []}
+              />
+            </div>
+          {/if}
+        </div>
+      {/if}
+      {#if done.length > 0 || selecting}
+        <button
+          type="button"
+          class="min-h-[44px] cursor-pointer rounded-pill border border-line-strong bg-transparent px-5 py-1 text-[16px] font-medium text-fg hover:bg-raised md:min-h-0 md:text-sm"
+          onclick={toggleSelecting}
+        >
+          {selecting ? "Done" : "Select"}
+        </button>
+      {/if}
+    </div>
+  </div>
+
+  {#if !wide.current}
+    <BottomSheet open={filtersOpen} title="Filters" onclose={() => closeFilters(false)}>
+      <LibraryFilters
+        bind:view
+        channels={fullFacets?.channels ?? []}
+        playlists={fullFacets?.playlists ?? []}
+      />
+    </BottomSheet>
+  {/if}
+
+  {#if filterCount > 0}
+    {@const pill =
+      "inline-flex items-center gap-1 rounded-pill border border-line-strong py-1 pr-1 pl-3 text-sm text-fg"}
+    {@const pills = [
+      ...(view.kind !== "any"
+        ? [
+            {
+              text: view.kind === "audio" ? "Audio" : "Video",
+              clear: () => (view = { ...view, kind: "any" as const }),
+            },
+          ]
+        : []),
+      ...(view.channel
+        ? [{ text: `Channel: ${view.channel}`, clear: () => (view = { ...view, channel: null }) }]
+        : []),
+      ...(view.playlist
+        ? [
+            {
+              text: `Playlist: ${view.playlist}`,
+              clear: () => (view = { ...view, playlist: null }),
+            },
+          ]
+        : []),
+    ]}
+    <div class="mt-3 flex flex-wrap items-center gap-2">
+      {#each pills as p (p.text)}
+        <span class={pill}>
+          <span>{p.text}</span>
+          <button
+            type="button"
+            aria-label="Remove filter {p.text}"
+            class="grid size-[44px] cursor-pointer place-items-center rounded-pill border-0 bg-transparent text-fg hover:bg-raised md:size-6"
+            onclick={p.clear}
+          >
+            <span aria-hidden="true">✕</span>
+          </button>
+        </span>
+      {/each}
       <button
         type="button"
-        class="min-h-[44px] cursor-pointer rounded-pill border border-line-strong bg-transparent px-5 py-1 text-sm font-medium text-fg hover:bg-raised md:min-h-0"
-        onclick={toggleSelecting}
+        class="min-h-[44px] cursor-pointer rounded-pill border-0 bg-transparent px-3 py-1 text-sm text-muted underline hover:text-fg md:min-h-0"
+        onclick={() => (view = { ...view, kind: "any", channel: null, playlist: null })}
       >
-        {selecting ? "Done" : "Select"}
+        Clear filters
       </button>
-    {/if}
-  </div>
+    </div>
+  {/if}
 
   {#if error}
     <p class="mt-6 text-danger">
@@ -206,10 +396,21 @@
       <p class="mt-6 text-muted">
         {#if searching && done.length === 0}
           Nothing matches “{q.trim()}”.
-        {:else}
+        {:else if done.length === 0}
           No downloads yet. Paste a URL above.
+        {:else}
+          No videos match these filters.
         {/if}
       </p>
+      {#if done.length > 0 && !(searching && done.length === 0)}
+        <button
+          type="button"
+          class="mt-3 min-h-[44px] cursor-pointer rounded-pill border border-line-strong bg-transparent px-5 py-1 text-sm font-medium text-fg hover:bg-raised md:min-h-9"
+          onclick={() => (view = { ...view, kind: "any", channel: null, playlist: null })}
+        >
+          Clear filters
+        </button>
+      {/if}
     {:else}
       <div
         class="mt-4 flex flex-col gap-3 md:mt-6 md:grid md:grid-cols-[repeat(auto-fill,minmax(240px,1fr))] md:gap-x-4 md:gap-y-6"

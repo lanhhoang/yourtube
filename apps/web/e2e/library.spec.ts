@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import { APP } from "./app.ts";
 
 const downloads = resolve(import.meta.dirname, "../../../tmp/e2e/downloads");
@@ -169,4 +169,85 @@ test("select and delete several", async ({ page }) => {
   await expect.poll(() => files.some((f) => existsSync(f))).toBe(false);
   await expect(page.getByText("Deleted 2", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Select", exact: true })).toBeVisible();
+});
+
+const titles = (page: Page) => page.getByRole("heading", { level: 3 }).allTextContents();
+const order = async (page: Page) => (await titles(page)).filter((t) => t.startsWith("Sort "));
+const row = (page: Page, title: string) =>
+  page
+    .getByRole("article")
+    .filter({ has: page.getByRole("heading", { name: title, exact: true }) });
+
+test("sort by title", async ({ page }) => {
+  await page.goto(`${APP}#/`);
+  await expect(row(page, "Sort A")).toBeVisible();
+  const byDate = await order(page);
+  expect(byDate.indexOf("Sort B")).toBeLessThan(byDate.indexOf("Sort A"));
+  await page.getByLabel("Sort").selectOption({ label: "Title A–Z" });
+  await expect
+    .poll(async () => {
+      const t = await order(page);
+      return t.indexOf("Sort A") < t.indexOf("Sort B");
+    })
+    .toBe(true);
+});
+
+test("filter by channel and clear", async ({ page }) => {
+  await page.goto(`${APP}#/`);
+  await expect(row(page, "Sort A")).toBeVisible();
+  await page.getByRole("button", { name: /^Filter/ }).click();
+  const dialog = page.getByRole("dialog", { name: "Filters" });
+  await dialog.getByLabel("Channel").selectOption("Other");
+  await expect(row(page, "Sort listed")).toBeVisible();
+  await expect(row(page, "Sort A")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Filter · 1" })).toBeVisible();
+  await expect(page.getByText("Channel: Other", { exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await page.getByRole("button", { name: "Remove filter Channel: Other" }).click();
+  await expect(row(page, "Sort A")).toBeVisible();
+});
+
+test("filter by type audio", async ({ page }) => {
+  await page.goto(`${APP}#/`);
+  await expect(row(page, "Sort A")).toBeVisible();
+  await page.getByRole("button", { name: /^Filter/ }).click();
+  const dialog = page.getByRole("dialog", { name: "Filters" });
+  await dialog.getByRole("radiogroup", { name: "Type" }).getByLabel("Audio").check({ force: true });
+  await expect(row(page, "Sort audio")).toBeVisible();
+  await expect(row(page, "Sort A")).toHaveCount(0);
+  await expect(row(page, "Sort listed")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await page.getByRole("button", { name: "Clear filters" }).click();
+  await expect(row(page, "Sort A")).toBeVisible();
+});
+
+test("a search keeps the channel filter", async ({ page }) => {
+  await page.goto(`${APP}#/`);
+  await expect(row(page, "Sort A")).toBeVisible();
+  await page.getByRole("button", { name: /^Filter/ }).click();
+  await page.getByRole("dialog", { name: "Filters" }).getByLabel("Channel").selectOption("Other");
+  await page.keyboard.press("Escape");
+  await page.getByRole("searchbox", { name: "Search library" }).fill("Sort A");
+  await expect(page.getByText("No videos match these filters.")).toBeVisible();
+  await expect(page.getByText("Channel: Other", { exact: true })).toBeVisible();
+  await page.getByRole("searchbox", { name: "Search library" }).fill("");
+  await expect(row(page, "Sort listed")).toBeVisible();
+});
+
+test("view persists; a stale channel is dropped", async ({ page }) => {
+  await page.goto(`${APP}#/`);
+  await page.getByLabel("Sort").selectOption("added-asc");
+  await page.reload();
+  await expect(page.getByLabel("Sort")).toHaveValue("added-asc");
+  await page.evaluate(() =>
+    localStorage.setItem(
+      "yt.library.view",
+      '{"sort":"added-desc","kind":"any","channel":"Gone","playlist":null}',
+    ),
+  );
+  await page.reload();
+  await expect(row(page, "Sort A")).toBeVisible();
+  await expect(page.getByText("Channel: Gone")).toHaveCount(0);
 });

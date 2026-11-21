@@ -141,6 +141,31 @@ test("select mode on phone", async ({ page }) => {
   await expectNoSideScroll(page);
 });
 
+test("filters open in a sheet", async ({ page }) => {
+  await page.goto(`${APP}#/`);
+  await expect(page.getByRole("link", { name: "Phone video" })).toBeVisible();
+  const toolbar = page.getByRole("main");
+  await expectTarget(toolbar.getByLabel("Sort"));
+  await expectTarget(toolbar.getByRole("button", { name: /^Filter/ }));
+  await expectTarget(toolbar.getByRole("button", { name: "Select", exact: true }));
+  await toolbar.getByRole("button", { name: /^Filter/ }).tap();
+  const sheet = page.getByRole("dialog", { name: "Filters" });
+  await expect(sheet).toBeVisible();
+  await expectTarget(sheet.getByRole("button", { name: "Close" }));
+  for (const label of await sheet.getByRole("radiogroup", { name: "Type" }).locator("label").all())
+    await expectTarget(label);
+  await expectTarget(sheet.getByLabel("Channel"));
+  const small = (sel: string) =>
+    page
+      .locator(sel)
+      .evaluateAll(
+        (els) => els.filter((e) => Number.parseFloat(getComputedStyle(e).fontSize) < 16).length,
+      );
+  expect(await small("main select")).toBe(0);
+  expect(await small("dialog select")).toBe(0);
+  await expectNoSideScroll(page);
+});
+
 test("queue: no sideways scroll, Cancel is a 44 px target", async ({ page, request }) => {
   const res = await request.post("/api/downloads", {
     data: { jobs: [{ url: "https://e2e.test/slow-phone", title: "Phone queued job" }] },
