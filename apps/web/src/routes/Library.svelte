@@ -1,11 +1,10 @@
 <script lang="ts">
   import { untrack } from "svelte";
-  import Chips from "../components/Chips.svelte";
   import JobCard from "../components/JobCard.svelte";
   import { api, call } from "../lib/api.ts";
   import { messageFor } from "../lib/errors.ts";
   import { latest } from "../lib/latest.ts";
-  import { bulkResultText, type Chip, libraryItems, toggle } from "../lib/library.ts";
+  import { bulkResultText, toggle } from "../lib/library.ts";
   import type { Toast } from "../lib/toasts.ts";
   import { type JobOut, leftActive, newlyCompleted, type QueueOut } from "../lib/queue.ts";
 
@@ -13,7 +12,6 @@
     $props();
 
   let q = $state("");
-  let chip = $state<Chip>("all");
   let done = $state<JobOut[]>([]);
   let loaded = $state(false);
   let error = $state("");
@@ -61,8 +59,7 @@
   });
 
   const searching = $derived(q.trim() !== "");
-  const items = $derived(libraryItems(done, searching ? [] : (queue?.active ?? []), chip));
-  const noJobs = $derived(done.length === 0 && (searching || (queue?.active.length ?? 0) === 0));
+  const items = $derived(done);
 
   function removed(id: number) {
     done = done.filter((j) => j.id !== id);
@@ -78,7 +75,7 @@
   // Rows can vanish on a reload, so only ids still in `done` count.
   const doneIds = $derived(new Set(done.map((j) => j.id)));
   const picked = $derived([...selected].filter((id) => doneIds.has(id)));
-  const visibleDone = $derived(items.filter((j) => j.status === "done").map((j) => j.id));
+  const visibleDone = $derived(items.map((j) => j.id));
   const allPicked = $derived(visibleDone.length > 0 && visibleDone.every((id) => selected.has(id)));
 
   function resetConfirm() {
@@ -95,7 +92,6 @@
 
   $effect(() => {
     void q;
-    void chip;
     untrack(() => {
       selected = new Set();
     });
@@ -193,7 +189,6 @@
       </button>
     {/if}
   </div>
-  <div class="mt-3 md:mt-4"><Chips bind:value={chip} /></div>
 
   {#if error}
     <p class="mt-6 text-danger">
@@ -211,10 +206,8 @@
       <p class="mt-6 text-muted">
         {#if searching && done.length === 0}
           Nothing matches “{q.trim()}”.
-        {:else if noJobs}
-          No downloads yet. Paste a URL above.
         {:else}
-          Nothing here yet.
+          No downloads yet. Paste a URL above.
         {/if}
       </p>
     {:else}

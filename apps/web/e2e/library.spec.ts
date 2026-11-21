@@ -144,3 +144,29 @@ test("select and delete several", async ({ page }) => {
   await expect(page.getByText("Deleted 2", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Select", exact: true })).toBeVisible();
 });
+
+test("library lists finished downloads only", async ({ page }) => {
+  await page.route("**/api/queue", (route) =>
+    route.fulfill({
+      json: {
+        active: [
+          {
+            id: 9201,
+            url: "https://example.com/active",
+            title: "Stubbed active",
+            status: "active",
+            progress: 40,
+            media_kind: "video",
+          },
+        ],
+        failed: [],
+        completed: [],
+        batches: [],
+      },
+    }),
+  );
+  await page.goto(`${APP}#/`);
+  await expect(page.getByRole("link", { name: "Seeded video" })).toBeVisible();
+  await expect(page.getByRole("article").filter({ hasText: "Stubbed active" })).toHaveCount(0);
+  await expect(page.getByRole("radiogroup", { name: "Filter" })).toHaveCount(0);
+});
