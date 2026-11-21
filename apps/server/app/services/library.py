@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 
 from sqlalchemy import or_, select
@@ -9,6 +10,9 @@ from sqlalchemy.orm import Session
 
 from app.config import resolve_repo_path
 from app.models import Download
+from app.services.subtitles import media_sidecars
+
+logger = logging.getLogger("yourtube")
 
 
 def get_library(session: Session) -> list[Download]:
@@ -56,12 +60,18 @@ def delete_from_library(session: Session, job_id: int) -> tuple[bool, str]:
 
     file_missing = False
     if row.file_path:
+        media = resolve_repo_path(row.file_path)
         try:
-            os.remove(resolve_repo_path(row.file_path))
+            os.remove(media)
         except FileNotFoundError:
             file_missing = True
         except OSError:
             return False, "delete_failed"
+        for sidecar, _lang, _ext in media_sidecars(media):
+            try:
+                os.remove(sidecar)
+            except OSError as exc:
+                logger.warning("could not remove sidecar %s: %s", sidecar, exc)
 
     session.delete(row)
     session.commit()

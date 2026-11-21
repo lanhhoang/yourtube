@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
@@ -162,3 +163,63 @@ def test_delete_from_library_resolves_relative_file_path(db_session: Session) ->
 
     assert success is True
     remove.assert_called_once_with(REPO_ROOT / "tmp" / "downloads" / "rel.mp4")
+
+
+def _row_with_file(db_session: Session, file_path: Path) -> Download:
+    row = enqueue_download(db_session, _make("https://example.com/sc", title="Sc"))
+    _mark_done(row, db_session)
+    db_session.execute(
+        Download.__table__.update().where(Download.id == row.id).values(file_path=str(file_path))
+    )
+    db_session.expire(row)
+    return row
+
+
+def test_delete_removes_subtitle_sidecars(db_session: Session, tmp_path: Path) -> None:
+    """Deleting ``v`` removes its sidecars but not those of ``v.2`` or ``v-2``."""
+    names = [
+        "v.mp4",
+        "v.en.srt",
+        "v.en.txt",
+        "v.txt",
+        "v.2.mp4",
+        "v.2.srt",
+        "v-2.mp4",
+        "v-2.en.srt",
+    ]
+    for name in names:
+        (tmp_path / name).write_text("x")
+    row = _row_with_file(db_session, tmp_path / "v.mp4")
+
+    assert delete_from_library(db_session, row.id) == (True, "")
+    assert sorted(p.name for p in tmp_path.iterdir()) == [
+        "v-2.en.srt",
+        "v-2.mp4",
+        "v.2.mp4",
+        "v.2.srt",
+    ]
+
+
+def test_delete_keeps_sidecars_when_media_delete_fails(db_session: Session, tmp_path: Path) -> None:
+    media = tmp_path / "v.mp4"
+    media.write_text("x")
+    (tmp_path / "v.en.srt").write_text("x")
+    row = _row_with_file(db_session, media)
+    real_remove = os.remove
+
+    def fake_remove(path: str | Path) -> None:
+        if Path(path) == media:
+            raise PermissionError
+        real_remove(path)
+
+    with patch("app.services.library.os.remove", fake_remove):
+        assert delete_from_library(db_session, row.id) == (False, "delete_failed")
+    assert (tmp_path / "v.en.srt").exists()
+
+
+def test_delete_removes_sidecars_when_media_missing(db_session: Session, tmp_path: Path) -> None:
+    (tmp_path / "v.en.srt").write_text("x")
+    row = _row_with_file(db_session, tmp_path / "v.mp4")
+
+    assert delete_from_library(db_session, row.id) == (True, "file_missing")
+    assert not (tmp_path / "v.en.srt").exists()

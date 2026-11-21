@@ -13,6 +13,23 @@ test("player opens from the library and reports unplayable files", async ({ page
   await expect(page.getByRole("button", { name: "Delete" })).toBeVisible();
   await expect(page.getByText("Save", { exact: true })).toBeVisible();
   await expect(page.getByText("E2E · 1080p · SDR · 4 B · h264 · aac · mp4")).toBeVisible();
+  const tracks = page.locator("video track");
+  await expect(tracks).toHaveCount(2);
+  for (const [i, label, lang] of [
+    [0, "French (auto)", "fr"],
+    [1, "English", "en"],
+  ] as const) {
+    const t = tracks.nth(i);
+    await expect(t).toHaveAttribute("label", label);
+    await expect(t).toHaveAttribute("srclang", lang);
+    await expect(t).toHaveAttribute("kind", "subtitles");
+    await expect(t).not.toHaveAttribute("default");
+  }
+  const vtt = await page.request.get(
+    new URL((await tracks.nth(0).getAttribute("src")) ?? "", page.url()).href,
+  );
+  expect(vtt.status()).toBe(200);
+  expect(await vtt.text()).toMatch(/^WEBVTT/);
   await page.locator("video").evaluate((v) => v.dispatchEvent(new Event("error")));
   await expect(
     page.getByText("This device can't play this file. Save it and open it in VLC."),
@@ -79,6 +96,10 @@ test("delete in library", async ({ page }) => {
   const moved = resolve(downloads, "e2e/seeded-video.mp4");
   expect(existsSync(moved)).toBe(true);
   expect(existsSync(resolve(downloads, "seeded.mp4"))).toBe(false);
+  const srts = ["e2e/seeded-video.en.srt", "e2e/seeded-video.fr-orig.srt"].map((f) =>
+    resolve(downloads, f),
+  );
+  expect(existsSync(srts[0])).toBe(true);
 
   await page.goto(`${APP}#/`);
   const card = page.getByRole("article").filter({ hasText: "Seeded video" });
@@ -87,4 +108,5 @@ test("delete in library", async ({ page }) => {
   await card.getByRole("button", { name: "Confirm delete" }).click();
   await expect(card).toHaveCount(0);
   await expect.poll(() => existsSync(moved)).toBe(false);
+  await expect.poll(() => srts.some((f) => existsSync(f))).toBe(false);
 });

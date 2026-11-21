@@ -1,14 +1,17 @@
 <script lang="ts">
   import { api, call } from "../lib/api.ts";
+  import type { components } from "../lib/api.gen.ts";
   import { ApiError, messageFor } from "../lib/errors.ts";
   import { watchMeta } from "../lib/library.ts";
   import type { JobOut } from "../lib/queue.ts";
   import { navigate } from "../lib/router.svelte.ts";
   import { canShareFiles, fetchBlob, fileName, saveMode } from "../lib/save.ts";
+  import { trackLabel } from "../lib/subtitles.ts";
 
   let { id }: { id: number } = $props();
 
   let job = $state<JobOut | null>(null);
+  let tracks = $state<components["schemas"]["SubtitleTrackOut"][]>([]);
   let phase = $state<"loading" | "ready" | "missing" | "error">("loading");
   let error = $state("");
   let playError = $state(false);
@@ -34,6 +37,13 @@
       try {
         job = await call(api.GET("/api/downloads/{job_id}", { params: { path: { job_id: id } } }));
         phase = "ready";
+        if (job.status === "done" && job.media_kind === "video") {
+          try {
+            tracks = await call(
+              api.GET("/api/downloads/{job_id}/subtitles", { params: { path: { job_id: id } } }),
+            );
+          } catch {}
+        }
       } catch (err) {
         if (err instanceof ApiError && err.code === "not_found") phase = "missing";
         else {
@@ -115,7 +125,7 @@
         <audio controls {src} class="w-full" onerror={() => (playError = true)}></audio>
       {:else}
         <!-- svelte-ignore a11y_media_has_caption -->
-        <!-- biome-ignore lint/a11y/useMediaCaption: downloaded files carry no caption track -->
+        <!-- biome-ignore lint/a11y/useMediaCaption: subtitle tracks are kind="subtitles" and only exist when they were downloaded -->
         <video
           controls
           playsinline
@@ -123,7 +133,16 @@
           {src}
           class="aspect-video w-full bg-black"
           onerror={() => (playError = true)}
-        ></video>
+        >
+          {#each tracks as t (t.lang)}
+            <track
+              kind="subtitles"
+              src={t.url}
+              srclang={t.lang.replace(/-orig$/, "")}
+              label={trackLabel(t.lang)}
+            >
+          {/each}
+        </video>
       {/if}
     </div>
     {#if playError}

@@ -139,6 +139,9 @@ def _seed() -> None:
     downloads.mkdir(parents=True, exist_ok=True)
     seeded = downloads / "seeded.mp4"
     seeded.write_bytes(b"data")
+    cue = "1\n00:00:00,000 --> 00:00:01,000\nHello\n"
+    (downloads / "seeded.en.srt").write_text(cue)
+    (downloads / "seeded.fr-orig.srt").write_text(cue)
     with SessionLocal() as session:
         session.add(
             Download(
