@@ -170,6 +170,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/library/delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bulk Delete */
+        post: operations["bulk_delete_api_library_delete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/library/{job_id}": {
         parameters: {
             query?: never;
@@ -367,6 +384,25 @@ export interface components {
             finished_at: string | null;
             /** Name */
             name: string;
+        };
+        /** BulkDeleteFailure */
+        BulkDeleteFailure: {
+            /** Id */
+            id: number;
+            /** Reason */
+            reason: string;
+        };
+        /** BulkDeleteIn */
+        BulkDeleteIn: {
+            /** Ids */
+            ids: number[];
+        };
+        /** BulkDeleteOut */
+        BulkDeleteOut: {
+            /** Deleted */
+            deleted: number[];
+            /** Failed */
+            failed: components["schemas"]["BulkDeleteFailure"][];
         };
         /** DiagnosticsOut */
         DiagnosticsOut: {
@@ -1017,6 +1053,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JobOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bulk_delete_api_library_delete_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkDeleteIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkDeleteOut"];
                 };
             };
             /** @description Validation Error */

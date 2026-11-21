@@ -176,6 +176,20 @@ class EnqueueRequest(BaseModel):
     jobs: list[JobCreate] = Field(min_length=1, max_length=500)
 
 
+class BulkDeleteIn(BaseModel):
+    ids: list[int] = Field(min_length=1, max_length=500)
+
+
+class BulkDeleteFailure(BaseModel):
+    id: int
+    reason: str
+
+
+class BulkDeleteOut(BaseModel):
+    deleted: list[int]
+    failed: list[BulkDeleteFailure]
+
+
 class EnqueueResult(BaseModel):
     created: list[JobOut]
 

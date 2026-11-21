@@ -76,3 +76,26 @@ def delete_from_library(session: Session, job_id: int) -> tuple[bool, str]:
     session.delete(row)
     session.commit()
     return True, "file_missing" if file_missing else ""
+
+
+def delete_many(session: Session, ids: list[int]) -> tuple[list[int], list[tuple[int, str]]]:
+    """Delete several completed downloads; returns ``(deleted, failed)``.
+
+    Duplicate ids are dropped (first-seen order kept). Each id is committed
+    separately by ``delete_from_library``.
+    """
+    deleted: list[int] = []
+    failed: list[tuple[int, str]] = []
+    for job_id in dict.fromkeys(ids):
+        try:
+            ok, reason = delete_from_library(session, job_id)
+        except Exception:
+            session.rollback()
+            logger.exception("bulk delete failed for download %s", job_id)
+            failed.append((job_id, "delete_failed"))
+            continue
+        if ok:
+            deleted.append(job_id)
+        else:
+            failed.append((job_id, reason))
+    return deleted, failed

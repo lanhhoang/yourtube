@@ -16,6 +16,7 @@ from app.models import Download
 from app.schemas import DownloadCreate
 from app.services.library import (
     delete_from_library,
+    delete_many,
     get_library,
     search_library,
 )
@@ -256,3 +257,61 @@ def test_delete_ignores_sidecar_removal_failure(
     assert db_session.get(Download, row_id) is None
     assert not media.exists()
     assert any("could not remove sidecar" in r.getMessage() for r in caplog.records)
+
+
+def test_delete_many_partial(db_session: Session, tmp_path: Path) -> None:
+    a_file = tmp_path / "a.mp4"
+    a_file.write_text("a")
+    a_srt = tmp_path / "a.en.srt"
+    a_srt.write_text("s")
+    d_file = tmp_path / "d.mp4"
+    d_file.write_text("d")
+    a = _row_with_file(db_session, a_file)
+    b = _row_with_file(db_session, tmp_path / "b.mp4")  # never written
+    c = enqueue_download(db_session, _make("https://example.com/c"))
+    d = _row_with_file(db_session, d_file)
+
+    real_remove = os.remove
+
+    def fake_remove(path: str | Path) -> None:
+        if Path(path) == d_file:
+            raise PermissionError("nope")
+        real_remove(path)
+
+    with patch("app.services.library.os.remove", fake_remove):
+        deleted, failed = delete_many(db_session, [a.id, b.id, c.id, d.id, 999999])
+
+    assert deleted == [a.id, b.id]
+    assert failed == [(c.id, "not_done"), (d.id, "delete_failed"), (999999, "not_found")]
+    assert not a_file.exists()
+    assert not a_srt.exists()
+    assert d_file.exists()
+    assert db_session.get(Download, d.id) is not None
+    assert db_session.get(Download, c.id) is not None
+
+
+def test_delete_many_dedupes(db_session: Session, tmp_path: Path) -> None:
+    f = tmp_path / "a.mp4"
+    f.write_text("a")
+    a = _row_with_file(db_session, f)
+    assert delete_many(db_session, [a.id, a.id]) == ([a.id], [])
+
+
+def test_delete_many_survives_unexpected_exception(db_session: Session, tmp_path: Path) -> None:
+    files = [tmp_path / f"{n}.mp4" for n in "abc"]
+    for f in files:
+        f.write_text("x")
+    a, b, c = (_row_with_file(db_session, f).id for f in files)
+    real = delete_from_library
+
+    def flaky(session: Session, job_id: int) -> tuple[bool, str]:
+        if job_id == b:
+            raise RuntimeError("boom")
+        return real(session, job_id)
+
+    with patch("app.services.library.delete_from_library", flaky):
+        deleted, failed = delete_many(db_session, [a, b, c])
+
+    assert deleted == [a, c]
+    assert failed == [(b, "delete_failed")]
+    assert db_session.get(Download, b) is not None

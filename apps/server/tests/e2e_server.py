@@ -177,6 +177,24 @@ def _seed() -> None:
                 finished_at=datetime.now(),
             )
         )
+        # Used only by "select and delete several" in e2e/library.spec.ts.
+        for letter in ("a", "b"):
+            bulk = downloads / f"bulk-{letter}.mp4"
+            bulk.write_bytes(b"data")
+            session.add(
+                Download(
+                    url=f"https://e2e.test/bulk-{letter}",
+                    title=f"Bulk {letter.upper()}",
+                    uploader="E2E",
+                    status="done",
+                    progress=100.0,
+                    file_path=str(bulk),
+                    file_size=4,
+                    media_format="mp4",
+                    resolution_height=1080,
+                    finished_at=datetime.now(),
+                )
+            )
         session.add(Download(url="https://e2e.test/slow", title="Slow video", status="queued"))
         session.commit()
 
