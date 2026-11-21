@@ -295,3 +295,23 @@ def test_delete_many_dedupes(db_session: Session, tmp_path: Path) -> None:
     f.write_text("a")
     a = _row_with_file(db_session, f)
     assert delete_many(db_session, [a.id, a.id]) == ([a.id], [])
+
+
+def test_delete_many_survives_unexpected_exception(db_session: Session, tmp_path: Path) -> None:
+    files = [tmp_path / f"{n}.mp4" for n in "abc"]
+    for f in files:
+        f.write_text("x")
+    a, b, c = (_row_with_file(db_session, f).id for f in files)
+    real = delete_from_library
+
+    def flaky(session: Session, job_id: int) -> tuple[bool, str]:
+        if job_id == b:
+            raise RuntimeError("boom")
+        return real(session, job_id)
+
+    with patch("app.services.library.delete_from_library", flaky):
+        deleted, failed = delete_many(db_session, [a, b, c])
+
+    assert deleted == [a, c]
+    assert failed == [(b, "delete_failed")]
+    assert db_session.get(Download, b) is not None

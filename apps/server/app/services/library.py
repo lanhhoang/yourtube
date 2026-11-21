@@ -87,7 +87,13 @@ def delete_many(session: Session, ids: list[int]) -> tuple[list[int], list[tuple
     deleted: list[int] = []
     failed: list[tuple[int, str]] = []
     for job_id in dict.fromkeys(ids):
-        ok, reason = delete_from_library(session, job_id)
+        try:
+            ok, reason = delete_from_library(session, job_id)
+        except Exception:
+            session.rollback()
+            logger.exception("bulk delete failed for download %s", job_id)
+            failed.append((job_id, "delete_failed"))
+            continue
         if ok:
             deleted.append(job_id)
         else:

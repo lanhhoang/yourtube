@@ -134,19 +134,37 @@
     if (deleting) return;
     deleting = true;
     resetConfirm();
+    const gone = new Set<number>();
+    let failed = 0;
+    let ok = false;
     try {
-      const res = await call(api.POST("/api/library/delete", { body: { ids: picked } }));
-      const gone = new Set(res.deleted);
-      done = done.filter((j) => !gone.has(j.id));
-      selected = new Set([...selected].filter((id) => !gone.has(id)));
-      ontoast({
-        kind: "deleted",
-        title: "",
-        body: bulkResultText(res.deleted.length, res.failed.length),
-      });
-      if (picked.length === 0) endSelecting();
+      const ids = [...picked];
+      for (let i = 0; i < ids.length; i += 500) {
+        const res = await call(
+          api.POST("/api/library/delete", { body: { ids: ids.slice(i, i + 500) } }),
+        );
+        for (const id of res.deleted) gone.add(id);
+        failed += res.failed.length;
+      }
+      ok = true;
     } catch (err) {
       bulkError = messageFor(err);
+    }
+    try {
+      if (gone.size > 0) {
+        done = done.filter((j) => !gone.has(j.id));
+        selected = new Set([...selected].filter((id) => !gone.has(id)));
+      }
+      if (ok) {
+        ontoast({
+          kind: "deleted",
+          title: "",
+          body: bulkResultText(gone.size, failed),
+        });
+        if (picked.length === 0) endSelecting();
+      }
+      // Moves the ticket on (drops stale loads) and drops rows that were already gone.
+      void load(q);
     } finally {
       deleting = false;
     }
@@ -165,7 +183,7 @@
       placeholder="Search title or uploader"
       class="min-h-[44px] w-full rounded-pill border border-line-strong bg-surface px-4 py-1.5 text-[16px] text-fg placeholder:text-muted md:ml-auto md:min-h-0 md:w-72 md:text-base"
     >
-    {#if done.length > 0}
+    {#if done.length > 0 || selecting}
       <button
         type="button"
         class="min-h-[44px] cursor-pointer rounded-pill border border-line-strong bg-transparent px-5 py-1 text-sm font-medium text-fg hover:bg-raised md:min-h-0"

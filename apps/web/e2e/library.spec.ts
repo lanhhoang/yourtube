@@ -96,6 +96,7 @@ test("select mode does not navigate", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Seeded video" })).toBeVisible();
   await page.getByRole("button", { name: "Select", exact: true }).click();
   await expect(page.getByRole("link", { name: "Seeded video" })).toHaveCount(0);
+  await expect(page.getByRole("checkbox", { name: "Slow video" })).toHaveCount(0);
   const box = page.getByRole("checkbox", { name: "Seeded video" });
   // The card-wide label sits over the title, so click the title's position directly.
   await page.getByRole("heading", { name: "Seeded video" }).click({ force: true });
