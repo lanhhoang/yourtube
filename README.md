@@ -13,6 +13,12 @@ Self-hosted YouTube video downloader with a web UI, persistent queue, and librar
 - One process, one port: FastAPI serves the JSON API under `/api` and the built web app
 - Docker and Docker Compose packaging for local deployment
 
+### Library
+
+The Library lists finished downloads. **Sort** by newest, oldest, title, duration or size. **Filter** by type (video or audio), channel and playlist; the filters combine, and your sort and filters are remembered in this browser. **Select** lets you pick several downloads (or "Select all" for what is shown) and delete them after a confirmation; only finished downloads and their own files are touched.
+
+Subtitles: a download saves the video's original language and real English, never auto-translated tracks. The player on the Watch page lists them with subtitles off by default. The Watch page also shows the video and audio codecs and the HDR range.
+
 ### Quality caps
 
 Each job has a quality cap: `best`, `2160`, `1440`, `1080`, `720`, `480` or `audio`. The default is "Up to 1080p". The cap compares the short side of the video, so a vertical 1080×1920 video counts as 1080p. Choosing an exact format overrides the cap.

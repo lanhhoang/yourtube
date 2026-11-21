@@ -1,9 +1,17 @@
 import { expect, test } from "vitest";
 import {
+  DEFAULT_VIEW,
+  SORT_OPTIONS,
+  activeFilterCount,
   bulkResultText,
+  dropStale,
+  facets,
+  filterItems,
   formatSize,
-  libraryItems,
   qualityLabel,
+  readView,
+  sameFilters,
+  sortItems,
   toggle,
   watchMeta,
 } from "../src/lib/library.ts";
@@ -11,18 +19,6 @@ import type { JobOut } from "../src/lib/queue.ts";
 
 const job = (id: number, f: Partial<JobOut> = {}) =>
   ({ id, media_kind: "video", resolution_height: null, ...f }) as JobOut;
-
-test("libraryItems per chip", () => {
-  const d1 = job(1);
-  const a1 = job(2);
-  expect(libraryItems([d1], [a1], "all").map((j) => j.id)).toEqual([2, 1]);
-  expect(libraryItems([d1], [a1], "downloading")).toEqual([a1]);
-  const video = job(3);
-  const audio = job(4, { media_kind: "audio" });
-  expect(libraryItems([video, audio], [], "audio")).toEqual([audio]);
-  expect(libraryItems([video, audio], [], "video")).toEqual([video]);
-  expect(libraryItems([video], [audio], "audio")).toEqual([audio]);
-});
 
 test("qualityLabel", () => {
   expect(qualityLabel(job(1, { resolution_height: 1080 }))).toBe("1080p");
@@ -36,13 +32,6 @@ test("formatSize", () => {
   expect(formatSize(1536)).toBe("1.5 KB");
   expect(formatSize(5 * 1024 ** 2)).toBe("5.0 MB");
   expect(formatSize(5 * 1024 ** 3)).toBe("5.0 GB");
-});
-
-test("libraryItems drops an active job that is already done", () => {
-  const finished = job(5, { status: "done" });
-  const stale = job(5, { status: "active" });
-  expect(libraryItems([finished], [stale], "all")).toEqual([finished]);
-  expect(libraryItems([finished], [stale], "video")).toEqual([finished]);
 });
 
 test("watchMeta", () => {
@@ -88,4 +77,99 @@ test("bulkResultText", () => {
   expect(bulkResultText(3, 0)).toBe("Deleted 3");
   expect(bulkResultText(2, 1)).toBe("Deleted 2, 1 failed");
   expect(bulkResultText(0, 2)).toBe("Couldn't delete 2");
+});
+
+const ids = (xs: JobOut[]) => xs.map((x) => x.id);
+
+test("sortItems", () => {
+  expect(SORT_OPTIONS.map((o) => o.label)).toEqual([
+    "Newest first",
+    "Oldest first",
+    "Title A–Z",
+    "Longest first",
+    "Largest first",
+  ]);
+  const a = job(1, {
+    finished_at: "2026-01-02T00:00:00Z",
+    created_at: "2026-01-01T00:00:00Z",
+    title: "b2",
+    duration: 10,
+    file_size: null,
+  });
+  const b = job(2, {
+    finished_at: null,
+    created_at: "2026-01-03T00:00:00Z",
+    title: null,
+    duration: null,
+    file_size: 5,
+  });
+  const c = job(3, {
+    finished_at: "2026-01-01T12:00:00Z",
+    created_at: "2026-01-01T00:00:00Z",
+    title: "B10",
+    duration: 10,
+    file_size: 9,
+  });
+  const items = [a, b, c];
+  expect(ids(sortItems(items, "added-desc"))).toEqual([2, 1, 3]);
+  expect(ids(sortItems(items, "added-asc"))).toEqual([3, 1, 2]);
+  expect(ids(sortItems(items, "title"))).toEqual([1, 3, 2]);
+  expect(ids(sortItems(items, "duration"))).toEqual([1, 3, 2]);
+  expect(ids(sortItems(items, "size"))).toEqual([3, 2, 1]);
+  expect(ids(items)).toEqual([1, 2, 3]);
+});
+
+test("filterItems ANDs and is strict", () => {
+  const items = [
+    job(1, { uploader: "A", playlist_title: "P", media_kind: "audio" }),
+    job(2, { uploader: "A", playlist_title: "P" }),
+    job(3, { uploader: "B", playlist_title: "P", media_kind: "audio" }),
+  ];
+  const v = { ...DEFAULT_VIEW, kind: "audio" as const, channel: "A", playlist: "P" };
+  expect(ids(filterItems(items, v))).toEqual([1]);
+  expect(filterItems(items, { ...DEFAULT_VIEW, channel: "Z" })).toEqual([]);
+  expect(ids(filterItems(items, DEFAULT_VIEW))).toEqual([1, 2, 3]);
+});
+
+test("facets", () => {
+  const f = facets([
+    job(1, { uploader: "b", playlist_title: "" }),
+    job(2, { uploader: "a", playlist_title: "P" }),
+    job(3, { uploader: "b", playlist_title: null }),
+    job(4, { uploader: null }),
+  ]);
+  expect(f.channels).toEqual([
+    { value: "a", count: 1 },
+    { value: "b", count: 2 },
+  ]);
+  expect(f.playlists).toEqual([{ value: "P", count: 1 }]);
+});
+
+test("dropStale", () => {
+  const f = { channels: [{ value: "a", count: 1 }], playlists: [{ value: "P", count: 1 }] };
+  expect(dropStale({ ...DEFAULT_VIEW, channel: "x", playlist: "y" }, f)).toEqual(DEFAULT_VIEW);
+  const ok = { ...DEFAULT_VIEW, channel: "a", playlist: "P" };
+  expect(dropStale(ok, f)).toBe(ok);
+});
+
+test("activeFilterCount and sameFilters", () => {
+  expect(activeFilterCount(DEFAULT_VIEW)).toBe(0);
+  expect(activeFilterCount({ ...DEFAULT_VIEW, kind: "video", channel: "a", playlist: "P" })).toBe(
+    3,
+  );
+  expect(sameFilters(DEFAULT_VIEW, { ...DEFAULT_VIEW, sort: "title" })).toBe(true);
+  expect(sameFilters(DEFAULT_VIEW, { ...DEFAULT_VIEW, kind: "audio" })).toBe(false);
+});
+
+test("readView", () => {
+  expect(readView(null)).toEqual(DEFAULT_VIEW);
+  expect(readView("{bad")).toEqual(DEFAULT_VIEW);
+  expect(readView('{"sort":"nope","kind":"audio"}')).toEqual({ ...DEFAULT_VIEW, kind: "audio" });
+  expect(readView('{"channel":""}')).toEqual(DEFAULT_VIEW);
+  expect(readView('{"channel":"a","playlist":"P","sort":"size"}')).toEqual({
+    sort: "size",
+    kind: "any",
+    channel: "a",
+    playlist: "P",
+  });
 });

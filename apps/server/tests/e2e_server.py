@@ -8,7 +8,7 @@ Later phases fill in more stubs.
 from __future__ import annotations
 
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -193,6 +193,28 @@ def _seed() -> None:
                     media_format="mp4",
                     resolution_height=1080,
                     finished_at=datetime.now(),
+                )
+            )
+        # Used only by the sort and filter tests in e2e/library.spec.ts. No files, so the
+        # library move and the backfill skip them.
+        now = datetime.now()
+        for title, uploader, days, height, extra in (
+            ("Sort B", "Sorter", 1, 1080, {"duration": 60}),
+            ("Sort A", "Sorter", 2, 1080, {"duration": 600}),
+            ("Sort audio", "Sorter", 3, None, {}),
+            ("Sort listed", "Other", 4, 1080, {"playlist_title": "Sort list"}),
+        ):
+            session.add(
+                Download(
+                    url=f"https://e2e.test/{title.lower().replace(' ', '-')}",
+                    title=title,
+                    uploader=uploader,
+                    status="done",
+                    progress=100.0,
+                    media_format="mp4",
+                    resolution_height=height,
+                    finished_at=now - timedelta(days=days),
+                    **extra,
                 )
             )
         session.add(Download(url="https://e2e.test/slow", title="Slow video", status="queued"))

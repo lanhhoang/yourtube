@@ -23,8 +23,6 @@
   let error = $state("");
   let timer: ReturnType<typeof setTimeout> | undefined;
 
-  const inProgress = $derived(job.status !== "done");
-  const picking = $derived(selecting && job.status === "done");
   const meta = $derived(
     [job.uploader, qualityLabel(job), formatSize(job.file_size)].filter(Boolean).join(" · "),
   );
@@ -59,7 +57,7 @@
 </script>
 
 <article class="group relative flex min-w-0 flex-row gap-3 md:flex-col md:gap-2">
-  {#if picking}
+  {#if selecting}
     <!-- biome-ignore lint/a11y/noLabelWithoutControl: the input inside has its own aria-label; the label widens the tap area to the whole card -->
     <label class="absolute inset-0 z-10 cursor-pointer">
       <div
@@ -83,14 +81,7 @@
     {#if job.thumbnail}
       <img src={job.thumbnail} alt="" loading="lazy" class="size-full object-cover">
     {/if}
-    {#if inProgress}
-      <div class="absolute inset-x-0 bottom-0 h-1 bg-black/50">
-        <div
-          class="h-full bg-accent transition-[width] duration-(--duration-base) ease-(--ease-out)"
-          style:width="{job.progress}%"
-        ></div>
-      </div>
-    {:else if !picking}
+    {#if !selecting}
       <div
         class="absolute top-2 right-2 z-10 hidden flex-col md:flex rounded-control border border-line-strong bg-surface p-1 opacity-0 shadow-[0_8px_24px_rgb(0_0_0/0.4)] transition-opacity duration-(--duration-fast) group-focus-within:opacity-100 group-hover:opacity-100"
       >
@@ -103,7 +94,7 @@
   </div>
   <div class="min-w-0 flex-1">
     <h3 class="m-0 line-clamp-2 text-base font-semibold">
-      {#if inProgress || picking}
+      {#if selecting}
         {job.title ?? job.url}
       {:else}
         <a
@@ -113,14 +104,7 @@
         >
       {/if}
     </h3>
-    {#if inProgress}
-      <p class="m-0 text-sm text-muted">
-        {job.status === "active" ? "Downloading" : "Queued"}
-        <span class="tabular"
-          >{job.status === "active" ? ` ${Math.round(job.progress)}%` : ""}</span
-        >
-      </p>
-    {:else if meta}
+    {#if meta}
       <p class="m-0 truncate text-sm text-muted">{meta}</p>
     {/if}
     {#if error}
