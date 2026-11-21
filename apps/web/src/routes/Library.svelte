@@ -1,8 +1,6 @@
 <script lang="ts">
   import { untrack } from "svelte";
   import { MediaQuery } from "svelte/reactivity";
-  import { fly } from "svelte/transition";
-  import { cubicOut } from "svelte/easing";
   import BottomSheet from "../components/BottomSheet.svelte";
   import JobCard from "../components/JobCard.svelte";
   import LibraryFilters from "../components/LibraryFilters.svelte";
@@ -34,6 +32,8 @@
   let done = $state<JobOut[]>([]);
   // Facets of the unsearched list: a channel a search hides is not stale.
   let fullFacets = $state<Facets | null>(null);
+  // Size of the unsearched list: gates the toolbar so an empty search keeps it.
+  let total = $state(0);
   // Never mutate in place: readView can hand back the shared DEFAULT_VIEW.
   let view = $state(readView(localStorage.getItem(VIEW_KEY)));
   const wide = new MediaQuery("(min-width: 768px)");
@@ -49,7 +49,10 @@
       );
       if (!current()) return;
       done = rows;
-      if (!query.trim()) fullFacets = facets(rows);
+      if (!query.trim()) {
+        fullFacets = facets(rows);
+        total = rows.length;
+      }
       error = "";
     } catch (err) {
       if (!current()) return;
@@ -102,7 +105,10 @@
 
   function removed(id: number) {
     done = done.filter((j) => j.id !== id);
-    if (!searching) fullFacets = facets(done);
+    if (!searching) {
+      fullFacets = facets(done);
+      total = done.length;
+    }
   }
 
   let filtersOpen = $state(false);
@@ -121,7 +127,7 @@
 
   $effect(() => {
     if (!filtersOpen || !wide.current || !popover) return;
-    popover.querySelector<HTMLElement>("input, select, button")?.focus();
+    popover.querySelector<HTMLElement>("input:checked, select, button")?.focus();
   });
 
   $effect(() => {
@@ -133,8 +139,6 @@
     window.addEventListener("pointerdown", onDown);
     return () => window.removeEventListener("pointerdown", onDown);
   });
-
-  const slide = (node: Element) => fly(node, { y: -4, duration: 120, easing: cubicOut });
 
   let selecting = $state(false);
   let selected = $state(new Set<number>());
@@ -250,7 +254,10 @@
       }
       // Moves the ticket on (drops stale loads) and drops rows that were already gone.
       void load(q);
-      if (!searching) fullFacets = facets(done);
+      if (!searching) {
+        fullFacets = facets(done);
+        total = done.length;
+      }
     } finally {
       deleting = false;
     }
@@ -270,13 +277,13 @@
       class="min-h-[44px] w-full rounded-pill border border-line-strong bg-surface px-4 py-1.5 text-[16px] text-fg placeholder:text-muted md:ml-auto md:min-h-0 md:w-72 md:text-base"
     >
     <div class="flex w-full items-center gap-2 md:w-auto md:gap-4">
-      {#if done.length > 0}
+      {#if total > 0}
         <label for="library-sort" class="sr-only">Sort</label>
         <select
           id="library-sort"
           value={view.sort}
           onchange={(e) => (view = { ...view, sort: e.currentTarget.value as typeof view.sort })}
-          class="min-h-[44px] min-w-0 flex-1 cursor-pointer rounded-pill border border-line-strong bg-surface px-3 py-1 text-[16px] text-fg md:min-h-0 md:flex-none md:text-sm"
+          class="min-h-[44px] min-w-0 flex-1 cursor-pointer rounded-control border border-line-strong bg-surface px-3 py-1 text-[16px] text-fg md:min-h-0 md:flex-none md:text-base"
         >
           {#each SORT_OPTIONS as o (o.value)}
             <option value={o.value}>{o.label}</option>
@@ -298,8 +305,7 @@
               bind:this={popover}
               role="dialog"
               aria-label="Filters"
-              transition:slide
-              class="absolute top-[calc(100%+8px)] right-0 z-20 rounded-control border border-line-strong bg-surface p-4 shadow-[0_8px_24px_rgb(0_0_0/0.4)]"
+              class="absolute top-[calc(100%+8px)] right-0 z-20 rounded-control transition-[opacity,translate] duration-(--duration-fast) ease-(--ease-out) starting:-translate-y-1 starting:opacity-0 border border-line-strong bg-surface p-4 shadow-[0_8px_24px_rgb(0_0_0/0.4)]"
             >
               <LibraryFilters
                 bind:view
@@ -310,7 +316,7 @@
           {/if}
         </div>
       {/if}
-      {#if done.length > 0 || selecting}
+      {#if total > 0 || selecting}
         <button
           type="button"
           class="min-h-[44px] cursor-pointer rounded-pill border border-line-strong bg-transparent px-5 py-1 text-[16px] font-medium text-fg hover:bg-raised md:min-h-0 md:text-sm"
@@ -402,7 +408,7 @@
           No videos match these filters.
         {/if}
       </p>
-      {#if done.length > 0 && !(searching && done.length === 0)}
+      {#if done.length > 0}
         <button
           type="button"
           class="mt-3 min-h-[44px] cursor-pointer rounded-pill border border-line-strong bg-transparent px-5 py-1 text-sm font-medium text-fg hover:bg-raised md:min-h-9"

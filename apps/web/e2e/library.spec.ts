@@ -236,6 +236,17 @@ test("a search keeps the channel filter", async ({ page }) => {
   await expect(row(page, "Sort listed")).toBeVisible();
 });
 
+test("an empty search keeps Sort and Filter", async ({ page }) => {
+  await page.goto(`${APP}#/`);
+  await expect(row(page, "Sort A")).toBeVisible();
+  await page.getByRole("searchbox", { name: "Search library" }).fill("zzz-none");
+  await expect(page.getByText("Nothing matches “zzz-none”.")).toBeVisible();
+  await expect(page.getByLabel("Sort")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Filter/ })).toBeVisible();
+  await page.getByRole("searchbox", { name: "Search library" }).fill("");
+  await expect(row(page, "Sort A")).toBeVisible();
+});
+
 test("view persists; a stale channel is dropped", async ({ page }) => {
   await page.goto(`${APP}#/`);
   await page.getByLabel("Sort").selectOption("added-asc");
