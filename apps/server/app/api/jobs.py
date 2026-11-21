@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+from urllib.parse import quote
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Response
 from fastapi.responses import FileResponse, PlainTextResponse
@@ -131,7 +132,9 @@ def list_subtitles(job_id: int, session: Session = Depends(get_session)) -> list
     langs = subtitle_sidecars(resolve_repo_path(row.file_path))
     ordered = sorted(langs, key=lambda lang: (not lang.endswith("-orig"), lang))
     return [
-        SubtitleTrackOut(lang=lang, url=f"/api/downloads/{job_id}/subtitles/{lang}.vtt")
+        SubtitleTrackOut(
+            lang=lang, url=f"/api/downloads/{job_id}/subtitles/{quote(lang, safe='')}.vtt"
+        )
         for lang in ordered
     ]
 
@@ -141,9 +144,18 @@ def get_subtitle(
     job_id: int, lang: str, session: Session = Depends(get_session)
 ) -> PlainTextResponse:
     row = session.get(Download, job_id)
-    if row is None or row.status != "done" or not row.file_path:
+    if (
+        row is None
+        or row.status != "done"
+        or not row.file_path
+        or JobOut.from_row(row).media_kind == "audio"
+    ):
         raise ApiError(404, "not_found", "Subtitle not found.")
     path = subtitle_sidecars(resolve_repo_path(row.file_path)).get(lang)
     if path is None:
         raise ApiError(404, "not_found", "Subtitle not found.")
-    return PlainTextResponse(read_vtt(path), media_type="text/vtt; charset=utf-8")
+    try:
+        body = read_vtt(path)
+    except OSError:
+        raise ApiError(404, "not_found", "Subtitle not found.") from None
+    return PlainTextResponse(body, media_type="text/vtt; charset=utf-8")

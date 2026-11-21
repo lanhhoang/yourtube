@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
 from sqlalchemy.orm import Session
 
 from app.config import REPO_ROOT
@@ -223,3 +225,34 @@ def test_delete_removes_sidecars_when_media_missing(db_session: Session, tmp_pat
 
     assert delete_from_library(db_session, row.id) == (True, "file_missing")
     assert not (tmp_path / "v.en.srt").exists()
+
+
+def test_delete_ignores_sidecar_removal_failure(
+    db_session: Session,
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    media = tmp_path / "v.mp4"
+    media.write_text("x")
+    sidecar = tmp_path / "v.en.srt"
+    sidecar.write_text("x")
+    row = _row_with_file(db_session, media)
+    row_id = row.id
+    real_remove = os.remove
+    # Alembic's fileConfig (run by other tests) can leave this logger disabled.
+    monkeypatch.setattr(logging.getLogger("yourtube"), "disabled", False)
+
+    def fake_remove(path: str | Path) -> None:
+        if Path(path) == sidecar:
+            raise OSError("boom")
+        real_remove(path)
+
+    with (
+        caplog.at_level(logging.WARNING, logger="yourtube"),
+        patch("app.services.library.os.remove", fake_remove),
+    ):
+        assert delete_from_library(db_session, row_id) == (True, "")
+    assert db_session.get(Download, row_id) is None
+    assert not media.exists()
+    assert any("could not remove sidecar" in r.getMessage() for r in caplog.records)

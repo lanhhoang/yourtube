@@ -39,9 +39,10 @@
         phase = "ready";
         if (job.status === "done" && job.media_kind === "video") {
           try {
-            tracks = await call(
+            const found = await call(
               api.GET("/api/downloads/{job_id}/subtitles", { params: { path: { job_id: id } } }),
             );
+            if (!abort.signal.aborted) tracks = found;
           } catch {}
         }
       } catch (err) {
