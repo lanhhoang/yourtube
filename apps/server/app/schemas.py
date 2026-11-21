@@ -70,6 +70,11 @@ class FormatInfo(BaseModel):
     container: str | None = None
 
 
+class SubtitleTrackOut(BaseModel):
+    lang: str
+    url: str
+
+
 type JobStatus = Literal["queued", "active", "done", "error", "cancelled"]
 type MediaKind = Literal["video", "audio"]
 

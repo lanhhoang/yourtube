@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import asdict
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Response
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, PlainTextResponse
 from sqlalchemy.orm import Session
 
 from app.api.errors import ApiError
@@ -19,6 +19,7 @@ from app.schemas import (
     EnqueueResult,
     JobOut,
     QueueOut,
+    SubtitleTrackOut,
 )
 from app.services.push import notify_settled
 from app.services.queue import (
@@ -32,6 +33,7 @@ from app.services.queue import (
     recent_batch_summaries,
     retry_job,
 )
+from app.services.subtitles import read_vtt, subtitle_sidecars
 
 router = APIRouter(tags=["jobs"])
 
@@ -117,3 +119,31 @@ def download_file(
         filename=path.name,
         content_disposition_type="inline" if inline else "attachment",
     )
+
+
+@router.get("/downloads/{job_id}/subtitles")
+def list_subtitles(job_id: int, session: Session = Depends(get_session)) -> list[SubtitleTrackOut]:
+    row = session.get(Download, job_id)
+    if row is None:
+        raise ApiError(404, "not_found", "Download not found.")
+    if row.status != "done" or not row.file_path or JobOut.from_row(row).media_kind == "audio":
+        return []
+    langs = subtitle_sidecars(resolve_repo_path(row.file_path))
+    ordered = sorted(langs, key=lambda lang: (not lang.endswith("-orig"), lang))
+    return [
+        SubtitleTrackOut(lang=lang, url=f"/api/downloads/{job_id}/subtitles/{lang}.vtt")
+        for lang in ordered
+    ]
+
+
+@router.get("/downloads/{job_id}/subtitles/{lang}.vtt")
+def get_subtitle(
+    job_id: int, lang: str, session: Session = Depends(get_session)
+) -> PlainTextResponse:
+    row = session.get(Download, job_id)
+    if row is None or row.status != "done" or not row.file_path:
+        raise ApiError(404, "not_found", "Subtitle not found.")
+    path = subtitle_sidecars(resolve_repo_path(row.file_path)).get(lang)
+    if path is None:
+        raise ApiError(404, "not_found", "Subtitle not found.")
+    return PlainTextResponse(read_vtt(path), media_type="text/vtt; charset=utf-8")
