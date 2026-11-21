@@ -164,3 +164,20 @@ def test_get_job(client: TestClient, db_session_visible: Session) -> None:
     assert (body["playlist_title"], body["playlist_channel"]) == ("PL", "Ch")
     r = client.get("/api/downloads/999999")
     assert r.status_code == 404 and r.json()["error"]["code"] == "not_found"
+
+
+def test_bulk_delete(client: TestClient, db_session_visible: Session, tmp_path: Path) -> None:
+    f = tmp_path / "v.mp4"
+    f.write_bytes(b"data")
+    job = _add(db_session_visible, file_path=str(f))
+    res = client.post("/api/library/delete", json={"ids": [job, 999999]})
+    assert res.status_code == 200
+    assert res.json() == {"deleted": [job], "failed": [{"id": 999999, "reason": "not_found"}]}
+    assert not f.exists()
+
+
+def test_bulk_delete_validates(client: TestClient) -> None:
+    for ids in ([], list(range(1, 502))):
+        res = client.post("/api/library/delete", json={"ids": ids})
+        assert res.status_code == 422
+        assert res.json()["error"]["code"] == "invalid_request"

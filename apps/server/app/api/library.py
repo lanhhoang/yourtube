@@ -7,8 +7,13 @@ from sqlalchemy.orm import Session
 
 from app.api.errors import ApiError
 from app.db import get_session
-from app.schemas import JobOut
-from app.services.library import delete_from_library, get_library, search_library
+from app.schemas import BulkDeleteFailure, BulkDeleteIn, BulkDeleteOut, JobOut
+from app.services.library import (
+    delete_from_library,
+    delete_many,
+    get_library,
+    search_library,
+)
 
 router = APIRouter(tags=["library"])
 
@@ -33,3 +38,12 @@ def delete_job(job_id: int, session: Session = Depends(get_session)) -> Response
         status, message = _DELETE_ERRORS[reason]
         raise ApiError(status, reason, message)
     return Response(status_code=204)
+
+
+@router.post("/library/delete")
+def bulk_delete(body: BulkDeleteIn, session: Session = Depends(get_session)) -> BulkDeleteOut:
+    deleted, failed = delete_many(session, body.ids)
+    return BulkDeleteOut(
+        deleted=deleted,
+        failed=[BulkDeleteFailure(id=i, reason=r) for i, r in failed],
+    )
