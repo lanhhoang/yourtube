@@ -91,6 +91,21 @@ test("a missing download says so", async ({ page }) => {
   await expect(page.getByText("This download no longer exists.")).toBeVisible();
 });
 
+test("select mode does not navigate", async ({ page }) => {
+  await page.goto(`${APP}#/`);
+  await expect(page.getByRole("link", { name: "Seeded video" })).toBeVisible();
+  await page.getByRole("button", { name: "Select", exact: true }).click();
+  await expect(page.getByRole("link", { name: "Seeded video" })).toHaveCount(0);
+  const box = page.getByRole("checkbox", { name: "Seeded video" });
+  // The card-wide label sits over the title, so click the title's position directly.
+  await page.getByRole("heading", { name: "Seeded video" }).click({ force: true });
+  await expect(page).toHaveURL(/#\/$/);
+  await expect(box).toBeChecked();
+  await page.keyboard.press("Escape");
+  await expect(box).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Seeded video" })).toBeVisible();
+});
+
 test("delete in library", async ({ page }) => {
   // The startup move put the seeded file in its channel folder.
   const moved = resolve(downloads, "e2e/seeded-video.mp4");
@@ -109,4 +124,22 @@ test("delete in library", async ({ page }) => {
   await expect(card).toHaveCount(0);
   await expect.poll(() => existsSync(moved)).toBe(false);
   await expect.poll(() => srts.some((f) => existsSync(f))).toBe(false);
+});
+
+test("select and delete several", async ({ page }) => {
+  const files = ["bulk-a.mp4", "bulk-b.mp4"].map((f) => resolve(downloads, "e2e", f));
+  for (const f of files) expect(existsSync(f)).toBe(true);
+  await page.goto(`${APP}#/`);
+  await page.getByRole("button", { name: "Select", exact: true }).click();
+  await page.getByRole("checkbox", { name: "Bulk A" }).check();
+  await page.getByRole("checkbox", { name: "Bulk B" }).check();
+  await expect(page.getByText("2 selected")).toBeVisible();
+  const bar = page.getByRole("region", { name: "Selection" });
+  await bar.getByRole("button", { name: "Delete", exact: true }).click();
+  await bar.getByRole("button", { name: "Delete 2?" }).click();
+  await expect(page.getByRole("article").filter({ hasText: "Bulk A" })).toHaveCount(0);
+  await expect(page.getByRole("article").filter({ hasText: "Bulk B" })).toHaveCount(0);
+  await expect.poll(() => files.some((f) => existsSync(f))).toBe(false);
+  await expect(page.getByText("Deleted 2", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Select", exact: true })).toBeVisible();
 });

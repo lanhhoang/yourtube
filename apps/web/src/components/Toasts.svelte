@@ -7,6 +7,7 @@
     done: "Downloaded",
     failed: "Download failed",
     batch: "Batch finished",
+    deleted: "Bulk delete",
   };
 </script>
 
@@ -39,6 +40,8 @@
               <path d="M12 7v6M12 16.5v.01" />
             {:else if t.kind === "batch"}
               <path d="M4 7l8-4 8 4-8 4zM4 12l8 4 8-4M4 17l8 4 8-4" />
+            {:else if t.kind === "deleted"}
+              <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5M14 11v5" />
             {:else}
               <path d="M5 12l5 5L20 7" />
             {/if}

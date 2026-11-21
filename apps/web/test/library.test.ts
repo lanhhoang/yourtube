@@ -1,5 +1,12 @@
 import { expect, test } from "vitest";
-import { formatSize, libraryItems, qualityLabel, watchMeta } from "../src/lib/library.ts";
+import {
+  bulkResultText,
+  formatSize,
+  libraryItems,
+  qualityLabel,
+  toggle,
+  watchMeta,
+} from "../src/lib/library.ts";
 import type { JobOut } from "../src/lib/queue.ts";
 
 const job = (id: number, f: Partial<JobOut> = {}) =>
@@ -66,4 +73,19 @@ test("watchMeta", () => {
   expect(watchMeta({ ...v, vcodec: null, acodec: null, dynamic_range: null })).toBe(
     "Chan · 1080p · 300.0 MB · mp4",
   );
+});
+
+test("toggle adds, then removes, and never mutates", () => {
+  const start = new Set([1]);
+  const added = toggle(start, 2);
+  expect([...added]).toEqual([1, 2]);
+  expect([...start]).toEqual([1]);
+  expect([...toggle(added, 1)]).toEqual([2]);
+  expect([...added]).toEqual([1, 2]);
+});
+
+test("bulkResultText", () => {
+  expect(bulkResultText(3, 0)).toBe("Deleted 3");
+  expect(bulkResultText(2, 1)).toBe("Deleted 2, 1 failed");
+  expect(bulkResultText(0, 2)).toBe("Couldn't delete 2");
 });

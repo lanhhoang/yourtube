@@ -28,6 +28,17 @@
     toasts = toasts.filter((t) => t.key !== key);
   }
 
+  let toastCount = 0;
+
+  function addToast(toast: Toast) {
+    toasts = [...toasts, toast];
+    setTimeout(() => closeToast(toast.key), TOAST_MS);
+  }
+
+  function raise(t: Omit<Toast, "key">) {
+    addToast({ ...t, key: `local:${++toastCount}` });
+  }
+
   async function refreshQueue(): Promise<void> {
     const current = ticket();
     let next: QueueOut;
@@ -42,8 +53,7 @@
     firstPoll = false;
     sessionStorage.setItem(SEEN_KEY, JSON.stringify([...result.seen]));
     for (const toast of result.toasts) {
-      toasts = [...toasts, toast];
-      setTimeout(() => closeToast(toast.key), TOAST_MS);
+      addToast(toast);
     }
   }
 
@@ -71,7 +81,7 @@
       {:else if router.route.name === "fetch"}
         <Fetch urls={router.route.urls} />
       {:else}
-        <Library {queue} />
+        <Library {queue} ontoast={raise} />
       {/if}
     </main>
   </div>

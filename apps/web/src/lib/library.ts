@@ -48,3 +48,14 @@ export function watchMeta(job: JobOut): string {
     .filter(Boolean)
     .join(" · ");
 }
+
+export function toggle(selected: Set<number>, id: number): Set<number> {
+  const next = new Set(selected);
+  if (!next.delete(id)) next.add(id);
+  return next;
+}
+
+export function bulkResultText(deleted: number, failed: number): string {
+  if (deleted === 0) return `Couldn't delete ${failed}`;
+  return failed ? `Deleted ${deleted}, ${failed} failed` : `Deleted ${deleted}`;
+}

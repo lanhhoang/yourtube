@@ -70,7 +70,7 @@ Below 768 px (`md`) every screen uses the phone layout; at 768 px and up nothing
 
 ## Toasts
 
-A toast is an icon plus a text label over the message, never colour alone. Variants: `done` (check, "Downloaded", then the title), `failed` (alert circle, "Download failed", then "title: reason"; label and icon use `danger`) and `batch` (stack, "Batch finished", then the batch name and a muted summary such as "12 downloaded, 1 failed"; same words as the push). Jobs inside a batch never toast on their own. Toasts close after 5 s or by the 44 px Close button on phones.
+A toast is an icon plus a text label over the message, never colour alone. Variants: `deleted` (trash, "Bulk delete", then the result such as "Deleted 3" or "Deleted 2, 1 failed"), `done` (check, "Downloaded", then the title), `failed` (alert circle, "Download failed", then "title: reason"; label and icon use `danger`) and `batch` (stack, "Batch finished", then the batch name and a muted summary such as "12 downloaded, 1 failed"; same words as the push). Jobs inside a batch never toast on their own. Toasts close after 5 s or by the 44 px Close button on phones.
 
 ## Switch
 

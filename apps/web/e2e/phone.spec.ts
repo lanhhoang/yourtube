@@ -122,6 +122,25 @@ test("library: no sideways scroll, tap opens the player", async ({ page }) => {
   await expect(page).toHaveURL(/#\/watch\/\d+$/);
 });
 
+test("select mode on phone", async ({ page }) => {
+  await page.goto(`${APP}#/`);
+  await page.getByRole("button", { name: "Select", exact: true }).tap();
+  const box = page.getByRole("checkbox", { name: "Phone video" });
+  await expect(box).toBeVisible();
+  await expectTarget(box.locator("xpath=.."));
+  const bar = page.getByRole("region", { name: "Selection" });
+  for (const b of await bar.getByRole("button").all()) await expectTarget(b);
+  await page.getByRole("article").filter({ hasText: "Phone video" }).tap();
+  await expect(page.getByText("1 selected")).toBeVisible();
+  await expect(page).toHaveURL(/#\/$/);
+  const barBox = await bar.boundingBox();
+  const tabBox = await page.locator("nav").last().boundingBox();
+  expect(
+    Math.abs((barBox?.y ?? 0) + (barBox?.height ?? 0) - (tabBox?.y ?? -99)),
+  ).toBeLessThanOrEqual(1);
+  await expectNoSideScroll(page);
+});
+
 test("queue: no sideways scroll, Cancel is a 44 px target", async ({ page, request }) => {
   const res = await request.post("/api/downloads", {
     data: { jobs: [{ url: "https://e2e.test/slow-phone", title: "Phone queued job" }] },

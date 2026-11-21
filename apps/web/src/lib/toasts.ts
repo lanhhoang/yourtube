@@ -12,7 +12,7 @@ export function readSeen(stored: string | null): Set<string> {
   }
 }
 
-export type ToastKind = "done" | "failed" | "batch";
+export type ToastKind = "done" | "failed" | "batch" | "deleted";
 export type Toast = { key: string; kind: ToastKind; title: string; body: string };
 
 type BatchOut = QueueOut["batches"][number];

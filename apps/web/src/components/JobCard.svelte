@@ -4,7 +4,19 @@
   import { formatSize, qualityLabel } from "../lib/library.ts";
   import type { JobOut } from "../lib/queue.ts";
 
-  let { job, ondeleted }: { job: JobOut; ondeleted: (id: number) => void } = $props();
+  let {
+    job,
+    ondeleted,
+    selecting = false,
+    selected = false,
+    ontoggle,
+  }: {
+    job: JobOut;
+    ondeleted: (id: number) => void;
+    selecting?: boolean;
+    selected?: boolean;
+    ontoggle?: (id: number) => void;
+  } = $props();
 
   let confirming = $state(false);
   let deleting = $state(false);
@@ -12,6 +24,7 @@
   let timer: ReturnType<typeof setTimeout> | undefined;
 
   const inProgress = $derived(job.status !== "done");
+  const picking = $derived(selecting && job.status === "done");
   const meta = $derived(
     [job.uploader, qualityLabel(job), formatSize(job.file_size)].filter(Boolean).join(" · "),
   );
@@ -46,8 +59,26 @@
 </script>
 
 <article class="group relative flex min-w-0 flex-row gap-3 md:flex-col md:gap-2">
+  {#if picking}
+    <!-- biome-ignore lint/a11y/noLabelWithoutControl: the input inside has its own aria-label; the label widens the tap area to the whole card -->
+    <label class="absolute inset-0 z-10 cursor-pointer">
+      <div
+        class="absolute top-0 left-0 grid size-[44px] place-items-center md:top-2 md:left-2 md:size-6 md:rounded-control md:bg-black/60"
+      >
+        <input
+          type="checkbox"
+          checked={selected}
+          aria-label={job.title ?? job.url}
+          onchange={() => ontoggle?.(job.id)}
+          class="size-4 accent-(--color-action)"
+        >
+      </div>
+    </label>
+  {/if}
   <div
-    class="relative aspect-video w-2/5 shrink-0 overflow-hidden rounded-thumb bg-surface md:w-auto md:shrink"
+    class="relative aspect-video w-2/5 shrink-0 overflow-hidden rounded-thumb bg-surface md:w-auto md:shrink {selected
+      ? "ring-2 ring-fg"
+      : ""}"
   >
     {#if job.thumbnail}
       <img src={job.thumbnail} alt="" loading="lazy" class="size-full object-cover">
@@ -59,7 +90,7 @@
           style:width="{job.progress}%"
         ></div>
       </div>
-    {:else}
+    {:else if !picking}
       <div
         class="absolute top-2 right-2 z-10 hidden flex-col md:flex rounded-control border border-line-strong bg-surface p-1 opacity-0 shadow-[0_8px_24px_rgb(0_0_0/0.4)] transition-opacity duration-(--duration-fast) group-focus-within:opacity-100 group-hover:opacity-100"
       >
@@ -72,7 +103,7 @@
   </div>
   <div class="min-w-0 flex-1">
     <h3 class="m-0 line-clamp-2 text-base font-semibold">
-      {#if inProgress}
+      {#if inProgress || picking}
         {job.title ?? job.url}
       {:else}
         <a
